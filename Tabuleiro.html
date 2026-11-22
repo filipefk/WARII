@@ -1,0 +1,1252 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tabuleiro</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<style>
+  :root {
+    --bg: #1b1410; --panel: #261c16; --panel2: #31241c; --border: #3d2e24;
+    --text: #f3e9df; --muted: #b9a797; --accent: #ffb347;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.45 "Segoe UI", system-ui, sans-serif; display: flex; }
+  #board { flex: 1; min-width: 0; position: relative; }
+  #board svg { width: 100%; height: 100%; display: block; user-select: none; cursor: grab; }
+  #board svg:active { cursor: grabbing; }
+  #status { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); pointer-events: none; }
+  aside { width: 340px; background: var(--panel); border-left: 1px solid var(--border); padding: 16px; overflow-y: auto; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 20px 0 8px; }
+  .hint { color: var(--muted); font-size: 12px; }
+  button, select { background: var(--panel2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font: inherit; }
+  button:hover { border-color: var(--accent); }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  #info { background: var(--panel2); border-radius: 8px; padding: 10px 12px; min-height: 60px; }
+  #info b { font-size: 15px; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 10px; background: var(--accent); color: #1b1410; margin-left: 6px; }
+
+  /* mapa */
+  .terr { cursor: pointer; transition: opacity .15s; }
+  .terr:hover path { filter: brightness(1.12); }
+  .terr.dim { opacity: .35; }
+  .terr.sel path { filter: brightness(1.25); }
+  .borders path { fill: none; stroke: #fff6ea; stroke-width: .9; stroke-linejoin: round; opacity: .85; pointer-events: none; vector-effect: non-scaling-stroke; }
+  .routes path { fill: none; stroke: #fff; stroke-width: 1.6; opacity: .75; pointer-events: none; vector-effect: non-scaling-stroke; }
+  .routes path.hl { stroke: var(--accent); stroke-width: 3; opacity: 1; }
+  .routes circle { fill: #fff; stroke: rgba(30,15,8,.7); stroke-width: .8; pointer-events: none; vector-effect: non-scaling-stroke; }
+  .routes circle.hl { fill: var(--accent); }
+  .labels text { pointer-events: none; text-anchor: middle; paint-order: stroke; stroke: rgba(30,15,8,.85); stroke-linejoin: round; }
+  .labels .name { font-size: 12px; font-weight: 700; fill: #fff; stroke-width: 3px; }
+  .labels .sub { font-size: 8.5px; font-weight: 600; fill: #fff; stroke-width: 2.5px; opacity: .9; }
+  .labels .armies { font-size: 12px; font-weight: 800; stroke: none; dominant-baseline: central; }
+  .ocean { font-size: 15px; font-weight: 700; fill: #4fb3ff; text-anchor: middle; letter-spacing: .03em; paint-order: stroke; stroke: rgba(30,15,8,.7); stroke-width: 3px; pointer-events: none; }
+  .cont-name { font-size: 16px; font-weight: 800; text-anchor: middle; paint-order: stroke; stroke: rgba(30,15,8,.8); stroke-width: 3px; pointer-events: none; }
+  .base text { font-weight: 800; fill: #f3e9df; text-anchor: middle; dominant-baseline: central; }
+  .base .lbl { font-size: 11px; letter-spacing: .06em; }
+  .base .who { font-size: 10px; letter-spacing: .04em; }
+  .base .slot .body { fill: none; stroke: #f3e9df; stroke-width: 2.6; stroke-linejoin: round; opacity: .55; }
+  .base .slot .trail { stroke: #f3e9df; stroke-width: 2.6; stroke-linecap: round; opacity: .35; }
+  .base .slot.on .body, .base .slot.on .trail { opacity: 1; }
+
+  @media (max-width: 860px) {
+    body { flex-direction: column; height: auto; }
+    #board { height: 62vh; }
+    aside { width: auto; border-left: 0; border-top: 1px solid var(--border); }
+  }
+
+  /* cartas */
+  button:disabled { opacity: .5; cursor: default; border-color: var(--border); }
+  #cardsModal { position: fixed; inset: 0; background: rgba(10,6,4,.78); display: flex; align-items: center; justify-content: center; z-index: 10; padding: 16px; }
+  #cardsModal[hidden] { display: none; }
+
+  /* regras */
+  #rulesModal { position: fixed; inset: 0; background: rgba(10,6,4,.78); display: flex; align-items: center; justify-content: center; z-index: 10; padding: 16px; }
+  #rulesModal[hidden] { display: none; }
+  .rules-panel { height: 100%; }
+  .rules-layout { display: flex; flex: 1; min-height: 0; }
+  .rules-nav { width: 220px; flex: none; border-right: 1px solid var(--border); overflow-y: auto; padding: 10px 8px; }
+  .rules-nav a { display: block; padding: 5px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; font-size: 13px; }
+  .rules-nav a:hover, .rules-nav a.on { background: var(--panel2); color: var(--text); }
+  .rules-nav a.on { box-shadow: inset 3px 0 0 var(--accent); }
+  .rules-body { flex: 1; overflow-y: auto; padding: 4px 26px 40px; }
+  .rules-body section { max-width: 860px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .rules-body h3 { font-size: 21px; margin: 26px 0 8px; color: var(--accent); }
+  .rules-body h4 { font-size: 15px; margin: 18px 0 6px; }
+  .rules-body p, .rules-body li { line-height: 1.6; }
+  .rules-body ul, .rules-body ol { padding-left: 22px; margin: 6px 0; }
+  .rules-body table { margin: 8px 0; max-width: 640px; }
+  .box { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin: 12px 0; }
+  .box.ex { border-left: 4px solid var(--accent); }
+  .box.note { border-left: 4px solid #6fa8dc; font-size: 13px; }
+  .box.warn { border-left: 4px solid #e0a020; font-size: 13px; }
+  .box > b:first-child { display: block; margin-bottom: 4px; }
+  .flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; margin: 10px 0; }
+  .flow .step { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; text-align: center; min-width: 112px; flex: 1; font-size: 13px; }
+  .flow .step b { display: block; font-size: 18px; }
+  .flow .arr { align-self: center; color: var(--muted); font-size: 18px; }
+  .ill { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
+  .ill .tcard { width: 92px; }
+  .ill .ocard { width: 170px; font-size: 12.5px; }
+  .ill .op { font-size: 22px; font-weight: 800; color: var(--accent); }
+  .ill .res { font-size: 15px; font-weight: 700; }
+  .mini svg { width: 40px; height: 40px; vertical-align: middle; }
+  .battle { display: inline-flex; flex-direction: column; gap: 4px; margin: 6px 0; }
+  .brow { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .brow svg { width: 38px; height: 38px; }
+  .brow .empty { width: 38px; height: 38px; border: 1px dashed var(--border); border-radius: 7px; }
+  .good { color: #7bd88f; } .bad { color: #ff8a7a; }
+  .chain { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; font-size: 13px; }
+  .chain .t { background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; }
+  .tool { background: #1f1712; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin: 12px 0; }
+  .tool .row { align-items: center; }
+  .tool input, .tool select { background: var(--panel2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; font: inherit; }
+  .tool input[type=number] { width: 64px; }
+  .tool .out { margin-top: 10px; }
+  .tool .err { color: #ff8a7a; font-size: 13px; margin-top: 6px; }
+  button.link { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
+  @media (max-width: 760px) {
+    .rules-layout { flex-direction: column; }
+    .rules-nav { width: auto; border-right: 0; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; max-height: 110px; }
+    .rules-body { padding: 4px 14px 30px; }
+  }
+  .cm-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; width: min(1180px, 100%); max-height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+  .cm-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px 10px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .cm-head h1 { margin: 0; flex: 1; }
+  .cm-tabs button.on, .cm-filters button.on { background: var(--accent); color: #1b1410; border-color: var(--accent); }
+  .cm-filters { padding: 10px 16px 0; }
+  .cm-body { overflow-y: auto; padding: 4px 16px 20px; }
+  .cm-body h2 { margin-top: 18px; }
+  .cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 18px 14px; }
+  .ogrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 16px; }
+  .cwrap { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+  .tcard { width: 100%; max-width: 132px; display: block; border-radius: 8px; box-shadow: 0 3px 10px rgba(0,0,0,.5); transition: transform .15s; position: relative; }
+  .cwrap:hover .tcard { transform: scale(1.45); z-index: 2; }
+  .ccap { font-size: 12px; line-height: 1.3; }
+  .ccap .hint { display: block; font-size: 11px; }
+  .qty { display: inline-block; background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; padding: 0 7px; font-size: 11px; color: var(--accent); }
+  .ocard { position: relative; aspect-ratio: 147 / 176; border: 4px solid #7a2a1c; border-radius: 8px; box-shadow: 0 3px 10px rgba(0,0,0,.5);
+    background:
+      linear-gradient(transparent calc(50% - .5px), rgba(255,255,255,.14) calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px)),
+      linear-gradient(90deg, transparent calc(50% - .5px), rgba(255,255,255,.14) calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px)),
+      repeating-radial-gradient(circle at 50% 50%, transparent 0 26px, rgba(255,255,255,.13) 26px 28px),
+      radial-gradient(circle at 50% 50%, #26415f, #0f1c30 75%);
+    display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 14px 12px; text-align: center; color: #fff; font-size: 13.5px; line-height: 1.35; }
+  .ocard b { font-weight: 800; }
+  .ocard .onum { position: absolute; top: 6px; left: 8px; font-size: 11px; color: #9fb4cc; font-weight: 700; }
+  .ocard .chip { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; margin: 6px 0; box-shadow: 0 0 0 2px rgba(0,0,0,.4); }
+  .dgrid { display: flex; flex-wrap: wrap; gap: 14px; }
+  .dface { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); width: 76px; text-align: center; }
+  .dface svg { width: 68px; height: 68px; filter: drop-shadow(0 3px 5px rgba(0,0,0,.55)); transition: transform .15s; }
+  .dface:hover svg { transform: scale(1.5) rotate(-4deg); }
+  .ocard small { display: block; margin-top: 8px; font-size: 10.5px; color: #c9d6e4; line-height: 1.3; }
+</style>
+</head>
+<body>
+<div id="board">
+  <svg id="svg"></svg>
+  <div id="status">Carregando mapa…</div>
+</div>
+<aside>
+  <h1>Tabuleiro</h1>
+  <div class="hint">Mapa com os 43 territórios sobre a geografia real (Natural Earth). Use a roda do mouse para dar zoom e arraste para mover. O grafo editável está em Grafo.html.</div>
+  <div class="row" style="margin-top:10px">
+    <button id="btnRules" disabled>📖 Regras do jogo</button>
+    <button id="btnCards" disabled>🃏 Ver cartas e dados do jogo</button>
+  </div>
+
+  <h2>Território</h2>
+  <div id="info"><span class="hint">Clique em um território.</span></div>
+
+  <h2>Simulação</h2>
+  <div class="row">
+    <select id="nPlayers">
+      <option value="3">3 jogadores</option><option value="4">4 jogadores</option>
+      <option value="5" selected>5 jogadores</option><option value="6">6 jogadores</option>
+    </select>
+    <button id="btnSim">Simular ocupação</button>
+    <button id="btnClear">Limpar</button>
+  </div>
+  <div id="simInfo" style="margin-top:8px"></div>
+
+  <h2>Continentes</h2>
+  <table id="contTable"></table>
+
+  <h2>Legenda</h2>
+  <div class="hint">
+    <div>📍 Centro estratégico</div>
+    <div>Linha branca curva: rota marítima (fronteira entre territórios)</div>
+    <div>Linha saindo pela borda: o mapa dá a volta (Alasca ↔ Vladivostok)</div>
+  </div>
+  <p class="hint" id="missing"></p>
+</aside>
+
+<div id="cardsModal" hidden>
+  <div class="cm-panel" role="dialog" aria-label="Cartas e dados do jogo">
+    <div class="cm-head">
+      <h1>Cartas e dados do jogo</h1>
+      <div class="row cm-tabs">
+        <button data-tab="troca" class="on">Cartas de troca (61)</button>
+        <button data-tab="obj">Objetivos (20)</button>
+        <button data-tab="dados">Dados (8)</button>
+      </div>
+      <button id="btnCardsClose" aria-label="Fechar">✕</button>
+    </div>
+    <div class="row cm-filters" id="cmFilters"></div>
+    <div class="cm-body" id="cmBody"></div>
+  </div>
+</div>
+
+<div id="rulesModal" class="modal" hidden>
+  <div class="cm-panel rules-panel" role="dialog" aria-label="Regras do jogo">
+    <div class="cm-head">
+      <h1>📖 Como jogar War II</h1>
+      <button id="btnRulesClose" aria-label="Fechar">✕</button>
+    </div>
+    <div class="rules-layout">
+      <nav class="rules-nav" id="rulesNav"></nav>
+      <div class="rules-body" id="rulesBody"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CONTINENTS = {
+  AN:  { name: "América do Norte", color: "#f0821e", maj: 6, bonusMaj: 5, bonusAll: 7,  label: [-160, 75] },
+  AS:  { name: "América do Sul",   color: "#4fb52f", maj: 3, bonusMaj: 2, bonusAll: 3,  label: [-86, -22] },
+  EU:  { name: "Europa",           color: "#2f8fe0", maj: 4, bonusMaj: 5, bonusAll: 7,  label: [18, 73] },
+  AF:  { name: "África",           color: "#de3f96", maj: 4, bonusMaj: 3, bonusAll: 4,  label: [-8, 5] },
+  ASI: { name: "Ásia",             color: "#f2be22", maj: 7, bonusMaj: 7, bonusAll: 10, label: [120, 81] },
+  OC:  { name: "Oceania",          color: "#e0462f", maj: 3, bonusMaj: 2, bonusAll: 3,  label: [108, -24] },
+};
+
+// Retângulo em lon/lat: lon de a até c, lat de b até d
+const box = (a, b, c, d) => [[a, b], [c, b], [c, d], [a, d]];
+
+// countries: países inteiros (nome Natural Earth; "A|B" = nomes alternativos)
+// parts: pedaço de um país recortado por um polígono em lon/lat
+const TERRITORIES = [
+  // América do Norte
+  { id: "alasca", name: "Alasca", c: "AN", label: [-152, 64],
+    parts: [{ country: "United States of America", poly: box(-168, 50, -128, 72) }] },
+  { id: "mackenzie", name: "Mackenzie", c: "AN", label: [-118, 66],
+    parts: [{ country: "Canada", poly: [[-142, 60], [-95, 60], [-95, 63], [-50, 63], [-50, 85], [-142, 85]] }] },
+  { id: "groenlandia", name: "Groenlândia", c: "AN", label: [-41, 74], countries: ["Greenland"] },
+  { id: "vancouver", name: "Vancouver", c: "AN", label: [-118, 54],
+    parts: [{ country: "Canada", poly: box(-142, 40, -102, 60) }] },
+  { id: "ottawa", name: "Ottawa", c: "AN", label: [-89, 51], sc: true,
+    parts: [{ country: "Canada", poly: [[-102, 40], [-79, 40], [-79, 63], [-95, 63], [-95, 60], [-102, 60]] }] },
+  { id: "labrador", name: "Labrador", c: "AN", label: [-67, 53],
+    parts: [{ country: "Canada", poly: box(-79, 40, -50, 63) }] },
+  { id: "california", name: "Califórnia", c: "AN", label: [-114, 39],
+    parts: [{ country: "United States of America", poly: box(-128, 24, -100, 50) }] },
+  { id: "novayork", name: "Nova York", c: "AN", label: [-86, 38], sc: true,
+    parts: [{ country: "United States of America", poly: box(-100, 24, -60, 50) }] },
+  { id: "mexico", name: "México", c: "AN", label: [-102, 23],
+    countries: ["Mexico", "Guatemala", "Belize", "Honduras", "El Salvador", "Nicaragua", "Costa Rica", "Panama"] },
+  { id: "cuba", name: "Cuba", c: "AN", label: [-78, 20.5],
+    countries: ["Cuba", "Jamaica", "Haiti", "Dominican Rep.|Dominican Republic", "Bahamas|The Bahamas", "Puerto Rico", "Trinidad and Tobago"] },
+  // América do Sul
+  { id: "venezuela", name: "Venezuela", sub: "Colômbia", c: "AS", label: [-68, 5],
+    countries: ["Venezuela", "Colombia", "Guyana", "Suriname"] },
+  { id: "peru", name: "Peru", sub: "Bolívia · Chile", c: "AS", label: [-71, -13], countries: ["Peru", "Bolivia", "Chile", "Ecuador"] },
+  { id: "brasil", name: "Brasil", c: "AS", label: [-50, -9], sc: true, countries: ["Brazil"] },
+  { id: "argentina", name: "Argentina", sub: "Uruguai", c: "AS", label: [-64, -35],
+    countries: ["Argentina", "Uruguay", "Paraguay", "Falkland Is.|Falkland Islands"] },
+  // Europa
+  { id: "islandia", name: "Islândia", c: "EU", label: [-19, 65], countries: ["Iceland"] },
+  { id: "inglaterra", name: "Inglaterra", c: "EU", label: [-3, 53], sc: true, countries: ["United Kingdom", "Ireland"] },
+  { id: "suecia", name: "Suécia", c: "EU", label: [17, 63], countries: ["Sweden", "Norway", "Finland"] },
+  { id: "moscou", name: "Moscou", c: "EU", label: [38, 56], sc: true,
+    countries: ["Belarus", "Ukraine", "Estonia", "Latvia", "Lithuania"],
+    parts: [{ country: "Russia", poly: box(19, 35, 50, 85) }] },
+  { id: "alemanha", name: "Alemanha", c: "EU", label: [10, 51], sc: true,
+    countries: ["Germany", "Netherlands", "Belgium", "Luxembourg", "Denmark", "Switzerland", "Austria", "Czechia|Czech Rep.|Czech Republic", "Liechtenstein"] },
+  { id: "franca", name: "França", sub: "Portugal · Espanha · Itália", c: "EU", label: [-1, 43.5],
+    countries: ["Spain", "Portugal", "Italy", "Andorra", "San Marino", "Vatican", "Monaco", "Malta"],
+    parts: [{ country: "France", poly: box(-6, 41, 10, 52) }] },
+  { id: "polonia", name: "Polônia", sub: "Iugoslávia", c: "EU", label: [21, 47.5],
+    countries: ["Poland", "Slovakia", "Hungary", "Slovenia", "Croatia", "Bosnia and Herz.|Bosnia and Herzegovina", "Serbia", "Montenegro", "Kosovo",
+                "Macedonia|North Macedonia", "Albania", "Greece", "Bulgaria", "Romania", "Moldova"] },
+  // África
+  { id: "argelia", name: "Argélia", sub: "Nigéria", c: "AF", label: [2, 22],
+    countries: ["Morocco", "W. Sahara|Western Sahara", "Algeria", "Tunisia", "Mauritania", "Mali", "Niger", "Senegal", "Gambia", "Guinea",
+                "Guinea-Bissau", "Sierra Leone", "Liberia", "Côte d'Ivoire|Ivory Coast", "Burkina Faso", "Ghana", "Togo", "Benin", "Nigeria"] },
+  { id: "egito", name: "Egito", c: "AF", label: [25, 26], sc: true, countries: ["Egypt", "Libya"] },
+  { id: "sudao", name: "Sudão", c: "AF", label: [32, 11],
+    countries: ["Sudan", "S. Sudan|South Sudan", "Chad", "Ethiopia", "Eritrea", "Djibouti", "Somalia", "Somaliland", "Kenya", "Uganda"] },
+  { id: "congo", name: "Congo", c: "AF", label: [21, -4],
+    countries: ["Cameroon", "Central African Rep.|Central African Republic", "Congo|Republic of the Congo", "Dem. Rep. Congo|Democratic Republic of the Congo",
+                "Gabon", "Eq. Guinea|Equatorial Guinea", "Angola", "Zambia", "Rwanda", "Burundi"] },
+  // Tanzânia na África do Sul: Congo sem litoral no Índico; África do Sul sobe a nordeste até o Sudão
+  { id: "africadosul", name: "África do Sul", c: "AF", label: [24, -26], sc: true,
+    countries: ["South Africa", "Namibia", "Botswana", "Zimbabwe", "Mozambique", "Malawi", "Lesotho", "eSwatini|Swaziland|Eswatini", "Tanzania"] },
+  { id: "madagascar", name: "Madagascar", c: "AF", label: [47, -19], countries: ["Madagascar"] },
+  // Ásia
+  { id: "orientemedio", name: "Oriente Médio", c: "ASI", label: [46, 29], sc: true,
+    countries: ["Turkey|Türkiye", "Syria", "Iraq", "Iran", "Saudi Arabia", "Yemen", "Oman", "United Arab Emirates", "Qatar", "Kuwait", "Bahrain",
+                "Jordan", "Israel", "Palestine", "Lebanon", "Cyprus", "N. Cyprus|Northern Cyprus", "Georgia", "Armenia", "Azerbaijan"] },
+  { id: "aral", name: "Aral", c: "ASI", label: [66, 45],
+    countries: ["Kazakhstan", "Uzbekistan", "Turkmenistan", "Kyrgyzstan", "Tajikistan", "Afghanistan"] },
+  // Rússia asiática: divisões aproximadas pelo tabuleiro
+  // Omsk fica com a península de Yamal; Dudinka vai do Golfo do Ob ao Rio Ienissei;
+  // Sibéria fica com a península de Taimir; Vladivostok com todo o extremo leste
+  { id: "omsk", name: "Omsk", c: "ASI", label: [66, 58],
+    parts: [{ country: "Russia", poly: [[50, 35], [90, 35], [90, 50], [76, 63], [73, 66], [73, 85], [50, 85]] }] },
+  { id: "dudinka", name: "Dudinka", c: "ASI", label: [84, 63],
+    parts: [{ country: "Russia", poly: [[73, 85], [73, 66], [76, 63], [90, 50], [90, 35], [92, 35], [92, 48], [96, 56], [90, 64], [87, 68.5], [87, 85]] }] },
+  { id: "siberia", name: "Sibéria", c: "ASI", label: [106, 67],
+    parts: [{ country: "Russia", poly: [[87, 85], [87, 68.5], [90, 64], [105, 61], [116, 56], [124, 55], [131, 61], [126, 76], [126, 85]] }] },
+  { id: "tchita", name: "Tchita", c: "ASI", label: [110, 55.5],
+    parts: [{ country: "Russia", poly: [[92, 35], [92, 48], [96, 56], [90, 64], [105, 61], [116, 56], [124, 55], [126, 52], [126, 35]] }] },
+  { id: "vladivostok", name: "Vladivostok", c: "ASI", label: [150, 64],
+    parts: [{ country: "Russia", poly: [[126, 35], [126, 52], [124, 55], [131, 61], [126, 76], [126, 85], [190, 85], [190, 35]] }] },
+  { id: "mongolia", name: "Mongólia", c: "ASI", label: [103, 46.5], countries: ["Mongolia"] },
+  { id: "china", name: "China", c: "ASI", label: [106, 33], sc: true, countries: ["China", "Taiwan", "North Korea", "South Korea"] },
+  { id: "india", name: "Índia", c: "ASI", label: [78, 22], countries: ["India", "Pakistan", "Nepal", "Bhutan", "Bangladesh", "Sri Lanka"] },
+  { id: "vietna", name: "Vietnã", c: "ASI", label: [101, 16],
+    countries: ["Vietnam", "Laos|Lao PDR", "Cambodia", "Thailand", "Myanmar", "Singapore"],
+    parts: [{ country: "Malaysia", poly: box(95, -5, 106, 10) }] },
+  { id: "japao", name: "Japão", c: "ASI", label: [139, 37], sc: true, countries: ["Japan"] },
+  // Oceania
+  { id: "sumatra", name: "Sumatra", c: "OC", label: [101, -1],
+    parts: [{ country: "Indonesia", poly: [[94, 8], [106, 8], [106, -5.8], [117, -5.8], [117, -12], [94, -12]] }] },
+  { id: "borneu", name: "Bornéu", c: "OC", label: [114, 0.5],
+    countries: ["Brunei", "Philippines"],
+    parts: [{ country: "Indonesia", poly: box(106, -5.8, 128, 8) }, { country: "Malaysia", poly: box(106, -5, 125, 10) }] },
+  { id: "novaguine", name: "Nova Guiné", c: "OC", label: [142, -5.5],
+    countries: ["Papua New Guinea", "Timor-Leste|East Timor", "Solomon Is.|Solomon Islands"],
+    parts: [{ country: "Indonesia", poly: [[117, -5.8], [128, -5.8], [128, 8], [142, 8], [142, -12], [117, -12]] }] },
+  { id: "australia", name: "Austrália", c: "OC", label: [134, -25], sc: true, countries: ["Australia", "New Zealand"] },
+];
+
+// Fronteiras internas de países divididos que não devem aparecer (mesmo território dos dois lados)
+const SAME_TERRITORY_PAIRS = [
+  ["Russia", "Belarus"], ["Russia", "Ukraine"], ["Russia", "Estonia"], ["Russia", "Latvia"], ["Russia", "Lithuania"],
+  ["Indonesia", "Papua New Guinea"], ["Indonesia", "Timor-Leste"], ["Indonesia", "Malaysia"],
+  ["Malaysia", "Thailand"], ["Malaysia", "Brunei"],
+  ["France", "Spain"], ["France", "Italy"], ["France", "Andorra"], ["France", "Monaco"],
+];
+
+// Mesmas ligações de Grafo.html: "t" terrestre, "m" marítima, "w" marítima pela borda do mapa
+const EDGES = [
+  ["alasca","mackenzie","t"],["alasca","vancouver","t"],["alasca","vladivostok","w"],
+  ["mackenzie","vancouver","t"],["mackenzie","ottawa","t"],["mackenzie","groenlandia","m"],
+  ["vancouver","ottawa","t"],["vancouver","california","t"],
+  ["ottawa","labrador","t"],["ottawa","novayork","t"],["ottawa","california","t"],
+  ["labrador","novayork","t"],["labrador","groenlandia","m"],
+  ["california","novayork","t"],["california","mexico","t"],
+  ["novayork","mexico","t"],["novayork","cuba","m"],["mexico","cuba","m"],["mexico","venezuela","t"],
+  ["groenlandia","islandia","m"],
+  ["venezuela","peru","t"],["venezuela","brasil","t"],["peru","brasil","t"],["peru","argentina","t"],["brasil","argentina","t"],
+  ["brasil","argelia","m"],
+  ["argelia","egito","t"],["argelia","sudao","t"],["argelia","congo","t"],["egito","sudao","t"],["sudao","congo","t"],
+  ["sudao","africadosul","t"],["congo","africadosul","t"],["africadosul","madagascar","m"],["sudao","madagascar","m"],
+  ["argelia","franca","m"],["egito","franca","m"],["egito","polonia","m"],["egito","orientemedio","t"],
+  ["islandia","inglaterra","m"],["islandia","suecia","m"],["inglaterra","suecia","m"],["inglaterra","franca","m"],
+  ["franca","alemanha","t"],["franca","polonia","t"],["alemanha","polonia","t"],
+  ["suecia","moscou","t"],["polonia","moscou","t"],["polonia","orientemedio","t"],
+  ["moscou","omsk","t"],["moscou","aral","t"],["moscou","orientemedio","t"],
+  ["orientemedio","aral","t"],["orientemedio","india","t"],
+  ["aral","omsk","t"],["aral","china","t"],["aral","india","t"],
+  ["omsk","dudinka","t"],["omsk","mongolia","t"],["omsk","china","t"],
+  ["dudinka","siberia","t"],["dudinka","tchita","t"],["dudinka","mongolia","t"],
+  ["siberia","tchita","t"],["siberia","vladivostok","t"],
+  ["tchita","mongolia","t"],["tchita","china","t"],["tchita","vladivostok","t"],
+  ["mongolia","china","t"],["china","india","t"],["china","vietna","t"],["china","vladivostok","t"],["china","japao","m"],
+  ["india","vietna","t"],["vladivostok","japao","m"],
+  ["india","sumatra","m"],["vietna","borneu","m"],["sumatra","australia","m"],["borneu","novaguine","m"],["borneu","australia","m"],["novaguine","australia","m"],
+];
+
+// Rotas marítimas cujo arco é espelhado (curva para o outro lado)
+const CURVE_FLIP = new Set([["islandia", "inglaterra"], ["inglaterra", "suecia"], ["islandia", "suecia"], ["sudao", "madagascar"]].map(p => p.sort().join("|")));
+// Ponta fixa (lon, lat) de uma rota marítima em um dos territórios, no lugar do ponto mais próximo calculado
+const ROUTE_ANCHOR = { "madagascar|sudao": { sudao: [40.2, -2] } };
+
+const PLAYER_COLORS = [
+  { name: "Branco", hex: "#f5f5f5", text: "#222" }, { name: "Vermelho", hex: "#d62828", text: "#fff" },
+  { name: "Azul", hex: "#1f6fe0", text: "#fff" },   { name: "Preto", hex: "#222222", text: "#fff" },
+  { name: "Verde", hex: "#2e9e3a", text: "#fff" },  { name: "Amarelo", hex: "#ffd21f", text: "#222" },
+];
+
+const W = 1640, H = 900;
+const MIN_ROUTE_LEN = 44; // comprimento mínimo (px) de uma rota marítima
+const MAP_EXTENT = [[40, 72], [1600, 838]];
+const DATA_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json";
+
+const state = { sel: null, owners: {}, armies: {} };
+let TOPO = null;
+const byId = Object.fromEntries(TERRITORIES.map(t => [t.id, t]));
+const neighbors = id => EDGES.filter(e => e[0] === id || e[1] === id).map(e => ({ id: e[0] === id ? e[1] : e[0], type: e[2] }));
+
+// Projeção de Miller, centrada em 11°E para o corte do mapa cair no Estreito de Bering
+const millerRaw = (l, p) => [l, 1.25 * Math.log(Math.tan(Math.PI / 4 + 0.4 * p))];
+const projection = d3.geoProjection(millerRaw).rotate([-11, 0]).precision(0.2)
+  .fitExtent(MAP_EXTENT, { type: "MultiPoint", coordinates: [[-168, 83.6], [189, -56]] });
+const path = d3.geoPath(projection);
+const polyD = poly => "M" + poly.map(p => projection(p).map(v => v.toFixed(1)).join(",")).join("L") + "Z";
+
+function shade(hex, i) {
+  const steps = [0, .07, -.06, .12, -.1, .04, -.03, .1, -.08, .05, -.05, .09];
+  const c = d3.hsl(hex); c.l = Math.max(.2, Math.min(.8, c.l + steps[i % steps.length])); return c.formatHex();
+}
+
+const svg = d3.select("#svg").attr("viewBox", `0 0 ${W} ${H}`).attr("preserveAspectRatio", "xMidYMid meet");
+
+async function init() {
+  const topo = await fetch(DATA_URL).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+  TOPO = topo;
+  const obj = topo.objects.countries;
+  const norm = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const geomByName = new Map(obj.geometries.map(g => [norm(g.properties.name), g]));
+  const missing = [];
+  const findGeom = spec => {
+    for (const n of spec.split("|")) { const g = geomByName.get(norm(n)); if (g) return g; }
+    missing.push(spec.split("|")[0]); return null;
+  };
+
+  // Índices: país inteiro -> território; países divididos
+  const terrOfGeom = new Map();
+  const splitGeoms = new Map(); // geom -> [{tid, poly}]
+  TERRITORIES.forEach(t => {
+    t.geoms = (t.countries || []).map(findGeom).filter(Boolean);
+    t.geoms.forEach(g => terrOfGeom.set(g, t.id));
+    (t.parts || []).forEach(p => {
+      p.geom = findGeom(p.country);
+      if (p.geom) { if (!splitGeoms.has(p.geom)) splitGeoms.set(p.geom, []); splitGeoms.get(p.geom).push({ tid: t.id, poly: p.poly }); }
+    });
+  });
+  const pairKey = (a, b) => [a, b].sort().join("|");
+  const samePairs = new Set(SAME_TERRITORY_PAIRS.map(([a, b]) => {
+    const ga = findGeom(a), gb = findGeom(b); return ga && gb ? pairKey(ga.properties.name, gb.properties.name) : "";
+  }));
+  missing.splice(0); // nomes das exceções não precisam existir todos
+  TERRITORIES.forEach(t => { (t.countries || []).forEach(c => { if (!findGeom(c)) {} }); (t.parts || []).forEach(p => findGeom(p.country)); });
+
+  // ---- fundo ----
+  const defs = svg.append("defs");
+  const bg = defs.append("radialGradient").attr("id", "bgGrad").attr("cx", "50%").attr("cy", "48%").attr("r", "70%");
+  bg.append("stop").attr("offset", "0%").attr("stop-color", "#7a3417");
+  bg.append("stop").attr("offset", "55%").attr("stop-color", "#4a1f10");
+  bg.append("stop").attr("offset", "100%").attr("stop-color", "#2a120a");
+  svg.append("rect").attr("width", W).attr("height", H).attr("fill", "#1b1410");
+
+  const root = svg.append("g");
+  root.append("rect").attr("x", 10).attr("y", 10).attr("width", W - 20).attr("height", H - 20).attr("rx", 14).attr("fill", "url(#bgGrad)")
+    .attr("stroke", "#120a06").attr("stroke-width", 4);
+  defs.append("clipPath").attr("id", "boardClip").append("rect").attr("x", 10).attr("y", 10).attr("width", W - 20).attr("height", H - 20).attr("rx", 14);
+  const rings = root.append("g").attr("clip-path", "url(#boardClip)").attr("fill", "none").attr("stroke", "#ffb38a").attr("opacity", .09);
+  [120, 230, 340, 450, 560].forEach(r => rings.append("circle").attr("cx", W / 2).attr("cy", H / 2 + 10).attr("r", r).attr("stroke-width", r % 220 ? 2 : 6));
+  for (let a = 0; a < 360; a += 15) {
+    const rad = a * Math.PI / 180;
+    rings.append("line").attr("x1", W / 2 + 120 * Math.cos(rad)).attr("y1", H / 2 + 10 + 120 * Math.sin(rad))
+      .attr("x2", W / 2 + 600 * Math.cos(rad)).attr("y2", H / 2 + 10 + 600 * Math.sin(rad)).attr("stroke-width", 1);
+  }
+
+  // ---- territórios ----
+  const gTerr = root.append("g");
+  const contCount = {};
+  TERRITORIES.forEach(t => {
+    const idx = contCount[t.c] = (contCount[t.c] ?? -1) + 1;
+    t.fill = shade(CONTINENTS[t.c].color, idx);
+    const g = gTerr.append("g").attr("class", "terr").attr("data-id", t.id).attr("fill", t.fill);
+    t.els = [];
+    if (t.geoms.length) {
+      t.merged = topojson.merge(topo, t.geoms);
+      t.els.push({ el: g.append("path").attr("d", path(t.merged)).node(), poly: null });
+    }
+    (t.parts || []).forEach((p, i) => {
+      if (!p.geom) return;
+      const cid = `clip-${t.id}-${i}`;
+      defs.append("clipPath").attr("id", cid).append("path").attr("d", polyD(p.poly));
+      p.screenPoly = p.poly.map(projection);
+      const el = g.append("path").attr("d", path(topojson.feature(topo, p.geom))).attr("clip-path", `url(#${cid})`).node();
+      t.els.push({ el, poly: p.screenPoly });
+    });
+  });
+
+  // ---- fronteiras ----
+  const gB = root.append("g").attr("class", "borders");
+  const isSplit = g => splitGeoms.has(g);
+  gB.append("path").attr("d", path(topojson.mesh(topo, obj, (a, b) => {
+    if (isSplit(a) || isSplit(b)) return false;
+    if (a === b) return terrOfGeom.has(a);
+    const ta = terrOfGeom.get(a), tb = terrOfGeom.get(b);
+    if (!ta && !tb) return false;
+    return ta !== tb;
+  })));
+  splitGeoms.forEach((regions, sg) => {
+    const sname = sg.properties.name;
+    const uid = "union-" + sname.replace(/\W/g, "");
+    const cu = defs.append("clipPath").attr("id", uid);
+    regions.forEach(r => cu.append("path").attr("d", polyD(r.poly)));
+    // contorno e fronteiras externas do país dividido, só dentro das regiões usadas
+    gB.append("path").attr("clip-path", `url(#${uid})`).attr("d", path(topojson.mesh(topo, obj, (a, b) => {
+      if (a === b) return a === sg;
+      if (a !== sg && b !== sg) return false;
+      const other = a === sg ? b : a;
+      if (samePairs.has(pairKey(sname, other.properties.name))) return false;
+      if (isSplit(other) && other.properties.name < sname) return false;
+      return true;
+    })));
+    // linhas de corte entre os pedaços
+    const sid = "shape-" + sname.replace(/\W/g, "");
+    defs.append("clipPath").attr("id", sid).append("path").attr("d", path(topojson.feature(topo, sg)));
+    const gc = gB.append("g").attr("clip-path", `url(#${sid})`);
+    regions.forEach(r => gc.append("path").attr("d", polyD(r.poly)));
+  });
+
+  // ---- rotas marítimas ----
+  // Cada ponta sai de um ponto dentro do território, no trecho mais próximo do outro território
+  // Contornos externos de cada polígono (ilha/massa de terra)
+  const outerRings = gm => gm.type === "Polygon" ? [gm.coordinates[0]] : gm.type === "MultiPolygon" ? gm.coordinates.map(p => p[0]) : [];
+  // Ilhas pequenas (Andaman, Bahamas, Curilas, Creta...) são ignoradas: só contam
+  // as massas de terra com pelo menos MIN_LANDMASS da área da maior do território
+  const MIN_LANDMASS = 0.12;
+  function terrPoints(t) {
+    if (t.pts) return t.pts;
+    const polys = [];
+    if (t.merged) outerRings(t.merged).forEach(r => polys.push(r.map(c => projection(c))));
+    (t.parts || []).forEach(p => {
+      if (!p.geom) return;
+      outerRings(topojson.feature(topo, p.geom).geometry).forEach(r => {
+        const pts = r.map(c => projection(c)).filter(q => d3.polygonContains(p.screenPoly, q));
+        if (pts.length > 2) polys.push(pts);
+      });
+    });
+    const areas = polys.map(pts => Math.abs(d3.polygonArea(pts)));
+    const maxA = Math.max(...areas);
+    return t.pts = polys.filter((_, i) => areas[i] >= maxA * MIN_LANDMASS).flat();
+  }
+  function inside(t, x, y) {
+    const pt = new DOMPoint(x, y);
+    return t.els.some(({ el, poly }) => el.isPointInFill(pt) && (!poly || d3.polygonContains(poly, [x, y])));
+  }
+  function inward(t, p, away, depth = 8) {
+    const dx = p[0] - away[0], dy = p[1] - away[1], len = Math.hypot(dx, dy) || 1;
+    for (const s of [depth, depth * .75, depth * .5, 8, 6, 4, 2]) {
+      const q = [p[0] + dx / len * s, p[1] + dy / len * s];
+      if (inside(t, q[0], q[1])) return q;
+    }
+    return p;
+  }
+  function routeEnds(a, b) {
+    const ta = byId[a], tb = byId[b], pa = terrPoints(ta), pb = terrPoints(tb);
+    let best = Infinity, A, B;
+    for (const p of pa) for (const q of pb) {
+      const d = (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2;
+      if (d < best) { best = d; A = p; B = q; }
+    }
+    // rotas muito curtas (ex.: Coreia–Japão) entram mais no território para a linha ficar visível
+    const depth = Math.max(8, (MIN_ROUTE_LEN - Math.sqrt(best)) / 2);
+    const anc = ROUTE_ANCHOR[[a, b].sort().join("|")] || {};
+    return [anc[a] ? projection(anc[a]) : inward(ta, A, B, depth), anc[b] ? projection(anc[b]) : inward(tb, B, A, depth)];
+  }
+  function wrapEnds(a, b) {
+    const ta = byId[a], tb = byId[b];
+    const aLeft = projection(ta.label)[0] < projection(tb.label)[0];
+    const ext = (t, sign) => terrPoints(t).reduce((m, p) => (sign * p[0] > sign * m[0] ? p : m));
+    const A = ext(ta, aLeft ? -1 : 1), B = ext(tb, aLeft ? 1 : -1);
+    return [inward(ta, A, [A[0] + (aLeft ? -10 : 10), A[1]]), inward(tb, B, [B[0] + (aLeft ? 10 : -10), B[1]])];
+  }
+
+  const gR = root.append("g").attr("class", "routes");
+  EDGES.filter(e => e[2] !== "t").forEach(([a, b, type]) => {
+    const [A, B] = type === "w" ? wrapEnds(a, b) : routeEnds(a, b);
+    let d;
+    if (type === "w") {
+      const [L, R] = A[0] < B[0] ? [A, B] : [B, A];
+      d = `M${L[0]},${L[1]} Q${(L[0] + 14) / 2},${L[1] - 40} 14,${L[1] - 30} M${R[0]},${R[1]} Q${(R[0] + W - 14) / 2},${R[1] - 40} ${W - 14},${R[1] - 30}`;
+    } else {
+      const mx = (A[0] + B[0]) / 2, my = (A[1] + B[1]) / 2, dx = B[0] - A[0], dy = B[1] - A[1];
+      const k = CURVE_FLIP.has([a, b].sort().join("|")) ? -0.18 : 0.18;
+      d = `M${A[0]},${A[1]} Q${mx - dy * k},${my + dx * k} ${B[0]},${B[1]}`;
+    }
+    gR.append("path").attr("d", d).attr("data-a", a).attr("data-b", b);
+    [A, B].forEach(p => gR.append("circle").attr("cx", p[0]).attr("cy", p[1]).attr("r", 2.6).attr("data-a", a).attr("data-b", b));
+  });
+
+  // ---- textos fixos ----
+  const gTxt = root.append("g");
+  [["Oceano Pacífico", [-128, 8]], ["Oceano Pacífico", [165, 8]], ["Oceano Atlântico", [-30, -8]], ["Oceano Índico", [78, -22]]]
+    .forEach(([txt, ll]) => { const [x, y] = projection(ll); gTxt.append("text").attr("class", "ocean").attr("x", x).attr("y", y).text(txt); });
+  Object.values(CONTINENTS).forEach(c => {
+    const [x, y] = projection(c.label);
+    gTxt.append("text").attr("class", "cont-name").attr("x", x).attr("y", y).attr("fill", d3.hsl(c.color).brighter(.4)).text(c.name);
+  });
+
+  // ---- bases aéreas (bordas) ----
+  const gBase = root.append("g");
+  const bases = [[230, 40], [W / 2, 40], [W - 230, 40], [230, H - 34], [W / 2, H - 34], [W - 230, H - 34]];
+  // Cada base tem 10 vagas de avião (vazadas); as ocupadas são preenchidas com a cor do jogador
+  bases.forEach(([x, y], i) => {
+    const g = gBase.append("g").attr("class", "base").attr("data-base", i);
+    g.append("rect").attr("x", x - 165).attr("y", y - 23).attr("width", 330).attr("height", 46).attr("rx", 6)
+      .attr("fill", "rgba(20,8,4,.55)").attr("stroke", "#c9763f").attr("stroke-width", 1.5);
+    g.append("text").attr("class", "lbl").attr("x", x - 124).attr("y", y - 6).text("BASE AÉREA");
+    g.append("text").attr("class", "who").attr("x", x - 124).attr("y", y + 9);
+    for (let k = 0; k < 10; k++) {
+      const slot = g.append("g").attr("class", "slot")
+        .attr("transform", `translate(${x - 78 + k * 24} ${y + (k % 2 ? 1 : -1)}) scale(.4)${k % 2 ? "" : " rotate(180)"}`);
+      slot.append("path").attr("class", "body").attr("d", PLANE);
+      slot.append("path").attr("class", "trail").attr("d", "M-6,36V43M0,36V45M6,36V43");
+    }
+  });
+
+  // ---- rótulos ----
+  root.append("g").attr("class", "labels").attr("id", "labels");
+
+  // ---- interação ----
+  gTerr.on("click", e => {
+    const g = e.target.closest(".terr"); if (!g) return;
+    state.sel = state.sel === g.dataset.id ? null : g.dataset.id;
+    renderState();
+  });
+  svg.on("click", e => { if (!e.target.closest(".terr") && e.defaultPrevented === false) { state.sel = null; renderState(); } });
+  svg.call(d3.zoom().scaleExtent([1, 8]).translateExtent([[0, 0], [W, H]]).on("zoom", e => root.attr("transform", e.transform)));
+
+  if (missing.length) document.getElementById("missing").textContent = "Países não encontrados nos dados: " + [...new Set(missing)].join(", ");
+  document.getElementById("status").remove();
+  document.getElementById("btnCards").disabled = false;
+  document.getElementById("btnRules").disabled = false;
+  renderContinents();
+  renderState();
+}
+
+function renderState() {
+  const sel = state.sel;
+  const nb = sel ? new Set(neighbors(sel).map(n => n.id)) : null;
+  d3.selectAll(".terr")
+    .classed("sel", function () { return this.dataset.id === sel; })
+    .classed("dim", function () { return sel && this.dataset.id !== sel && !nb.has(this.dataset.id); });
+  d3.selectAll(".routes path, .routes circle").classed("hl", function () { return sel && (this.dataset.a === sel || this.dataset.b === sel); });
+  d3.selectAll(".base").each(function () {
+    const i = +this.dataset.base, g = d3.select(this);
+    const ci = state.baseColors ? state.baseColors[i] : null;
+    g.select("rect").attr("stroke", ci != null ? PLAYER_COLORS[ci].hex : "#c9763f").attr("stroke-width", ci != null ? 3 : 1.5);
+    const p = ci != null ? PLAYER_COLORS[ci] : null, n = p ? Math.min(10, state.planes[ci] || 0) : 0;
+    g.select(".who").text(p ? `${p.name.toUpperCase()} · ${n}/10` : "").attr("fill", p ? p.hex : null);
+    g.selectAll(".slot").each(function (_, k) {
+      const on = k < n;
+      d3.select(this).classed("on", on).select(".body").style("fill", on ? p.hex : null);
+    });
+  });
+
+  const gL = d3.select("#labels"); gL.selectAll("*").remove();
+  TERRITORIES.forEach(t => {
+    const [x, y] = projection(t.label);
+    const owner = state.owners[t.id];
+    let ny = y;
+    if (owner != null) {
+      const p = PLAYER_COLORS[owner];
+      gL.append("circle").attr("cx", x).attr("cy", y - 4).attr("r", 10).attr("fill", p.hex).attr("stroke", "#1b1410").attr("stroke-width", 1.5);
+      gL.append("text").attr("class", "armies").attr("x", x).attr("y", y - 4).attr("fill", p.text).text(state.armies[t.id]);
+      ny = y + 18;
+    }
+    gL.append("text").attr("class", "name").attr("x", x).attr("y", ny).text(t.name);
+    if (t.sub) gL.append("text").attr("class", "sub").attr("x", x).attr("y", ny + 10).text(t.sub);
+    if (t.sc) {
+      const px = x + (owner != null ? 16 : 0), py = owner != null ? y - 10 : y - 14;
+      gL.append("path").attr("d", `M${px},${py} c-6,-7 -8,-10 -8,-14 a8,8 0 1,1 16,0 c0,4 -2,7 -8,14z`)
+        .attr("fill", "#fff").attr("stroke", "#1b1410").attr("stroke-width", 1.2);
+      gL.append("circle").attr("cx", px).attr("cy", py - 14).attr("r", 3.2).attr("fill", "#9a9a9a");
+    }
+  });
+  renderInfo();
+}
+
+function renderInfo() {
+  const box = document.getElementById("info");
+  const t = state.sel && byId[state.sel];
+  if (!t) { box.innerHTML = '<span class="hint">Clique em um território.</span>'; return; }
+  const c = CONTINENTS[t.c];
+  const nbs = neighbors(t.id).map(n => byId[n.id].name + (n.type === "t" ? "" : n.type === "w" ? " (volta do mapa)" : " (marítima)"))
+    .sort((a, b) => a.localeCompare(b, "pt-BR"));
+  let html = `<b>${t.name}</b>${t.sc ? '<span class="tag">Centro estratégico</span>' : ""}<br>`;
+  if (t.sub) html += `<span class="hint">Inclui: ${t.sub}</span><br>`;
+  html += `<span class="sw" style="background:${c.color}"></span>${c.name}<br>`;
+  if (state.owners[t.id] != null) html += `Dono: ${PLAYER_COLORS[state.owners[t.id]].name} · ${state.armies[t.id]} exército(s)<br>`;
+  html += `<div style="margin-top:6px"><span class="hint">Vizinhos (${nbs.length}):</span> ${nbs.join(", ")}</div>`;
+  box.innerHTML = html;
+}
+
+function renderContinents() {
+  let html = '<tr><th>Continente</th><th class="n">Terr.</th><th class="n">CE</th><th class="n">Maioria</th><th class="n">Todos</th></tr>';
+  Object.entries(CONTINENTS).forEach(([k, c]) => {
+    const ts = TERRITORIES.filter(t => t.c === k);
+    html += `<tr><td><span class="sw" style="background:${c.color}"></span>${c.name}</td><td class="n">${ts.length}</td><td class="n">${ts.filter(t => t.sc).length}</td><td class="n">${c.maj}+ → ${c.bonusMaj}</td><td class="n">${c.bonusAll}</td></tr>`;
+  });
+  html += `<tr><th>Total</th><th class="n">${TERRITORIES.length}</th><th class="n">${TERRITORIES.filter(t => t.sc).length}</th><th></th><th></th></tr>`;
+  document.getElementById("contTable").innerHTML = html;
+}
+
+function simulate() {
+  const n = +document.getElementById("nPlayers").value;
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const colors = shuffle([...PLAYER_COLORS.keys()]).slice(0, n);
+  state.owners = {}; state.armies = {}; state.planes = {};
+  shuffle(TERRITORIES.filter(t => t.sc)).forEach((t, i) => { state.owners[t.id] = colors[i % n]; state.armies[t.id] = 2; });
+  shuffle(TERRITORIES.filter(t => !t.sc)).forEach((t, i) => { state.owners[t.id] = colors[i % n]; state.armies[t.id] = 1; });
+  state.baseColors = Array.from({ length: 6 }, (_, i) => colors[i] ?? null);
+  const lines = colors.map(ci => {
+    const own = TERRITORIES.filter(t => state.owners[t.id] === ci);
+    const sc = own.filter(t => t.sc).length;
+    let bonus = 0;
+    Object.entries(CONTINENTS).forEach(([k, c]) => {
+      const total = TERRITORIES.filter(t => t.c === k).length, mine = own.filter(t => t.c === k).length;
+      bonus += mine === total ? c.bonusAll : mine >= c.maj ? c.bonusMaj : 0;
+    });
+    state.planes[ci] = sc;
+    const rec = Math.floor(own.length / 2) + sc + bonus;
+    return `<div><span class="sw" style="background:${PLAYER_COLORS[ci].hex};outline:1px solid #888"></span>${PLAYER_COLORS[ci].name}: ${own.length} terr., ${sc} CE${bonus ? `, bônus ${bonus}` : ""} → recebe ${rec} exércitos + ${sc} ✈</div>`;
+  }).join("");
+  document.getElementById("simInfo").innerHTML = `<div class="hint">Distribuição aleatória (centros com 2 exércitos, demais com 1):</div>${lines}`;
+  renderState();
+}
+document.getElementById("btnSim").addEventListener("click", simulate);
+document.getElementById("btnClear").addEventListener("click", () => {
+  state.owners = {}; state.armies = {}; state.baseColors = null; document.getElementById("simInfo").innerHTML = ""; renderState();
+});
+
+// ================= Cartas =================
+// Cartas de troca (WARII.md §9.1): o desenho de cada carta usa a silhueta dos próprios territórios do mapa
+const TRADE_CARDS = [
+  { kind: "ce", name: "Nova York", ids: ["novayork"] },
+  { kind: "ce", name: "Labrador, Ottawa, Mackenzie", ids: ["labrador", "ottawa", "mackenzie"] },
+  { kind: "ce", name: "Brasil", ids: ["brasil"] },
+  { kind: "ce", name: "França, Inglaterra", ids: ["franca", "inglaterra"] },
+  { kind: "ce", name: "Alemanha, Polônia", ids: ["alemanha", "polonia"] },
+  { kind: "ce", name: "Moscou", ids: ["moscou"] },
+  { kind: "ce", name: "Egito", ids: ["egito"] },
+  { kind: "ce", name: "África do Sul", ids: ["africadosul"] },
+  { kind: "ce", name: "Oriente Médio", ids: ["orientemedio"] },
+  { kind: "ce", name: "China", ids: ["china"] },
+  { kind: "ce", name: "Japão", ids: ["japao"] },
+  { kind: "ce", name: "Austrália, Nova Guiné", ids: ["australia", "novaguine"] },
+  { kind: "terr", name: "Alasca", ids: ["alasca"] },
+  { kind: "terr", name: "Califórnia, Vancouver", ids: ["california", "vancouver"] },
+  { kind: "terr", name: "Groenlândia", ids: ["groenlandia"] },
+  { kind: "terr", name: "México, Cuba", ids: ["mexico", "cuba"] },
+  { kind: "terr", name: "Venezuela, Colômbia", ids: ["venezuela"] },
+  { kind: "terr", name: "Argentina, Bolívia", ids: ["peru", "argentina"] },
+  { kind: "terr", name: "Islândia, Suécia", ids: ["islandia", "suecia"] },
+  { kind: "terr", name: "Argélia", ids: ["argelia"] },
+  { kind: "terr", name: "Congo, Sudão, Madagascar", ids: ["congo", "sudao", "madagascar"] },
+  { kind: "terr", name: "Aral, Omsk", ids: ["aral", "omsk"] },
+  { kind: "terr", name: "Dudinka, Sibéria", ids: ["dudinka", "siberia"] },
+  { kind: "terr", name: "Mongólia, Tchita", ids: ["mongolia", "tchita"] },
+  { kind: "terr", name: "Vladivostok", ids: ["vladivostok"] },
+  { kind: "terr", name: "Índia, Vietnã", ids: ["india", "vietna"] },
+  { kind: "terr", name: "Bornéu, Sumatra", ids: ["borneu", "sumatra"] },
+  ...Object.keys(CONTINENTS).map(c => ({ kind: "cont", name: CONTINENTS[c].name, ids: TERRITORIES.filter(t => t.c === c).map(t => t.id) })),
+  { kind: "num", value: 2, qty: 10 }, { kind: "num", value: 3, qty: 8 }, { kind: "num", value: 4, qty: 6 }, { kind: "num", value: 5, qty: 4 },
+];
+const CARD_KINDS = {
+  ce:   { title: "Centros estratégicos", hint: "Usadas na preparação para distribuir os CEs; depois valem como cartas de território comuns. 📍 marca o CE." },
+  terr: { title: "Territórios", hint: "Carta com mais de um território: ao usar, o jogador escolhe um só." },
+  cont: { title: "Continentes", hint: "Vale um território qualquer do continente (⚠ a confirmar)." },
+  num:  { title: "Numéricas", hint: "Somam exércitos ou bombardeiros a uma carta de território; nunca são usadas sozinhas." },
+};
+
+const DESTROY = [["AZUIS", "#1f6fe0"], ["AMARELOS", "#ffd21f"], ["BRANCOS", "#f5f5f5"], ["VERDES", "#2e9e3a"], ["PRETOS", "#222222"], ["VERMELHOS", "#d62828"]];
+const K = code => `<b style="color:${d3.hsl(CONTINENTS[code].color).brighter(.7).formatHex()}">${CONTINENTS[code].name}</b>`;
+const OBJECTIVES = () => [
+  ...DESTROY.map(([n, hex]) => `Destruir totalmente os exércitos <b>${n}</b><span class="chip" style="background:${hex}"></span>
+    <small>Se os exércitos ${n.toLowerCase()} forem seus, ou se outro jogador eliminá-los, o objetivo passa a ser conquistar 24 territórios.</small>`),
+  `Conquistar na totalidade a ${K("AN")} e a ${K("AF")}`,
+  `Conquistar na totalidade a ${K("ASI")} e a ${K("AF")}`,
+  `Conquistar na totalidade a ${K("AN")} e a ${K("OC")}`,
+  `Conquistar na totalidade a ${K("ASI")} e a maioria dos territórios da ${K("EU")} e da ${K("AF")}`,
+  `Conquistar na totalidade a ${K("ASI")} e a ${K("AS")}`,
+  `Conquistar na totalidade a ${K("EU")}, a ${K("OC")} e mais <b>outro continente</b> qualquer`,
+  `Possuir <b>50 exércitos</b> no <b>Oriente Médio</b>`,
+  `Conquistar <b>24 territórios</b> quaisquer`,
+  `Conquistar <b>8 centros estratégicos</b> quaisquer`,
+  `Conquistar a maioria dos territórios da ${K("EU")}, da ${K("ASI")} e da ${K("AN")}`,
+  `Conquistar na totalidade a ${K("AS")} e a ${K("EU")} e ter no mínimo <b>20 exércitos na Alemanha</b>`,
+  `Conquistar a maioria dos territórios em <b>4 continentes</b> quaisquer`,
+  `Conquistar <b>5 centros estratégicos</b> e ter no mínimo <b>10 exércitos</b> em cada um`,
+  `Possuir <b>20 exércitos</b> em <b>Nova York</b> e no <b>Japão</b>`,
+];
+
+// Dados (WARII.md §2 e §7.3). As faces dos dados aéreos são parâmetros configuráveis (§13.4)
+const AIR_ATTACK_FACES = [0, 0, 0, 1, 2, 3]; // fichas de exército: exércitos abatidos
+const AA_FACES = [0, 0, 0, 1, 1, 2];         // peças de avião: bombardeiros abatidos (versão do vídeo; manual: [0,0,0,1,1,1])
+const DICE = [
+  { title: "Ataque terrestre", qty: 3, color: "#c62a22", ink: "#fff", kind: "pips", faces: [1, 2, 3, 4, 5, 6],
+    hint: "3 dados vermelhos, d6 comum. O atacante rola um por exército participante (máx. 3)." },
+  { title: "Defesa terrestre", qty: 3, color: "#f2c21b", ink: "#2a1a08", kind: "pips", faces: [1, 2, 3, 4, 5, 6],
+    hint: "3 dados amarelos, d6 comum. O defensor rola um por exército no território (máx. 3)." },
+  { title: "Ataque aéreo", qty: 1, color: "#2f86d8", ink: "#fff", kind: "army", faces: AIR_ATTACK_FACES,
+    hint: "Rolado pelo atacante a cada ciclo, depois da antiaérea. Cada ficha de exército na face é 1 exército do defensor abatido (sempre fica ao menos 1 no território)." },
+  { title: "Defesa antiaérea", qty: 1, color: "#2f86d8", ink: "#fff", kind: "plane", faces: AA_FACES,
+    hint: "Rolado pelo defensor no início de cada ciclo. Cada peça de avião na face é 1 bombardeiro abatido. Faces da versão do vídeo (o manual traz só faces de 1 avião); são configuráveis." },
+];
+const PIPS = { 1: [[50, 50]], 2: [[28, 28], [72, 72]], 3: [[28, 28], [50, 50], [72, 72]], 4: [[28, 28], [72, 28], [28, 72], [72, 72]],
+  5: [[28, 28], [72, 28], [50, 50], [28, 72], [72, 72]], 6: [[28, 26], [72, 26], [28, 50], [72, 50], [28, 74], [72, 74]] };
+const SYMBOL_POS = { 1: [[50, 50]], 2: [[30, 32], [70, 68]], 3: [[50, 28], [28, 68], [72, 68]] };
+// Peça de avião: caça a jato de asa delta visto de cima (nariz para cima), com 3 riscos de movimento atrás da cauda
+const PLANE = "M0,-34 L3,-24 L4,-8 L17,16 L17,22 L5,20 L6,26 L10,30 L-10,30 L-6,26 L-5,20 L-17,22 L-17,16 L-4,-8 L-3,-24Z";
+// Posições dos aviões na face: alternam ponta para baixo e para cima, encaixados lado a lado
+const PLANE_POS = { 1: [[50, 46, 1]], 2: [[32, 47, .62], [68, 53, .62]], 3: [[22, 47, .5], [50, 53, .5], [78, 47, .5]] };
+const planeSVG = (x, y, s, down, color) => `<g transform="translate(${x} ${y}) scale(${s})${down ? " rotate(180)" : ""}">
+  <path d="${PLANE}" fill="#fff"/><ellipse cy="-19" rx="1.8" ry="4.5" fill="${color}"/>
+  <path d="M-6,36V43M0,36V45M6,36V43" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></g>`;
+
+function dieFaceSVG(d, v) {
+  let inner = "";
+  if (d.kind === "pips") inner = PIPS[v].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="9" fill="${d.ink}"/>`).join("");
+  else if (v > 0 && d.kind === "army") {
+    inner = SYMBOL_POS[Math.min(v, 3)].map(([x, y]) =>
+      `<circle cx="${x}" cy="${y}" r="14" fill="#fff"/><circle cx="${x}" cy="${y}" r="9" fill="none" stroke="${d.color}" stroke-width="2.5"/>`).join("");
+  } else if (v > 0) {
+    inner = PLANE_POS[Math.min(v, 3)].map(([x, y, s], i) => planeSVG(x, y, s, i % 2 === 0, d.color)).join("");
+  }
+  return `<svg viewBox="0 0 100 100"><rect x="3" y="3" width="94" height="94" rx="17" fill="${d.color}" stroke="rgba(0,0,0,.35)" stroke-width="2"/>
+    <rect x="9" y="9" width="82" height="82" rx="12" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.5"/>${inner}</svg>`;
+}
+function dieFaceLabel(d, v) {
+  if (d.kind === "pips") return String(v);
+  if (!v) return "lisa";
+  if (d.kind === "army") return `${v} exército${v > 1 ? "s" : ""}`;
+  return v > 1 ? `${v} aviões` : "1 avião";
+}
+
+const cardUI = { tab: "troca", filter: "all", ready: false };
+const safeId = s => s.replace(/\W/g, "");
+
+// Caixa (coordenadas de tela) da parte principal de um território, ignorando ilhas pequenas e distantes
+function terrBox(t) {
+  if (t.box) return t.box;
+  const rings = gm => gm.type === "Polygon" ? [gm.coordinates[0]] : gm.type === "MultiPolygon" ? gm.coordinates.map(p => p[0]) : [];
+  const polys = [];
+  if (t.merged) rings(t.merged).forEach(r => polys.push(r.map(c => projection(c))));
+  (t.parts || []).forEach(p => {
+    if (!p.geom) return;
+    rings(topojson.feature(TOPO, p.geom).geometry).forEach(r => {
+      const pts = r.map(c => projection(c)).filter(q => d3.polygonContains(p.screenPoly, q));
+      if (pts.length > 2) polys.push(pts);
+    });
+  });
+  const areas = polys.map(pts => Math.abs(d3.polygonArea(pts)));
+  const maxA = Math.max(...areas);
+  const pts = polys.filter((_, i) => areas[i] >= maxA * 0.015).flat();
+  return t.box = [d3.min(pts, p => p[0]), d3.min(pts, p => p[1]), d3.max(pts, p => p[0]), d3.max(pts, p => p[1])];
+}
+
+// Geometrias compartilhadas pelas cartas (<use>), para não repetir os caminhos grandes em cada carta
+function buildCardDefs() {
+  const out = [];
+  TERRITORIES.forEach(t => { if (t.merged) out.push(`<path id="cg-t-${t.id}" d="${path(t.merged)}" vector-effect="non-scaling-stroke"/>`); });
+  const seen = new Set();
+  TERRITORIES.forEach(t => (t.parts || []).forEach(p => {
+    if (!p.geom || seen.has(p.country)) return;
+    seen.add(p.country);
+    out.push(`<path id="cg-c-${safeId(p.country)}" d="${path(topojson.feature(TOPO, p.geom))}" vector-effect="non-scaling-stroke"/>`);
+  }));
+  const holder = document.createElement("div");
+  holder.innerHTML = `<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><defs>
+    <radialGradient id="cgRed" cx="50%" cy="50%" r="65%"><stop offset="0" stop-color="#e23a2c"/><stop offset=".7" stop-color="#b3221a"/><stop offset="1" stop-color="#7d1410"/></radialGradient>
+    <clipPath id="cgInner"><rect x="4" y="4" width="86" height="132" rx="4"/></clipPath>
+    <path id="cgPlane" d="M12 1.5l1.6 7.2 8.4 4.3v2.2l-8.4-2.6-.5 5.6 3 2v1.6l-4.1-1-4.1 1v-1.6l3-2-.5-5.6L2 15.2V13l8.4-4.3z"/>
+    <path id="cgSoldier" d="M12 2.2c2.6 0 4.4 1.6 4.6 3.6H7.4C7.6 3.8 9.4 2.2 12 2.2zM9.2 6.6h5.6c-.2 1.8-1.3 3-2.8 3s-2.6-1.2-2.8-3zM7.6 10.6h8.8l1.4 6.2h-2.2l-.4 5.8h-2.4l-.8-4.6-.8 4.6H8.8l-.4-5.8H6.2zM18.6 4l1 .3-2.4 13.2-1-.2z"/>
+    ${out.join("")}</defs></svg>`;
+  document.body.appendChild(holder.firstChild);
+}
+
+function cardFrame(inner, lines) {
+  const n = lines.length, fs = n === 1 ? 9.5 : n === 2 ? 8.2 : 7.2, lh = fs * 1.12;
+  const y0 = 120 - (n * lh) / 2 + fs * .78;
+  const txt = lines.map((l, i) => {
+    const fit = l.length * fs * .56 > 80 ? ` textLength="80" lengthAdjust="spacingAndGlyphs"` : "";
+    return `<text x="47" y="${(y0 + i * lh).toFixed(1)}"${fit}>${l}</text>`;
+  }).join("");
+  const radar = [12, 24, 36, 48, 60].map(r => `<circle cx="47" cy="68" r="${r}"/>`).join("");
+  return `<svg class="tcard" viewBox="0 0 94 140" xmlns="http://www.w3.org/2000/svg">
+    <rect width="94" height="140" rx="7" fill="#15213b"/>
+    <rect x="4" y="4" width="86" height="132" rx="4" fill="url(#cgRed)"/>
+    <g clip-path="url(#cgInner)" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width=".8">${radar}<path d="M47 0V140M0 68H94"/></g>
+    <rect x="8" y="8" width="22" height="20" rx="2.5" fill="#f4efe6"/><use href="#cgPlane" transform="translate(9 8) scale(.83)" fill="#15213b"/>
+    <rect x="64" y="8" width="22" height="20" rx="2.5" fill="#f4efe6"/><use href="#cgSoldier" transform="translate(65 8) scale(.83)" fill="#15213b"/>
+    ${inner}
+    <g font-family="Segoe UI, system-ui, sans-serif" font-weight="800" fill="#fff" text-anchor="middle" paint-order="stroke" stroke="#4a0b08" stroke-width="2" stroke-linejoin="round">${txt}</g>
+  </svg>`;
+}
+
+function tradeCardSVG(card) {
+  if (card.kind === "num") {
+    return cardFrame(`<rect x="22" y="38" width="50" height="58" rx="7" fill="#f4efe6" stroke="#7d1410" stroke-width="2"/>
+      <text x="47" y="80" text-anchor="middle" font-family="Segoe UI, system-ui, sans-serif" font-size="38" font-weight="900" fill="#c62a22">${card.value}</text>`,
+      [`+${card.value} unidades`]);
+  }
+  const ts = card.ids.map(id => byId[id]);
+  const boxes = ts.map(terrBox);
+  const bx0 = d3.min(boxes, b => b[0]), by0 = d3.min(boxes, b => b[1]), bx1 = d3.max(boxes, b => b[2]), by1 = d3.max(boxes, b => b[3]);
+  const MW = 80, MH = 72; // área do desenho: x 7..87, y 32..104
+  const s = Math.min(MW / (bx1 - bx0), MH / (by1 - by0));
+  const tx = (MW - (bx1 - bx0) * s) / 2 - bx0 * s, ty = (MH - (by1 - by0) * s) / 2 - by0 * s;
+  const shapes = ts.map(t => {
+    const u = [];
+    if (t.merged) u.push(`<use href="#cg-t-${t.id}"/>`);
+    (t.parts || []).forEach((p, i) => { if (p.geom) u.push(`<use href="#cg-c-${safeId(p.country)}" clip-path="url(#clip-${t.id}-${i})"/>`); });
+    return `<g fill="${t.fill}">${u.join("")}</g>`;
+  }).join("");
+  const pins = card.kind === "cont" ? "" : ts.filter(t => t.sc).map(t => {
+    const [px, py] = projection(t.label), x = px * s + tx, y = py * s + ty;
+    return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(.62)"><path d="M0,0 c-6,-7 -8,-10 -8,-14 a8,8 0 1,1 16,0 c0,4 -2,7 -8,14z" fill="#fff" stroke="#1b1410" stroke-width="1.4"/><circle cy="-14" r="3.4" fill="#9a9a9a"/></g>`;
+  }).join("");
+  const map = `<svg x="7" y="32" width="${MW}" height="${MH}" overflow="hidden">
+    <g transform="translate(${tx.toFixed(2)} ${ty.toFixed(2)}) scale(${s.toFixed(5)})" stroke="#fff" stroke-width=".7" stroke-opacity=".9" stroke-linejoin="round" style="filter:drop-shadow(0 0 1.2px rgba(0,0,0,.9))">${shapes}</g>${pins}</svg>`;
+  return cardFrame(map, card.name.split(", "));
+}
+
+function tradeCaption(card) {
+  if (card.kind === "num") return `<span class="qty">${card.qty} cartas</span>`;
+  if (card.kind === "cont") return `<b>${card.name}</b><span class="hint">${card.ids.length} territórios</span>`;
+  const terrs = card.ids.map(id => byId[id]).map(t => (t.sc ? "📍" : "") + t.name + (t.sub ? ` <span style="opacity:.7">(${t.sub})</span>` : ""));
+  return `<b>${card.name}</b><span class="hint">No mapa: ${terrs.join(", ")}</span>`;
+}
+
+function renderCards() {
+  const body = document.getElementById("cmBody"), filters = document.getElementById("cmFilters");
+  document.querySelectorAll(".cm-tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === cardUI.tab));
+  if (cardUI.tab === "dados") {
+    filters.innerHTML = "";
+    body.innerHTML = DICE.map(d => `<h2>${d.title} · ${d.qty} dado${d.qty > 1 ? "s" : ""}</h2><p class="hint">${d.hint}</p>
+      <div class="dgrid">${d.faces.map(v => `<div class="dface">${dieFaceSVG(d, v)}<span>${dieFaceLabel(d, v)}</span></div>`).join("")}</div>`).join("");
+    return;
+  }
+  if (cardUI.tab === "obj") {
+    filters.innerHTML = "";
+    body.innerHTML = `<h2>Cartas-objetivo</h2><p class="hint">Cada jogador recebe uma carta secreta no início. "Maioria" segue a tabela de bônus por continente.</p>
+      <div class="ogrid">${OBJECTIVES().map((o, i) => `<div class="ocard"><span class="onum">${i + 1}</span><div>${o}</div></div>`).join("")}</div>`;
+    return;
+  }
+  const count = k => TRADE_CARDS.filter(c => c.kind === k).reduce((n, c) => n + (c.qty || 1), 0);
+  filters.innerHTML = [["all", "Todas", 61], ...Object.entries(CARD_KINDS).map(([k, v]) => [k, v.title, count(k)])]
+    .map(([k, label, n]) => `<button data-filter="${k}" class="${cardUI.filter === k ? "on" : ""}">${label} (${n})</button>`).join("");
+  const kinds = cardUI.filter === "all" ? Object.keys(CARD_KINDS) : [cardUI.filter];
+  body.innerHTML = kinds.map(k => `<h2>${CARD_KINDS[k].title} · ${count(k)} cartas</h2><p class="hint">${CARD_KINDS[k].hint}</p>
+    <div class="cgrid">${TRADE_CARDS.filter(c => c.kind === k).map(c => `<div class="cwrap">${tradeCardSVG(c)}<div class="ccap">${tradeCaption(c)}</div></div>`).join("")}</div>`).join("");
+}
+
+function openCards() {
+  if (!TOPO) return;
+  if (!cardUI.ready) { buildCardDefs(); cardUI.ready = true; }
+  document.getElementById("cardsModal").hidden = false;
+  renderCards();
+}
+const closeCards = () => { document.getElementById("cardsModal").hidden = true; };
+document.getElementById("btnCards").addEventListener("click", openCards);
+document.getElementById("btnCardsClose").addEventListener("click", closeCards);
+document.getElementById("cardsModal").addEventListener("click", e => {
+  if (e.target.id === "cardsModal") return closeCards();
+  const tab = e.target.closest("[data-tab]"), f = e.target.closest("[data-filter]");
+  if (tab) { cardUI.tab = tab.dataset.tab; renderCards(); }
+  if (f) { cardUI.filter = f.dataset.filter; renderCards(); }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") { closeCards(); closeRules(); } });
+
+// ================= Regras (versão didática de WARII.md) =================
+const ensureCardDefs = () => { if (!cardUI.ready) { buildCardDefs(); cardUI.ready = true; } };
+const rollD = faces => faces[Math.floor(Math.random() * faces.length)];
+const d6 = () => 1 + Math.floor(Math.random() * 6);
+const face = (i, v) => dieFaceSVG(DICE[i], v); // 0 ataque terr., 1 defesa terr., 2 ataque aéreo, 3 antiaérea
+const tokenSVG = (hex, n = "") => `<svg viewBox="0 0 40 40" width="34" height="34"><circle cx="20" cy="20" r="16" fill="${hex}" stroke="#1b1410" stroke-width="2"/>
+  <circle cx="20" cy="20" r="10.5" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="2"/>${n !== "" ? `<text x="20" y="21" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="800" fill="${hex === "#f5f5f5" || hex === "#ffd21f" ? "#222" : "#fff"}">${n}</text>` : ""}</svg>`;
+const pieceSVG = hex => `<svg viewBox="-22 -38 44 86" width="28" height="54"><path d="${PLANE}" fill="${hex}" stroke="#f3e9df" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M-6,36V43M0,36V45M6,36V43" stroke="#f3e9df" stroke-width="2.4" stroke-linecap="round"/></svg>`;
+const cardByName = n => TRADE_CARDS.find(c => c.name === n);
+const numCard = v => TRADE_CARDS.find(c => c.kind === "num" && c.value === v);
+const showBtn = (id, txt) => `<button class="link" data-show="${id}">${txt || byId[id].name}</button>`;
+const facesTxt = faces => {
+  const cnt = {}; faces.forEach(v => cnt[v] = (cnt[v] || 0) + 1);
+  return Object.keys(cnt).sort().map(v => `${cnt[v]} face${cnt[v] > 1 ? "s" : ""} ${+v === 0 ? "lisa" + (cnt[v] > 1 ? "s" : "") : `com ${v}`}`).join(", ");
+};
+
+// Combate terrestre: ordena, compara par a par, empate favorece a defesa
+function battle(a, d) {
+  const A = [...a].sort((x, y) => y - x), D = [...d].sort((x, y) => y - x);
+  let la = 0, ld = 0;
+  const rows = [];
+  for (let i = 0; i < Math.max(A.length, D.length); i++) {
+    const ra = A[i], rd = D[i];
+    let res = '<span class="hint">sem par, ignorado</span>';
+    if (ra != null && rd != null) {
+      if (ra > rd) { ld++; res = '<span class="good">ataque vence: defensor perde 1</span>'; }
+      else { la++; res = `<span class="bad">${ra === rd ? "empate: " : ""}defesa vence: atacante perde 1</span>`; }
+    }
+    rows.push(`<div class="brow">${ra != null ? face(0, ra) : '<span class="empty"></span>'}<span>×</span>${rd != null ? face(1, rd) : '<span class="empty"></span>'}${res}</div>`);
+  }
+  return { la, ld, html: `<div class="battle">${rows.join("")}</div><div>Resultado: atacante perde <b>${la}</b>, defensor perde <b>${ld}</b>.</div>` };
+}
+
+const RULES = () => {
+  const CE = TERRITORIES.filter(t => t.sc);
+  const contRows = Object.entries(CONTINENTS).map(([k, c]) => {
+    const ts = TERRITORIES.filter(t => t.c === k);
+    return `<tr><td><span class="sw" style="background:${c.color}"></span>${c.name}</td><td class="n">${ts.length}</td><td class="n">${ts.filter(t => t.sc).length}</td>
+      <td class="n">${c.maj} ou + → <b>${c.bonusMaj}</b></td><td class="n">todos → <b>${c.bonusAll}</b></td></tr>`;
+  }).join("");
+  return [
+  ["visao", "1. O jogo em resumo", `
+    <p>War II é um jogo de estratégia para <b>3 a 6 jogadores</b>. Cada um comanda um exército de uma cor e recebe um <b>objetivo secreto</b>. <b>Vence quem cumprir o seu objetivo primeiro.</b></p>
+    <p>Em relação ao War clássico, o War II traz quatro novidades:</p>
+    <div class="flow">
+      <div class="step"><b>📍</b>Centros estratégicos<br><span class="hint">dão exércitos e aviões extras</span></div>
+      <div class="step"><b>✈</b>Bombardeiros<br><span class="hint">atacam qualquer ponto do mapa</span></div>
+      <div class="step"><b>🛫</b>Aerotransporte<br><span class="hint">tropas voam entre seus CEs</span></div>
+      <div class="step"><b>🃏</b>Cartas de uso direto<br><span class="hint">reforço, bombardeio ou transporte</span></div>
+    </div>`],
+  ["pecas", "2. Componentes", `
+    <div class="ill">
+      ${tokenSVG("#1f6fe0")}${tokenSVG("#ffd21f")}${tokenSVG("#d62828")}${tokenSVG("#f5f5f5")}${tokenSVG("#222222")}${tokenSVG("#2e9e3a")}
+      <span><b>Exércitos</b> em 6 cores. Ficha pequena = 1, grande = 10.</span>
+    </div>
+    <div class="ill">${pieceSVG("#1f6fe0")}${pieceSVG("#d62828")}<span><b>Bombardeiros</b>: 10 por jogador, ficam na <b>base aérea</b> da cor ou na caixa.</span></div>
+    <div class="ill mini">${face(0, 6)}${face(0, 4)}${face(0, 1)}<span>3 dados <b>vermelhos</b> (ataque)</span>&nbsp;&nbsp;${face(1, 5)}${face(1, 3)}${face(1, 2)}<span>3 dados <b>amarelos</b> (defesa)</span></div>
+    <div class="ill mini">${face(2, 3)}<span>Dado de <b>ataque aéreo</b></span>&nbsp;&nbsp;${face(3, 2)}<span>Dado de <b>defesa antiaérea</b></span></div>
+    <div class="ill">${tradeCardSVG(cardByName("Brasil"))}${tradeCardSVG(numCard(3))}<div class="ocard"><span class="onum">14</span><div>${OBJECTIVES()[13]}</div></div>
+      <span><b>61 cartas de troca</b> e <b>20 cartas-objetivo</b>.<br>Veja todas no botão "Ver cartas e dados do jogo".</span></div>`],
+  ["mapa", "3. O mapa", `
+    <p>São <b>43 territórios</b> em <b>6 continentes</b>. Dois territórios são <b>vizinhos</b> quando se tocam ou quando uma <b>linha marítima</b> (as curvas brancas do mapa) os liga.
+      O mapa dá a volta: ${showBtn("alasca")} e ${showBtn("vladivostok")} são vizinhos pela borda.</p>
+    <p><b>12 territórios são centros estratégicos (CE)</b>, marcados com 📍: ${CE.map(t => showBtn(t.id)).join(", ")}.</p>
+    <table><tr><th>Continente</th><th class="n">Terr.</th><th class="n">CE</th><th class="n">Maioria</th><th class="n">Totalidade</th></tr>${contRows}</table>
+    <div class="box note"><b>Dica</b>Clique em qualquer território do mapa para ver os vizinhos dele destacados.</div>`],
+  ["preparo", "4. Preparação", `
+    <ol>
+      <li><b>Cores:</b> cada jogador escolhe uma cor. Todos rolam um dado; o maior vira o <b>distribuidor</b>.</li>
+      <li><b>Centros estratégicos:</b> o distribuidor embaralha as <b>12 cartas de CE</b> e distribui uma a uma, começando por ele. Cada jogador põe <b>2 exércitos em cada CE</b> recebido.
+        <div class="ill">${tradeCardSVG(cardByName("Austrália, Nova Guiné"))}<span>Carta com mais de um território: os 2 exércitos vão <b>só no CE</b> (📍 Austrália).</span></div></li>
+      <li><b>Demais territórios:</b> as cartas de CE voltam ao monte com as outras 49. Em seguida, na ordem, cada um põe <b>1 exército</b> num território vago, até não sobrar nenhum.</li>
+      <li><b>Objetivos:</b> tire as cartas de destruir cores que não estão em jogo e dê 1 objetivo secreto a cada jogador.</li>
+      <li><b>Quem começa:</b> o jogador à esquerda de quem ocupou o último território.</li>
+    </ol>
+    <div class="box ex"><b>Com 5 jogadores</b>Distribuem-se só 10 cartas de CE (2 para cada). Depois, na ordem, cada um escolhe:
+      <b>(a)</b> pegar uma das 2 cartas de CE restantes e pôr 2 exércitos nele; ou <b>(b)</b> ocupar 2 territórios vagos comuns, de continentes diferentes, com 1 exército cada.
+      CEs que sobrarem são ocupados depois, como territórios comuns.</div>
+    <div class="box warn"><b>Regra de ouro</b>Nenhum território pode ficar vazio, nunca. Todo território tem sempre pelo menos 1 exército.</div>`],
+  ["turno", "5. O turno", `
+    <p>Na sua vez, siga esta ordem:</p>
+    <div class="flow">
+      <div class="step"><b>1</b>Receber exércitos</div><span class="arr">→</span>
+      <div class="step"><b>2</b>Receber bombardeiros</div><span class="arr">→</span>
+      <div class="step"><b>3</b>Atacar<br><span class="hint">opcional</span></div><span class="arr">→</span>
+      <div class="step"><b>4</b>Deslocar<br><span class="hint">opcional</span></div><span class="arr">→</span>
+      <div class="step"><b>5</b>Comprar cartas<br><span class="hint">se conquistou</span></div>
+    </div>
+    <p>As cartas de troca podem ser usadas a <b>qualquer momento da sua jogada</b>.</p>
+    <div class="box ex"><b>Primeira rodada</b>Ela é dividida em duas voltas na mesa: primeiro <b>todos</b> recebem e colocam exércitos e bombardeiros; só depois, na segunda volta, cada um ataca, desloca e compra cartas. Assim ninguém ataca antes de os outros se reforçarem.</div>`],
+  ["receber", "6. Recebendo reforços", `
+    <p>No início da vez, some quatro parcelas:</p>
+    <table>
+      <tr><th>Parcela</th><th>Quanto</th><th>Onde colocar</th></tr>
+      <tr><td>Territórios</td><td>metade dos seus territórios (arredondando para baixo), <b>mínimo 3</b></td><td>em qualquer território seu</td></tr>
+      <tr><td>Centros estratégicos</td><td>+1 por CE</td><td>no próprio CE</td></tr>
+      <tr><td>Continentes</td><td>bônus de <b>maioria</b> ou de <b>totalidade</b> (vale só o maior)</td><td>dentro daquele continente</td></tr>
+      <tr><td>Bombardeiros</td><td>+1 ✈ por CE (enquanto houver na caixa)</td><td>na base aérea</td></tr>
+    </table>
+    <div class="box ex"><b>Exemplo do manual</b>19 territórios, 3 deles CE, com a América do Sul inteira e 3 territórios da Oceania:<br>
+      19 ÷ 2 = <b>9</b> + 3 (CE) + <b>3</b> (totalidade da América do Sul) + <b>2</b> (maioria da Oceania) = <b>17 exércitos</b> e mais <b>3 bombardeiros</b>.</div>
+    <div class="tool" id="calcTool">
+      <b>🧮 Calculadora de reforços</b>
+      <div class="row" style="margin-top:8px">
+        <label>Territórios <input type="number" id="cT" min="1" max="43" value="19"></label>
+        <label>CEs <input type="number" id="cC" min="0" max="12" value="3"></label>
+      </div>
+      <div class="row" style="margin-top:8px">${Object.entries(CONTINENTS).map(([k, c]) => `<label>${c.name} <select data-cont="${k}">
+        <option value="">—</option><option value="maj">maioria</option><option value="all">totalidade</option></select></label>`).join("")}</div>
+      <div class="out" id="cOut"></div>
+    </div>`],
+  ["terrestre", "7. Ataque terrestre", `
+    <p>Ataque um território <b>vizinho</b> de outro jogador a partir de um território seu com <b>pelo menos 2 exércitos</b>. Um exército sempre fica para trás, como <b>ocupação</b>.</p>
+    <table>
+      <tr><th>Quem</th><th>Dados</th></tr>
+      <tr><td>Atacante (vermelhos)</td><td>1 por exército que ataca, até 3, ou seja, <b>exércitos na origem − 1</b>, no máximo 3</td></tr>
+      <tr><td>Defensor (amarelos)</td><td>1 por exército no território, até 3. A ocupação também defende</td></tr>
+    </table>
+    <p><b>Como resolver:</b> cada lado ordena os dados do maior para o menor e compara par a par. Quem tirar menos perde 1 exército. <b>Empate: vence a defesa.</b> Dados sem par não contam.</p>
+    <div class="box ex"><b>Exemplo 1: 4 exércitos atacam 3 (3 dados × 3 dados)</b>${battle([5, 4, 1], [6, 3, 1]).html}Ficam 2 × 2.</div>
+    <div class="box ex"><b>Exemplo 2: 3 exércitos atacam 1 (2 dados × 1 dado)</b>${battle([3, 2], [6]).html}</div>
+    <h4>Conquista</h4>
+    <p>Se o alvo fica sem exércitos, ele é seu. Mova para lá de <b>1 até o número de dados</b> do último ataque. Do território recém-conquistado você pode continuar atacando no mesmo turno.</p>
+    <div class="box ex"><b>Exemplo 3: 8 exércitos atacam 3 e conquistam</b>${battle([5, 3, 2], [4, 2, 1]).html}O alvo fica vazio: o atacante move de 1 a 3 exércitos para ele.</div>
+    <div class="tool">
+      <b>🎲 Simulador de ataque terrestre</b>
+      <div class="row" style="margin-top:8px">
+        <label>Exércitos na origem <input type="number" id="gA" min="2" max="60" value="6"></label>
+        <label>Exércitos no alvo <input type="number" id="gD" min="1" max="60" value="3"></label>
+        <button id="gRoll">Rolar dados</button><button id="gReset">Recomeçar</button>
+      </div>
+      <div class="out" id="gOut"><span class="hint">Escolha as forças e role os dados.</span></div>
+    </div>`],
+  ["aereo", "8. Ataque aéreo", `
+    <p>Os bombardeiros atacam <b>qualquer território inimigo do mapa</b>, vizinho ou não, que tenha <b>pelo menos 2 exércitos</b>. O ataque aéreo <b>enfraquece, mas nunca conquista</b>: o alvo sempre fica com pelo menos 1 exército.</p>
+    <p>Os bombardeiros podem vir da sua <b>base aérea</b> e também da <b>caixa</b>, usando cartas (veja a seção de cartas). As duas origens podem ser somadas no mesmo ataque, até o limite de 10.</p>
+    <h4>Cada ciclo do bombardeio</h4>
+    <div class="flow">
+      <div class="step"><b class="mini">${face(3, 1)}</b>1. O defensor rola a <b>antiaérea</b>: cada avião na face derruba 1 bombardeiro</div><span class="arr">→</span>
+      <div class="step"><b class="mini">${face(2, 2)}</b>2. Se sobrou bombardeiro, o atacante rola o <b>ataque aéreo</b>: cada ficha destrói 1 exército</div><span class="arr">→</span>
+      <div class="step"><b>↻</b>3. Continuar ou parar?<br><span class="hint">o atacante decide</span></div>
+    </div>
+    <p class="hint">Antiaérea: ${facesTxt(AA_FACES)}. Ataque aéreo: ${facesTxt(AIR_ATTACK_FACES)}.</p>
+    <p>O ataque <b>acaba obrigatoriamente</b> quando todos os bombardeiros caem ou quando o alvo fica com 1 exército. Bombardeiros abatidos e exércitos destruídos voltam para a caixa do dono. <b>Os sobreviventes voltam para a base aérea</b> e podem atacar de novo no mesmo turno.</p>
+    <div class="box ex"><b>Exemplo</b>O azul ataca a China (6 exércitos) com 4 bombardeiros.<br>
+      <span class="mini">${face(3, 1)}</span> antiaérea com 1 avião: sobram 3 bombardeiros. <span class="mini">${face(2, 3)}</span> ataque com 3 fichas: a China cai para 3.<br>
+      Ele decide continuar. <span class="mini">${face(3, 0)}</span> antiaérea lisa. <span class="mini">${face(2, 2)}</span> 2 fichas: a China cai para 1 e o ataque termina, porque um alvo com 1 exército não pode mais ser bombardeado. Os 3 bombardeiros voltam à base.<br>
+      Agora um ataque terrestre contra a China fica muito mais fácil.</div>
+    <div class="tool">
+      <b>✈ Simulador de bombardeio</b>
+      <div class="row" style="margin-top:8px">
+        <label>Bombardeiros <input type="number" id="aB" min="1" max="10" value="4"></label>
+        <label>Exércitos no alvo <input type="number" id="aD" min="2" max="60" value="6"></label>
+        <button id="aRoll">Rolar um ciclo</button><button id="aReset">Recomeçar</button>
+      </div>
+      <div class="out" id="aOut"><span class="hint">Cada clique é um ciclo: antiaérea e depois ataque aéreo.</span></div>
+    </div>`],
+  ["deslocar", "9. Deslocamento", `
+    <p>Depois dos ataques, você pode reorganizar suas tropas, sempre deixando 1 exército em cada território:</p>
+    <ul>
+      <li><b>Por terra:</b> entre territórios seus que sejam vizinhos.</li>
+      <li><b>Aerotransporte:</b> de um CE seu para <b>outro CE seu</b>, a qualquer distância.</li>
+    </ul>
+    <div class="box warn"><b>Cada exército se move uma vez só por turno</b>
+      <div class="chain"><span class="t">Brasil</span><span class="good">→ ok</span><span class="t">Venezuela</span><span class="bad">→ ✗ os mesmos exércitos não seguem</span><span class="t">México</span></div>
+      Também não vale combinar: voar de um CE para outro e depois andar por terra, ou o contrário.</div>`],
+  ["cartas", "10. Cartas de troca", `
+    <h4>Comprando</h4>
+    <p>No <b>fim do turno</b>, se você <b>conquistou pelo menos 1 território</b>, compre <b>3 cartas</b>, sem passar de <b>5 na mão</b>. Sem conquista, não compra. As cartas são secretas até serem usadas.</p>
+    <h4>Usando, a qualquer momento da sua jogada</h4>
+    <p>Cada carta serve para uma coisa só. Uma carta numérica nunca é usada sozinha: ela sempre acompanha uma carta de território. Em carta com vários territórios, você escolhe um.</p>
+    <div class="box ex"><b>A) Reforço: o território é seu</b>
+      <div class="ill">${tradeCardSVG(cardByName("Califórnia, Vancouver"))}<span class="op">+</span>${tradeCardSVG(numCard(3))}<span class="op">=</span><span class="res">1 + 3 = 4 exércitos<br>na Califórnia</span></div></div>
+    <div class="box ex"><b>B) Bombardeio: o território é de um adversário</b>
+      <div class="ill">${tradeCardSVG(cardByName("China"))}<span class="op">+</span>${tradeCardSVG(numCard(2))}<span class="op">+</span>${tradeCardSVG(numCard(3))}<span class="op">=</span><span class="res">1 + 2 + 3 = 6 bombardeiros<br>da caixa contra a China</span></div>
+      Os sobreviventes vão para a sua base aérea.</div>
+    <div class="box ex"><b>C) Transporte: dois territórios seus</b>
+      <div class="ill">${tradeCardSVG(cardByName("Brasil"))}<span class="op">+</span>${tradeCardSVG(cardByName("Japão"))}<span class="op">=</span><span class="res">leve quantos exércitos quiser<br>do Brasil para o Japão (ou o contrário)</span></div></div>
+    <p>As cartas usadas vão para o descarte. Quando ele chega a 10 cartas, é embaralhado de volta no monte.</p>`],
+  ["objetivos", "11. Objetivos e vitória", `
+    <p>Cada jogador tem um objetivo secreto. Quem cumprir o seu mostra a carta e <b>vence na hora</b>.</p>
+    <div class="ill"><div class="ocard"><span class="onum">1</span><div>${OBJECTIVES()[0]}</div></div><div class="ocard"><span class="onum">12</span><div>${OBJECTIVES()[11]}</div></div><div class="ocard"><span class="onum">19</span><div>${OBJECTIVES()[18]}</div></div></div>
+    <div class="box note"><b>Quando o objetivo muda sozinho</b>Se o seu objetivo é destruir uma cor e ela é <b>a sua</b>, ou se <b>outro jogador</b> eliminar essa cor antes de você, o seu objetivo passa a ser <b>conquistar 24 territórios</b>.</div>
+    <h4>Eliminação</h4>
+    <p>Quem fica sem territórios sai do jogo. Quem o eliminou <b>herda as cartas de troca</b> dele (descartando o que passar de 5).</p>`],
+  ["ci", "12. Variante: Centro de Informações", `
+    <p>Regra opcional, para um jogo mais ágil. Cada jogador põe seu <b>CI</b> num território seu na 1ª ou 2ª rodada. O CI não luta e não pode ser destruído.</p>
+    <ul>
+      <li><b>Espionar:</b> com o seu CI no tabuleiro, na sua vez, olhe em segredo as cartas de troca de <b>um</b> adversário.</li>
+      <li><b>Capturar:</b> conquiste o território onde está o CI de outro jogador e veja as cartas e o <b>objetivo</b> dele.</li>
+      <li><b>Mover:</b> 1 território vizinho por turno, de CE para CE pelo ar, ou com 2 cartas de território para qualquer lugar.</li>
+    </ul>`],
+  ];
+};
+
+function renderRules() {
+  ensureCardDefs();
+  const secs = RULES();
+  document.getElementById("rulesNav").innerHTML = secs.map(([id, t]) => `<a href="#r-${id}" data-go="${id}">${t}</a>`).join("");
+  document.getElementById("rulesBody").innerHTML = secs.map(([id, t, h]) => `<section id="r-${id}"><h3>${t}</h3>${h}</section>`).join("");
+  updateCalc(); updateNav();
+}
+
+function updateCalc() {
+  const t = +document.getElementById("cT").value || 0, c = +document.getElementById("cC").value || 0;
+  const out = document.getElementById("cOut");
+  const sel = [...document.querySelectorAll("#calcTool select")].filter(s => s.value);
+  const need = sel.reduce((n, s) => n + (s.value === "all" ? TERRITORIES.filter(x => x.c === s.dataset.cont).length : CONTINENTS[s.dataset.cont].maj), 0);
+  if (t < 1 || t > 43) return out.innerHTML = '<div class="err">O número de territórios vai de 1 a 43.</div>';
+  if (c < 0 || c > 12 || c > t) return out.innerHTML = '<div class="err">Os CEs vão de 0 a 12 e não podem passar do número de territórios.</div>';
+  if (need > t) return out.innerHTML = `<div class="err">Os continentes escolhidos exigem pelo menos ${need} territórios.</div>`;
+  const base = Math.max(3, Math.floor(t / 2));
+  const lines = [`Territórios: ${t} ÷ 2 ${Math.floor(t / 2) < 3 ? "(mínimo 3)" : ""} = <b>${base}</b>`];
+  if (c) lines.push(`Centros estratégicos: <b>${c}</b> (1 em cada CE)`);
+  let bonus = 0;
+  sel.forEach(s => { const k = CONTINENTS[s.dataset.cont], v = s.value === "all" ? k.bonusAll : k.bonusMaj; bonus += v;
+    lines.push(`${s.value === "all" ? "Totalidade" : "Maioria"} de ${k.name}: <b>${v}</b> (no continente)`); });
+  out.innerHTML = lines.join("<br>") + `<div style="margin-top:6px;font-size:16px">Total: <b>${base + c + bonus} exércitos</b>${c ? ` e <b>${c} bombardeiro${c > 1 ? "s" : ""}</b> na base aérea` : ""}</div>`;
+}
+
+const gs = {}, as = {};
+function groundRoll() {
+  if (gs.a == null) { gs.a = +document.getElementById("gA").value; gs.d = +document.getElementById("gD").value; gs.n = 0; }
+  const out = document.getElementById("gOut");
+  if (!(gs.a >= 2) || !(gs.d >= 1)) return out.innerHTML = '<div class="err">A origem precisa de pelo menos 2 exércitos e o alvo de pelo menos 1.</div>';
+  if (gs.d === 0 || gs.a < 2) return;
+  const na = Math.min(3, gs.a - 1), nd = Math.min(3, gs.d);
+  const b = battle(Array.from({ length: na }, d6), Array.from({ length: nd }, d6));
+  gs.a -= b.la; gs.d -= b.ld; gs.n++;
+  let end = "";
+  if (gs.d === 0) end = `<div class="good" style="margin-top:6px"><b>Território conquistado!</b> Mova de 1 a ${na} exércitos para ele.</div>`;
+  else if (gs.a < 2) end = '<div class="bad" style="margin-top:6px"><b>A origem só tem 1 exército</b> e não pode mais atacar.</div>';
+  out.innerHTML = `<div class="hint">Ataque ${gs.n}: ${na} dado${na > 1 ? "s" : ""} × ${nd} dado${nd > 1 ? "s" : ""}</div>${b.html}
+    <div style="margin-top:6px">Origem: <b>${gs.a}</b> · Alvo: <b>${gs.d}</b></div>${end}`;
+}
+function airRoll() {
+  if (as.b == null) { as.b = +document.getElementById("aB").value; as.d = +document.getElementById("aD").value; as.log = []; }
+  const out = document.getElementById("aOut");
+  if (!(as.b >= 1 && as.b <= 10) || !(as.d >= 2)) return out.innerHTML = '<div class="err">Use de 1 a 10 bombardeiros contra um alvo com pelo menos 2 exércitos.</div>';
+  if (as.over) return;
+  const aa = rollD(AA_FACES), lost = Math.min(aa, as.b);
+  as.b -= lost;
+  let line = `<span class="mini">${face(3, aa)}</span> antiaérea: ${aa ? `<span class="bad">${lost} bombardeiro${lost > 1 ? "s" : ""} abatido${lost > 1 ? "s" : ""}</span>` : "nada"}`;
+  if (as.b > 0) {
+    const at = rollD(AIR_ATTACK_FACES), kill = Math.min(at, as.d - 1);
+    as.d -= kill;
+    line += ` <span class="mini">${face(2, at)}</span> ataque: ${at ? `<span class="good">${kill} exército${kill !== 1 ? "s" : ""} destruído${kill !== 1 ? "s" : ""}</span>${kill < at ? " (o alvo não cai abaixo de 1)" : ""}` : "nada"}`;
+  }
+  as.log.push(`<div>Ciclo ${as.log.length + 1}: ${line}</div>`);
+  let st = `Bombardeiros: <b>${as.b}</b> · Alvo: <b>${as.d}</b>. `;
+  if (as.b === 0) { st += '<span class="bad">Todos os bombardeiros caíram: fim do ataque.</span>'; as.over = true; }
+  else if (as.d === 1) { st += `<span class="good">O alvo ficou com 1 exército: fim do ataque. ${as.b} bombardeiro${as.b > 1 ? "s voltam" : " volta"} à base.</span>`; as.over = true; }
+  else st += '<span class="hint">Role outro ciclo para continuar, ou pare aqui e os sobreviventes voltam à base.</span>';
+  out.innerHTML = as.log.join("") + `<div style="margin-top:6px">${st}</div>`;
+}
+
+function updateNav() {
+  const body = document.getElementById("rulesBody");
+  let cur = null;
+  body.querySelectorAll("section").forEach(s => { if (s.offsetTop - body.offsetTop <= body.scrollTop + 40) cur = s.id; });
+  document.querySelectorAll("#rulesNav a").forEach(a => a.classList.toggle("on", "r-" + a.dataset.go === cur));
+}
+
+function openRules() {
+  if (!TOPO) return;
+  document.getElementById("rulesModal").hidden = false;
+  if (!document.getElementById("rulesBody").childElementCount) renderRules();
+}
+function closeRules() { document.getElementById("rulesModal").hidden = true; }
+document.getElementById("btnRules").addEventListener("click", openRules);
+document.getElementById("btnRulesClose").addEventListener("click", closeRules);
+document.getElementById("rulesBody").addEventListener("scroll", updateNav);
+document.getElementById("rulesModal").addEventListener("input", e => {
+  if (e.target.closest("#calcTool")) updateCalc();
+  if (e.target.id === "gA" || e.target.id === "gD") { gs.a = null; document.getElementById("gOut").innerHTML = '<span class="hint">Forças alteradas. Role os dados.</span>'; }
+  if (e.target.id === "aB" || e.target.id === "aD") { as.b = null; as.over = false; document.getElementById("aOut").innerHTML = '<span class="hint">Forças alteradas. Role um ciclo.</span>'; }
+});
+document.getElementById("rulesModal").addEventListener("click", e => {
+  if (e.target.id === "rulesModal") return closeRules();
+  const go = e.target.closest("[data-go]"), show = e.target.closest("[data-show]");
+  if (go) { e.preventDefault(); document.getElementById("r-" + go.dataset.go).scrollIntoView({ behavior: "smooth" }); }
+  if (show) { closeRules(); state.sel = show.dataset.show; renderState(); }
+  if (e.target.id === "gRoll") groundRoll();
+  if (e.target.id === "gReset") { gs.a = null; document.getElementById("gOut").innerHTML = '<span class="hint">Escolha as forças e role os dados.</span>'; }
+  if (e.target.id === "aRoll") airRoll();
+  if (e.target.id === "aReset") { as.b = null; as.over = false; document.getElementById("aOut").innerHTML = '<span class="hint">Cada clique é um ciclo: antiaérea e depois ataque aéreo.</span>'; }
+});
+
+init().catch(err => {
+  document.getElementById("status").textContent = "Não foi possível carregar o mapa (" + err.message + "). Verifique a conexão com a internet.";
+});
+</script>
+</body>
+</html>
