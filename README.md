@@ -2,7 +2,7 @@
 
 Projeto web para jogar **War II** (jogo de tabuleiro da Grow) online entre amigos, de 3 a 6 jogadores, em turnos.
 
-> **Status:** regras levantadas, protótipo do mapa pronto e esqueleto do monorepo criado. A implementação do jogo ainda está começando.
+> **Status:** regras levantadas, protótipo do mapa pronto e monorepo montado. O motor de regras (engine) está completo, com testes: preparação, recebimento, ataques terrestre e aéreo, deslocamento, cartas, objetivos e visão por jogador.
 
 ## Conteúdo do repositório
 
@@ -84,6 +84,8 @@ O servidor escuta em `http://localhost:3000` (REST em `/api`, Socket.IO em `/soc
 | `pnpm format` | Formata o código com Prettier (`pnpm format:check` só confere) |
 | `pnpm typecheck` | Checagem de tipos em todos os pacotes |
 | `pnpm conferir` | Confere os dados estáticos do engine (mapa, fronteiras, cartas, objetivos, dados) contra `WARII.md`; o servidor faz a mesma conferência ao iniciar e não sobe se algo estiver errado |
+| `pnpm test` | Testes do engine (`node:test`): regras conferidas com os exemplos do manual, com dados roteirizados, e conferência dos dados estáticos |
+| `pnpm test:simulacao` | Simula partidas completas com robôs aleatórios, checando invariantes, informação oculta e replay depois de cada ação (`$env:PARTIDAS=N` muda a quantidade; padrão 40) |
 | `pnpm build` | Build de produção de todos os pacotes |
 
 No servidor também há `db:generate` e `db:studio` (Drizzle Kit), executados com `pnpm --filter @warii/server <script>`. Para mudar o banco: edite `packages/server/src/db/schema.ts`, rode `db:generate` e reinicie o servidor, que aplica a nova migração sozinho.

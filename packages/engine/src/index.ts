@@ -3,3 +3,4 @@
 // A especificação das regras está em WARII.md, na raiz do projeto.
 
 export * from "./data/index.js";
+export * from "./regras/index.js";

@@ -10,7 +10,7 @@ Este plano define **as etapas e a ordem**. Cada etapa será detalhada depois, em
 - PostgreSQL; ao iniciar, a API **cria o database se não existir** e **roda as migrations sozinha**.
 - Login com **e-mail e senha** (contas próprias).
 - Partidas **ao vivo, com reconexão** e retomada (estado salvo no banco); sem modo assíncrono por enquanto.
-- **Sem testes automatizados e sem GitHub Actions.** A verificação é manual, rodando a aplicação.
+- **Sem GitHub Actions.** Testes automatizados só no engine (`node:test`, rodados à mão com `pnpm test` e `pnpm test:simulacao`); servidor e front são verificados rodando a aplicação.
 - Boas práticas de programação e segurança em todas as etapas (ver seção final).
 
 ---
@@ -43,7 +43,7 @@ Este plano define **as etapas e a ordem**. Cada etapa será detalhada depois, em
 - **Pronto quando:** os dados do engine são a fonte única e batem com `WARII.md`.
 - **Entregue:** `packages/engine/src/data/` com `cores.ts`, `continentes.ts` (bônus padrão), `territorios.ts` (43, ids do `Tabuleiro.html`, tipo `TerritorioId`), `fronteiras.ts` (81 ligações, `vizinhos()`/`saoVizinhos()`), `cartas.ts` (61 cartas com ids estáveis), `objetivos.ts` (20 objetivos como lista de requisitos, mais os substitutos de §10.2), `dados.ts` (faces padrão) e `conferir.ts` (`conferirDados()`). Script `pnpm conferir` e conferência no boot do servidor. A geografia do mapa ficou fora do engine (vai para o `web` na etapa 9); os parâmetros de §13.4 entram na etapa 4.1. Verificação manual feita.
 
-### Etapa 4 — Engine: regras e máquina de estados
+### Etapa 4 — Engine: regras e máquina de estados ✅ CONCLUÍDA (2026-11-23)
 Funções puras `(estado, ação, rng) → { estado, eventos }`, seguindo a máquina de §13.2. Subetapas:
 1. Tipos do estado, ações, eventos e **parâmetros configuráveis** (§13.4) com valores padrão.
 2. Preparação: cores, distribuidor, CEs, caso de 5 jogadores, ocupação, objetivos, primeiro jogador, 1ª rodada especial.
@@ -56,6 +56,7 @@ Funções puras `(estado, ação, rng) → { estado, eventos }`, seguindo a máq
 9. **Projeção da visão por jogador** (`visaoDoJogador(estado, jogadorId)`), que remove objetivos e cartas alheios.
 - RNG injetado como interface (o servidor fornece o seu).
 - **Pronto quando:** todas as fases do turno estão implementadas e conferidas com os exemplos do manual.
+- **Entregue:** `packages/engine/src/regras/` com `parametros.ts` (§13.4 mais os ⚠ desta etapa), `estado.ts` (estado serializável em JSON), `acoes.ts`, `eventos.ts`, `rng.ts` (`Rng`, `rolar`, `embaralhar`, `gravarRng`/`rngDeReplay` para o log, `rngComSemente`/`rngRoteirizado` para os cenários), `resultado.ts` (recusa com código estável, sem exceção para fora), `consultas.ts` (`calcularRecebimento`, `exercitosMoviveis` etc.), `criar.ts` (`criarPartida`), `aplicar.ts` (`aplicarAcao`) e um módulo por fase (preparação, turno, recebimento, ataques, deslocamento, cartas, objetivos, eliminação) e `visao.ts` (`visaoDoJogador`, `eventosParaJogador`). Testes em `packages/engine/test/` com `node:test`: `pnpm test` (exemplos do manual com dados roteirizados e conferência dos dados) e `pnpm test:simulacao` (partidas simuladas com robôs: invariantes, informação oculta e replay). `pnpm typecheck`, `pnpm lint`, `pnpm test` e `pnpm test:simulacao` passam (2026-11-23).
 
 ### Etapa 5 — Contas e autenticação
 - Tabelas `usuarios` e `sessoes` (Drizzle + migration).

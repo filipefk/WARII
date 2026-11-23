@@ -7,8 +7,10 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts",
-    "conferir": "tsx scripts/conferir.ts"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts && tsc --noEmit -p test",
+    "conferir": "tsx scripts/conferir.ts",
+    "test": "tsx --test test/dados.test.ts test/regras.test.ts",
+    "test:simulacao": "tsx --test test/simulacao.test.ts"
   },
   "devDependencies": {
     "tsx": "^4.23.15"

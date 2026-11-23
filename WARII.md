@@ -587,8 +587,13 @@ SETUP_COLORS → SETUP_DEALER → SETUP_STRATEGIC_CENTERS → [SETUP_5P_CHOICE]
 | Somar base + caixa no mesmo ataque aéreo | sim (manual: não) |
 | Interromper ataque aéreo entre ciclos | sim (manual: não) |
 | Objetivo substituto de "destruir cor" | conquistar 24 territórios (ligado) |
-| Objetivo de quem fica com 1 território (manual) | conquistar 3 CE (desligado) |
+| Objetivo de quem fica com 1 território (manual) | conquistar 3 CE (desligado); a troca é definitiva (§10.2 ⚠) |
+| Exércitos que entraram por conquista podem se deslocar (§8.3 ⚠) | não |
+| Transporte por cartas conta para o movimento único (§9.3 ⚠) | sim |
+| Vitória a qualquer momento, inclusive na vez de outro (§10.3 ⚠) | sim (empate: prioridade ao jogador da vez, depois a ordem da mesa) |
 | Variante Centro de Informações | desligada |
+
+Leituras adotadas sem parâmetro: caixa com menos bombardeiros que o devido entrega só os que existem (§6.5 ⚠); carta de continente vale qualquer território do continente (§9.1 ⚠); objetivo 20 exige 20 exércitos em cada território (§10.1 ⚠); empate no dado do distribuidor, só os empatados rolam de novo (§4.1); com 5 jogadores, as escolhas seguem a ordem a partir do distribuidor (§4.3 ⚠).
 
 ### 13.5 Propriedade intelectual
 "War" e "War II" são marcas da Grow, e o mapa, a arte e os textos das cartas são protegidos. Regras e mecânicas em si não costumam ser protegidas. Para publicar a versão online, use **nome, mapa, arte e textos próprios** e mantenha as mecânicas descritas aqui.

@@ -25,5 +25,13 @@
     ],
     "unicorn/require-module-specifiers": "off"
   },
-  "ignorePatterns": ["**/dist/**", "**/drizzle/**", "Tabuleiro.html", "docs/**"]
+  "ignorePatterns": ["**/dist/**", "**/drizzle/**", "Tabuleiro.html", "docs/**"],
+  "overrides": [
+    {
+      "files": ["**/*.test.ts"],
+      "rules": {
+        "typescript/no-floating-promises": "off"
+      }
+    }
+  ]
 }

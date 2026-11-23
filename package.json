@@ -10,6 +10,8 @@
     "dev": "pnpm --parallel --filter @warii/server --filter @warii/web dev",
     "typecheck": "pnpm -r typecheck",
     "conferir": "pnpm --filter @warii/engine conferir",
+    "test": "pnpm --filter @warii/engine test",
+    "test:simulacao": "pnpm --filter @warii/engine test:simulacao",
     "build": "pnpm -r build",
     "lint": "oxlint --type-aware",
     "lint:fix": "oxlint --type-aware --fix",
