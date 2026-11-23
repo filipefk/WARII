@@ -1,0 +1,153 @@
+// Rotas /api/partidas (lobby). Todas exigem login; as regras ficam em lobby.ts.
+import type { FastifyInstance, FastifyReply } from "fastify";
+import {
+  ConfigurarPartidaEntrada,
+  CriarPartidaEntrada,
+  EntrarPartidaEntrada,
+  EscolherCorEntrada,
+  esquemaIdPartida,
+} from "@warii/shared";
+import { z } from "zod";
+import { exigirSessao, sessaoDa } from "../auth/plugin.js";
+import { responderEntradaInvalida, responderErro } from "../erros.js";
+import {
+  cancelarPartida,
+  configurarParametros,
+  criarPartidaNoLobby,
+  entrarComConvite,
+  ErroDeLobby,
+  escolherCor,
+  iniciarPartida,
+  listarPartidas,
+  obterLobby,
+  removerDaPartida,
+  renovarConvite,
+  sairDaPartida,
+} from "./lobby.js";
+
+const LIMITE_CORPO = 8 * 1024;
+const LIMITE_LEITURA = { max: 240, timeWindow: "1 minute" };
+const LIMITE_ESCRITA = { max: 60, timeWindow: "1 minute" };
+const LIMITE_ENTRAR = { max: 20, timeWindow: "15 minutes" };
+
+const ParametroPartida = z.object({ id: esquemaIdPartida });
+const ParametroParticipante = z.object({
+  id: esquemaIdPartida,
+  usuarioId: z.uuid({ error: "esse jogador não está na partida" }),
+});
+
+// Envia o resultado da operação (204 quando não há corpo) ou converte a recusa do lobby em
+// { codigo, mensagem }; outros erros seguem para o tratamento global.
+async function responder(
+  resposta: FastifyReply,
+  operacao: () => Promise<unknown>,
+  status = 200,
+): Promise<FastifyReply> {
+  try {
+    const corpo = await operacao();
+    return corpo === undefined ? resposta.code(204).send() : resposta.code(status).send(corpo);
+  } catch (erro) {
+    if (erro instanceof ErroDeLobby) {
+      return responderErro(resposta, erro.status, erro.codigo, erro.message);
+    }
+    throw erro;
+  }
+}
+
+// Id inválido na URL é tratado como partida inexistente (404), igual a uma de que não participa.
+function partidaInexistente(resposta: FastifyReply): FastifyReply {
+  return responderErro(resposta, 404, "PARTIDA_INEXISTENTE", "partida inexistente");
+}
+
+export async function rotasDePartidas(app: FastifyInstance): Promise<void> {
+  app.addHook("preHandler", exigirSessao);
+
+  const leitura = { config: { rateLimit: LIMITE_LEITURA } };
+  const escrita = { bodyLimit: LIMITE_CORPO, config: { rateLimit: LIMITE_ESCRITA } };
+
+  app.get("/", leitura, async (requisicao, resposta) =>
+    responder(resposta, () => listarPartidas(sessaoDa(requisicao).usuario.id)),
+  );
+
+  app.post("/", escrita, async (requisicao, resposta) => {
+    const entrada = CriarPartidaEntrada.safeParse(requisicao.body);
+    if (!entrada.success) return responderEntradaInvalida(resposta, entrada.error);
+    const usuarioId = sessaoDa(requisicao).usuario.id;
+    return responder(resposta, () => criarPartidaNoLobby(usuarioId, entrada.data.nome), 201);
+  });
+
+  app.post(
+    "/entrar",
+    { bodyLimit: LIMITE_CORPO, config: { rateLimit: LIMITE_ENTRAR } },
+    async (requisicao, resposta) => {
+      const entrada = EntrarPartidaEntrada.safeParse(requisicao.body);
+      if (!entrada.success) return responderEntradaInvalida(resposta, entrada.error);
+      const usuarioId = sessaoDa(requisicao).usuario.id;
+      return responder(resposta, () => entrarComConvite(usuarioId, entrada.data.token));
+    },
+  );
+
+  app.get("/:id", leitura, async (requisicao, resposta) => {
+    const params = ParametroPartida.safeParse(requisicao.params);
+    if (!params.success) return partidaInexistente(resposta);
+    const usuarioId = sessaoDa(requisicao).usuario.id;
+    return responder(resposta, () => obterLobby(params.data.id, usuarioId));
+  });
+
+  app.put("/:id/cor", escrita, async (requisicao, resposta) => {
+    const params = ParametroPartida.safeParse(requisicao.params);
+    if (!params.success) return partidaInexistente(resposta);
+    const entrada = EscolherCorEntrada.safeParse(requisicao.body);
+    if (!entrada.success) return responderEntradaInvalida(resposta, entrada.error);
+    const usuarioId = sessaoDa(requisicao).usuario.id;
+    return responder(resposta, () => escolherCor(params.data.id, usuarioId, entrada.data.cor));
+  });
+
+  app.put("/:id/parametros", escrita, async (requisicao, resposta) => {
+    const params = ParametroPartida.safeParse(requisicao.params);
+    if (!params.success) return partidaInexistente(resposta);
+    const entrada = ConfigurarPartidaEntrada.safeParse(requisicao.body);
+    if (!entrada.success) return responderEntradaInvalida(resposta, entrada.error);
+    const usuarioId = sessaoDa(requisicao).usuario.id;
+    return responder(resposta, () =>
+      configurarParametros(params.data.id, usuarioId, entrada.data.parametros),
+    );
+  });
+
+  app.post("/:id/convite", escrita, async (requisicao, resposta) => {
+    const params = ParametroPartida.safeParse(requisicao.params);
+    if (!params.success) return partidaInexistente(resposta);
+    const usuarioId = sessaoDa(requisicao).usuario.id;
+    return responder(resposta, () => renovarConvite(params.data.id, usuarioId));
+  });
+
+  app.post("/:id/sair", escrita, async (requisicao, resposta) => {
+    const params = ParametroPartida.safeParse(requisicao.params);
+    if (!params.success) return partidaInexistente(resposta);
+    const usuarioId = sessaoDa(requisicao).usuario.id;
+    return responder(resposta, () => sairDaPartida(params.data.id, usuarioId));
+  });
+
+  app.delete("/:id/participantes/:usuarioId", escrita, async (requisicao, resposta) => {
+    const params = ParametroParticipante.safeParse(requisicao.params);
+    if (!params.success) return partidaInexistente(resposta);
+    const usuarioId = sessaoDa(requisicao).usuario.id;
+    return responder(resposta, () =>
+      removerDaPartida(params.data.id, usuarioId, params.data.usuarioId),
+    );
+  });
+
+  app.post("/:id/cancelar", escrita, async (requisicao, resposta) => {
+    const params = ParametroPartida.safeParse(requisicao.params);
+    if (!params.success) return partidaInexistente(resposta);
+    const usuarioId = sessaoDa(requisicao).usuario.id;
+    return responder(resposta, () => cancelarPartida(params.data.id, usuarioId));
+  });
+
+  app.post("/:id/iniciar", escrita, async (requisicao, resposta) => {
+    const params = ParametroPartida.safeParse(requisicao.params);
+    if (!params.success) return partidaInexistente(resposta);
+    const usuarioId = sessaoDa(requisicao).usuario.id;
+    return responder(resposta, () => iniciarPartida(params.data.id, usuarioId));
+  });
+}

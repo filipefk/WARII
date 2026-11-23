@@ -31,9 +31,9 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(app.server, {
   path: "/socket.io",
 });
 
+// Autenticação, salas e ações da partida pelo socket entram na etapa 7.
 io.on("connection", (socket) => {
   app.log.info({ socketId: socket.id }, "cliente conectado");
-  socket.emit("boasVindas", "Conectado ao servidor do War II");
 });
 
 // Sockets saem primeiro (senão o fechamento do HTTP esperaria as conexões abertas);

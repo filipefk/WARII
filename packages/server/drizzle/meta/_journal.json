@@ -15,6 +15,20 @@
       "when": 1795430985545,
       "tag": "0001_contas",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795432443186,
+      "tag": "0002_partidas",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795432449144,
+      "tag": "0003_log_append_only",
+      "breakpoints": true
     }
   ]
 }

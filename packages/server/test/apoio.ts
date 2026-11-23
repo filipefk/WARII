@@ -27,7 +27,9 @@ export async function encerrarAppDeTeste(app: FastifyInstance): Promise<void> {
 }
 
 export async function limparBanco(): Promise<void> {
-  await pool.query("TRUNCATE usuarios, sessoes, tokens_senha");
+  await pool.query(
+    "TRUNCATE usuarios, sessoes, tokens_senha, partidas, participantes, acoes_partida, snapshots",
+  );
 }
 
 // IPs diferentes por teste, para o rate limit (por IP) de um teste não interferir nos outros.
@@ -48,7 +50,7 @@ export function cookieDeSessao(resposta: LightMyRequestResponse): string | undef
 }
 
 interface Requisicao {
-  metodo?: "GET" | "POST" | "PUT";
+  metodo?: "GET" | "POST" | "PUT" | "DELETE";
   url: string;
   corpo?: Record<string, unknown>;
   sessao?: string | undefined;
@@ -90,4 +92,17 @@ export async function criarContaAtiva(
     throw new Error(`ativação falhou: ${resposta.statusCode} ${resposta.body}`);
   }
   return { id: conta.id, sessao };
+}
+
+// N contas ativas ("jogador1@teste.local", …), cada uma com a sessão aberta.
+export async function criarContasAtivas(
+  app: FastifyInstance,
+  quantidade: number,
+): Promise<{ id: string; sessao: string; nome: string }[]> {
+  const contas = [];
+  for (let i = 1; i <= quantidade; i++) {
+    const nome = `Jogador ${i}`;
+    contas.push({ ...(await criarContaAtiva(app, `jogador${i}@teste.local`, nome)), nome });
+  }
+  return contas;
 }

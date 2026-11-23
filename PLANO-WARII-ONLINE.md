@@ -66,11 +66,13 @@ Funções puras `(estado, ação, rng) → { estado, eventos }`, seguindo a máq
 - **Pronto quando:** rotas `/api/auth/*` funcionam e as sessões aparecem/expiram corretamente no banco.
 - **Entregue:** migration `drizzle/0001_contas.sql` (`usuarios`, `sessoes`, `tokens_senha`); `packages/server/src/auth/` com `senha.ts` (Argon2id do `node:crypto`, formato PHC), `tokens.ts` (HMAC com `SESSION_SECRET`), `sessoes.ts` (30 dias deslizantes, revogação, limpeza a cada 6 h), `contas.ts`, `tentativas.ts` (atraso progressivo e bloqueio), `plugin.ts` (cookie, rate limit, checagem de Origin, `exigirSessao`) e `rotas.ts` (`/login`, `/logout`, `/eu`, `/senha/definir`, `PUT /senha`, `/sair-de-todas`); `src/cli.ts` (`conta:criar`, `senha:link`, `contas:listar`); `src/erros.ts` (erros `{ codigo, mensagem }`); DTOs em `packages/shared/src/auth.ts`; config `URL_PUBLICA` e `TRUST_PROXY`. Montagem do app em `src/app.ts` (`criarApp`) e testes em `packages/server/test/`: unitários (senha, tokens, tentativas, schemas) e integração das rotas com banco de teste (`auth.test.ts`), rodados por `pnpm test` junto com os do engine. `pnpm lint` sem avisos; verificação manual feita pelo usuário.
 
-### Etapa 6 — Contrato `shared` e lobby (REST)
+### Etapa 6 — Contrato `shared` e lobby (REST) ✅ CONCLUÍDA (2026-11-23)
 - Em `@warii/shared`: schemas `zod` das ações do jogo, DTOs da API e tipos dos eventos do Socket.IO (validação no servidor, tipos no front).
 - Tabelas `partidas`, `participantes`, `acoes_partida` (log append-only) e `snapshots`.
 - Lobby: criar partida, link de convite (token aleatório), entrar, escolher cor, configurar parâmetros da partida, iniciar. Autorização por partida (só o anfitrião configura/inicia).
-- **Pronto quando:** dois usuários conseguem criar, entrar e iniciar uma partida via API.
+- **Pronto quando:** dois usuários conseguem criar, entrar e iniciar uma partida via API (na prática três: o engine exige 3 a 6 jogadores).
+- **Decidido:** ordem da mesa sorteada ao iniciar (RNG crypto, no log); convite reutilizável, válido até iniciar, renovável pelo anfitrião; iniciar já cria o estado no engine.
+- **Entregue:** `@warii/shared` passa a depender do engine, com `acoes.ts` (`esquemaAcao`, conferido em tempo de compilação contra `Acao`), `parametros.ts` (`esquemaParametros`/`esquemaParametrosParciais`), `partidas.ts` (entradas e DTOs do lobby) e `socket.ts` (eventos da etapa 7). Migrations `0002_partidas.sql` (`partidas`, `participantes`, `acoes_partida`, `snapshots`) e `0003_log_append_only.sql` (trigger que recusa UPDATE/DELETE no log). `packages/server/src/partidas/`: `rng.ts` (`rngCrypto`), `inicio.ts` (`montarPartida`: sorteio dos assentos + `criarPartida`, usado também no replay), `lobby.ts` (operações em transação com `FOR UPDATE`, `ErroDeLobby`) e `rotas.ts` (`/api/partidas`). Testes `contrato.test.ts` e `lobby.test.ts`. `pnpm typecheck`, `pnpm lint` (sem avisos) e `pnpm test` passam; verificação feita pelo usuário.
 
 ### Etapa 7 — Servidor de partida em tempo real
 - Socket.IO autenticado pelo mesmo cookie de sessão; cada partida é uma sala.

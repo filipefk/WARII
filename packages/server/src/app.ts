@@ -6,6 +6,7 @@ import { rotasDeAutenticacao } from "./auth/rotas.js";
 import { config } from "./config.js";
 import { bancoResponde } from "./db/index.js";
 import { registrarTratamentoDeErros } from "./erros.js";
+import { rotasDePartidas } from "./partidas/rotas.js";
 
 export async function criarApp(
   logger: FastifyServerOptions["logger"] = false,
@@ -15,6 +16,7 @@ export async function criarApp(
   registrarTratamentoDeErros(app);
   await registrarAutenticacao(app);
   await app.register(rotasDeAutenticacao, { prefix: "/api/auth" });
+  await app.register(rotasDePartidas, { prefix: "/api/partidas" });
 
   app.get("/api/health", async (_requisicao, resposta) => {
     if (await bancoResponde()) return { ok: true, banco: "ok" };

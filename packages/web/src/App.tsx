@@ -5,11 +5,11 @@ export function App() {
   const [status, setStatus] = useState("conectando...");
 
   useEffect(() => {
-    socket.on("boasVindas", setStatus);
+    socket.on("connect", () => setStatus("conectado ao servidor"));
     socket.on("disconnect", () => setStatus("desconectado"));
     socket.connect();
     return () => {
-      socket.off("boasVindas");
+      socket.off("connect");
       socket.off("disconnect");
       socket.disconnect();
     };
