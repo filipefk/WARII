@@ -36,7 +36,7 @@ Monorepo **TypeScript** com **pnpm workspaces**:
 
 | Pacote | Papel | Principais libs |
 |---|---|---|
-| `packages/engine` (`@warii/engine`) | Motor de regras com funções puras `(estado, ação, rng) → novo estado + eventos`. Sem rede, banco nem UI | Vitest (testes) |
+| `packages/engine` (`@warii/engine`) | Motor de regras com funções puras `(estado, ação, rng) → novo estado + eventos`. Sem rede, banco nem UI | — |
 | `packages/shared` (`@warii/shared`) | Contrato servidor ↔ front: eventos do Socket.IO e DTOs | — |
 | `packages/server` (`@warii/server`) | API autoritativa: valida ações com o engine, rola os dados, persiste o log da partida e envia a cada jogador só a sua visão | Fastify, Socket.IO, Drizzle ORM + `pg` |
 | `packages/web` (`@warii/web`) | Front SPA: mapa, interface e pré-visualização das jogadas com o engine | Vite, React, Tailwind 4, D3 + TopoJSON, Zustand |
@@ -59,10 +59,10 @@ Princípios:
 pnpm install
 ```
 
-Configure o banco copiando o arquivo de exemplo e ajustando `DATABASE_URL`:
+Copie o arquivo de exemplo e ajuste `DATABASE_URL` e `SESSION_SECRET`. O servidor valida as variáveis ao iniciar e não sobe se alguma estiver faltando ou inválida, nem com o segredo do exemplo:
 
 ```powershell
-Copy-Item packages/server/.env.example packages/server/.env
+Copy-Item packages/server/.env-exemplo packages/server/.env
 ```
 
 Aplique as migrações:
@@ -84,7 +84,8 @@ O servidor escuta em `http://localhost:3000` (REST em `/api`, Socket.IO em `/soc
 | Comando (na raiz) | O que faz |
 |---|---|
 | `pnpm dev` | Servidor e front em modo watch |
-| `pnpm test` | Testes de todos os pacotes (Vitest) |
+| `pnpm lint` | Lint com Oxlint, incluindo regras com tipos (`pnpm lint:fix` corrige o que der) |
+| `pnpm format` | Formata o código com Prettier (`pnpm format:check` só confere) |
 | `pnpm typecheck` | Checagem de tipos em todos os pacotes |
 | `pnpm build` | Build de produção de todos os pacotes |
 

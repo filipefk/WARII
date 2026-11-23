@@ -1,0 +1,7 @@
+pnpm-lock.yaml
+**/dist/
+**/drizzle/
+node_modules/
+Tabuleiro.html
+docs/
+*.md

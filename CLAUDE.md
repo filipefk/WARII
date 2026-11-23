@@ -4,7 +4,7 @@ Projeto web para jogar **War II** (jogo de tabuleiro da Grow) online entre amigo
 
 ## Status
 
-Regras levantadas e protótipo do mapa pronto. **Stack decidida e esqueleto do monorepo criado**; o plano de implementação ainda vai ser montado junto com o usuário.
+Regras levantadas e protótipo do mapa pronto. **Stack decidida e esqueleto do monorepo criado.** Implementação segue o plano em etapas de `PLANO-WARII-ONLINE.md`: **etapa 1 (fundações de qualidade) concluída**; próximas: 2 (banco e migrations) e 3 (dados estáticos do engine), que podem andar em paralelo.
 
 ## Stack
 
@@ -12,15 +12,17 @@ Monorepo **TypeScript** com **pnpm workspaces** (Node 24, pnpm 11). Um único re
 
 | Pacote | Papel | Principais libs |
 |---|---|---|
-| `packages/engine` (`@warii/engine`) | Motor de regras: funções puras `(estado, ação, rng) → novo estado + eventos`. Sem rede, banco nem UI; o dado entra como parâmetro | — (testes com Vitest) |
+| `packages/engine` (`@warii/engine`) | Motor de regras: funções puras `(estado, ação, rng) → novo estado + eventos`. Sem rede, banco nem UI; o dado entra como parâmetro | — |
 | `packages/shared` (`@warii/shared`) | Contrato servidor ↔ front: eventos do Socket.IO e DTOs | — |
-| `packages/server` (`@warii/server`) | API autoritativa: valida ações com o engine, rola os dados, persiste o log de ações, envia a cada jogador só a sua visão | Fastify (REST em `/api`), Socket.IO (`/socket.io`), Drizzle ORM + `pg`, tsx (dev), tsup (build) |
+| `packages/server` (`@warii/server`) | API autoritativa: valida ações com o engine, rola os dados, persiste o log de ações, envia a cada jogador só a sua visão | Fastify (REST em `/api`), Socket.IO (`/socket.io`), Drizzle ORM + `pg`, zod (config), tsx (dev), tsup (build) |
 | `packages/web` (`@warii/web`) | Front SPA: mapa, interface, pré-visualização com o engine | Vite, React, Tailwind 4, D3 + TopoJSON, Zustand, socket.io-client |
 
 - `engine` e `shared` são consumidos como **código-fonte TS** (`exports` → `src/index.ts`); o tsup embute os dois no bundle do servidor e o Vite no do front.
-- **Banco:** PostgreSQL em container separado, preparado pelo usuário. Conexão via `DATABASE_URL` (ver `packages/server/.env.example`).
+- **Banco:** PostgreSQL em container separado, preparado pelo usuário. Conexão via `DATABASE_URL` (ver `packages/server/.env-exemplo`).
 - **Deploy (Dokploy):** um projeto com duas aplicações apontando para o mesmo repositório, ambas com **context na raiz**: `packages/server/Dockerfile` (Node) e `packages/web/Dockerfile` (build Vite + Nginx). Domínio único com roteamento por path: `/` → web; `/api` e `/socket.io` → server. Em dev, o Vite faz proxy desses paths para `localhost:3000`.
-- Comandos na raiz: `pnpm dev` (server + web), `pnpm test`, `pnpm typecheck`.
+- Comandos na raiz: `pnpm dev` (server + web), `pnpm typecheck`, `pnpm lint` (`lint:fix`), `pnpm format` (`format:check`). **Sem testes automatizados**: a verificação é manual, rodando a aplicação.
+- **Lint com Oxlint** (`.oxlintrc.json`, com regras que usam tipos via `oxlint-tsgolint`), e não ESLint: o typescript-eslint ainda não suporta o TypeScript 7 nativo. Formatação com Prettier (`.prettierrc.json`; os `.md` e o `Tabuleiro.html` ficam de fora).
+- **Configuração do servidor** validada com zod em `packages/server/src/config.ts`: o código lê de `config`, nunca de `process.env` direto. O logger (`src/logger.ts`) oculta cookie, authorization, senha, token e segredo.
 - Scripts de build de dependências precisam ser liberados em `allowBuilds` no `pnpm-workspace.yaml` (pnpm 11).
 
 ## Arquivos

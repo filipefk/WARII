@@ -1,8 +1,10 @@
 import Fastify from "fastify";
 import { Server } from "socket.io";
 import type { ClientToServerEvents, ServerToClientEvents } from "@warii/shared";
+import { config } from "./config.js";
+import { opcoesDoLogger } from "./logger.js";
 
-const app = Fastify({ logger: true });
+const app = Fastify({ logger: opcoesDoLogger });
 
 app.get("/api/health", async () => ({ ok: true }));
 
@@ -15,5 +17,4 @@ io.on("connection", (socket) => {
   socket.emit("boasVindas", "Conectado ao servidor do War II");
 });
 
-const port = Number(process.env.PORT ?? 3000);
-await app.listen({ port, host: "0.0.0.0" });
+await app.listen({ port: config.PORT, host: config.HOST });

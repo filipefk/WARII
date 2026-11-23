@@ -6,6 +6,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,
+    // Abre o navegador padrão na URL do front ao rodar `pnpm dev`.
+    open: true,
     // Em desenvolvimento, a API e o WebSocket rodam em outro processo (packages/server).
     proxy: {
       "/api": "http://localhost:3000",

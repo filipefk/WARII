@@ -8,13 +8,18 @@
   },
   "scripts": {
     "dev": "pnpm --parallel --filter @warii/server --filter @warii/web dev",
-    "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "build": "pnpm -r build"
+    "build": "pnpm -r build",
+    "lint": "oxlint --type-aware",
+    "lint:fix": "oxlint --type-aware --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
-    "typescript": "^7.0.2",
-    "vitest": "^5.1.1"
+    "oxlint": "^1.94.0",
+    "oxlint-tsgolint": "^7.0.2008",
+    "prettier": "^3.10.1",
+    "typescript": "^7.0.2"
   }
 }
