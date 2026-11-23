@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import Fastify from "fastify";
 import { Server } from "socket.io";
+import { conferirDados } from "@warii/engine";
 import type { ClientToServerEvents, ServerToClientEvents } from "@warii/shared";
 import { config } from "./config.js";
 import { bancoResponde, pool } from "./db/index.js";
@@ -67,6 +68,11 @@ for (const sinal of ["SIGTERM", "SIGINT"] as const) {
 }
 
 try {
+  // Dados do jogo errados (mapa, cartas, objetivos) invalidariam qualquer partida: nem sobe.
+  const errosNosDados = conferirDados();
+  if (errosNosDados.length > 0) {
+    throw new Error(`dados estáticos do engine inválidos:\n- ${errosNosDados.join("\n- ")}`);
+  }
   await prepararBanco(app.log, pastaDeMigrations);
   await app.listen({ port: config.PORT, host: config.HOST });
 } catch (erro) {

@@ -4,7 +4,7 @@ Projeto web para jogar **War II** (jogo de tabuleiro da Grow) online entre amigo
 
 ## Status
 
-Regras levantadas e protótipo do mapa pronto. **Stack decidida e esqueleto do monorepo criado.** Implementação segue o plano em etapas de `PLANO-WARII-ONLINE.md`: **etapas 1 (fundações de qualidade) e 2 (banco e migrations) concluídas**; próximas: 3 (dados estáticos do engine) e 5 (contas e autenticação), que podem andar em paralelo.
+Regras levantadas e protótipo do mapa pronto. **Stack decidida e esqueleto do monorepo criado.** Implementação segue o plano em etapas de `PLANO-WARII-ONLINE.md`: **etapas 1 (fundações de qualidade), 2 (banco e migrations) e 3 (dados estáticos do engine) concluídas**; próximas: 4 (regras do engine) e 5 (contas e autenticação), que podem andar em paralelo.
 
 ## Stack
 
@@ -17,10 +17,11 @@ Monorepo **TypeScript** com **pnpm workspaces** (Node 24, pnpm 11). Um único re
 | `packages/server` (`@warii/server`) | API autoritativa: valida ações com o engine, rola os dados, persiste o log de ações, envia a cada jogador só a sua visão | Fastify (REST em `/api`), Socket.IO (`/socket.io`), Drizzle ORM + `pg`, zod (config), tsx (dev), tsup (build) |
 | `packages/web` (`@warii/web`) | Front SPA: mapa, interface, pré-visualização com o engine | Vite, React, Tailwind 4, D3 + TopoJSON, Zustand, socket.io-client |
 
+- **Dados do jogo:** `packages/engine/src/data/` é a **fonte única** dos dados de regra (territórios, continentes e bônus, fronteiras, cartas de troca, objetivos, faces dos dados), com ids iguais aos de `Tabuleiro.html`. Só o que as regras usam; a geografia do mapa fica no front. Ids de cartas e objetivos são estáveis (vão para o log das partidas). Ao mexer nos dados, `conferirDados()` (`pnpm conferir`) os confere contra `WARII.md`; o servidor roda a mesma conferência ao iniciar e não sobe se falhar.
 - `engine` e `shared` são consumidos como **código-fonte TS** (`exports` → `src/index.ts`); o tsup embute os dois no bundle do servidor e o Vite no do front.
 - **Banco:** PostgreSQL em container separado, preparado pelo usuário. Conexão via `DATABASE_URL` (ver `packages/server/.env-exemplo`). Ao iniciar, o servidor (`src/db/preparar.ts`) cria o database se não existir (usuário precisa de `CREATEDB`) e aplica as migrations de `packages/server/drizzle` sob `pg_advisory_lock`; só então abre a porta. Não existe `db:migrate`: para mudar o banco, editar `src/db/schema.ts` → `pnpm --filter @warii/server db:generate` → reiniciar. Pool único em `src/db/index.ts`; encerramento gracioso em SIGTERM/SIGINT; `/api/health` devolve 503 sem banco.
 - **Deploy (Dokploy):** um projeto com duas aplicações apontando para o mesmo repositório, ambas com **context na raiz**: `packages/server/Dockerfile` (Node) e `packages/web/Dockerfile` (build Vite + Nginx). Domínio único com roteamento por path: `/` → web; `/api` e `/socket.io` → server. Em dev, o Vite faz proxy desses paths para `localhost:3000`.
-- Comandos na raiz: `pnpm dev` (server + web), `pnpm typecheck`, `pnpm lint` (`lint:fix`), `pnpm format` (`format:check`). **Sem testes automatizados**: a verificação é manual, rodando a aplicação.
+- Comandos na raiz: `pnpm dev` (server + web), `pnpm typecheck`, `pnpm conferir`, `pnpm lint` (`lint:fix`), `pnpm format` (`format:check`). **Sem testes automatizados**: a verificação é manual, rodando a aplicação.
 - **Lint com Oxlint** (`.oxlintrc.json`, com regras que usam tipos via `oxlint-tsgolint`), e não ESLint: o typescript-eslint ainda não suporta o TypeScript 7 nativo. Formatação com Prettier (`.prettierrc.json`; os `.md` e o `Tabuleiro.html` ficam de fora).
 - **Configuração do servidor** validada com zod em `packages/server/src/config.ts`: o código lê de `config`, nunca de `process.env` direto. O logger (`src/logger.ts`) oculta cookie, authorization, senha, token e segredo.
 - Scripts de build de dependências precisam ser liberados em `allowBuilds` no `pnpm-workspace.yaml` (pnpm 11).

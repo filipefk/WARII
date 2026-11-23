@@ -83,6 +83,7 @@ O servidor escuta em `http://localhost:3000` (REST em `/api`, Socket.IO em `/soc
 | `pnpm lint` | Lint com Oxlint, incluindo regras com tipos (`pnpm lint:fix` corrige o que der) |
 | `pnpm format` | Formata o código com Prettier (`pnpm format:check` só confere) |
 | `pnpm typecheck` | Checagem de tipos em todos os pacotes |
+| `pnpm conferir` | Confere os dados estáticos do engine (mapa, fronteiras, cartas, objetivos, dados) contra `WARII.md`; o servidor faz a mesma conferência ao iniciar e não sobe se algo estiver errado |
 | `pnpm build` | Build de produção de todos os pacotes |
 
 No servidor também há `db:generate` e `db:studio` (Drizzle Kit), executados com `pnpm --filter @warii/server <script>`. Para mudar o banco: edite `packages/server/src/db/schema.ts`, rode `db:generate` e reinicie o servidor, que aplica a nova migração sozinho.

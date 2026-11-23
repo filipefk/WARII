@@ -2,4 +2,4 @@
 // Usado pelo servidor (autoridade) e pelo front (pré-visualização).
 // A especificação das regras está em WARII.md, na raiz do projeto.
 
-export {};
+export * from "./data/index.js";

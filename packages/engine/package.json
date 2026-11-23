@@ -7,6 +7,10 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts",
+    "conferir": "tsx scripts/conferir.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15"
   }
 }

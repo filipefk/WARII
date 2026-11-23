@@ -37,10 +37,11 @@ Este plano define **as etapas e a ordem**. Cada etapa será detalhada depois, em
 - **Pronto quando:** subir a API contra um Postgres vazio cria o database e as tabelas; subir de novo não faz nada.
 - **Entregue:** `packages/server/src/db/preparar.ts` (cria o database com espera de até ~30 s pelo Postgres, trava consultiva e `migrate()`), `src/db/index.ts` (pool único e `bancoResponde()`), `src/index.ts` (bootstrap antes do `listen`, health com 503, encerramento gracioso), migration `drizzle/0000_inicial.sql` (extensão `citext`, para o e-mail na etapa 5), script `db:migrate` removido e checagem das migrations no Dockerfile. Verificação manual feita.
 
-### Etapa 3 — Engine: dados estáticos do jogo
+### Etapa 3 — Engine: dados estáticos do jogo ✅ CONCLUÍDA (2026-11-23)
 - Extrair de `Tabuleiro.html` para `packages/engine/src/data/`: territórios, continentes, adjacências (grafo não direcionado), CEs e sua rede de aerotransporte, as 61 cartas de troca, as 20 cartas-objetivo, faces dos dados e tabela de bônus (§6.2).
 - Conferência dos dados contra `WARII.md` (simetria das adjacências, contagem por continente, CEs, baralho completo).
 - **Pronto quando:** os dados do engine são a fonte única e batem com `WARII.md`.
+- **Entregue:** `packages/engine/src/data/` com `cores.ts`, `continentes.ts` (bônus padrão), `territorios.ts` (43, ids do `Tabuleiro.html`, tipo `TerritorioId`), `fronteiras.ts` (81 ligações, `vizinhos()`/`saoVizinhos()`), `cartas.ts` (61 cartas com ids estáveis), `objetivos.ts` (20 objetivos como lista de requisitos, mais os substitutos de §10.2), `dados.ts` (faces padrão) e `conferir.ts` (`conferirDados()`). Script `pnpm conferir` e conferência no boot do servidor. A geografia do mapa ficou fora do engine (vai para o `web` na etapa 9); os parâmetros de §13.4 entram na etapa 4.1. Verificação manual feita.
 
 ### Etapa 4 — Engine: regras e máquina de estados
 Funções puras `(estado, ação, rng) → { estado, eventos }`, seguindo a máquina de §13.2. Subetapas:
