@@ -15,6 +15,10 @@ export const pool = new Pool({
 
 export const db = drizzle(pool, { schema });
 
+// O banco ou uma transação aberta: funções que gravam aceitam qualquer um dos dois.
+export type Transacao = Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type Executor = typeof db | Transacao;
+
 // Usado pelo /api/health: responde rápido mesmo com o banco fora do ar.
 export async function bancoResponde(): Promise<boolean> {
   let temporizador: NodeJS.Timeout | undefined;

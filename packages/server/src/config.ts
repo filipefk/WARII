@@ -20,6 +20,17 @@ const esquema = z.object({
       (valor) => valor !== SEGREDO_DE_EXEMPLO,
       "ainda é o valor do .env-exemplo; gere um novo",
     ),
+  // Endereço do site visto pelo navegador (sem barra no fim): base dos links de senha
+  // e origem aceita nas requisições que alteram dados.
+  URL_PUBLICA: z
+    .url({ protocol: /^https?$/, error: "deve ser uma URL http:// ou https://" })
+    .transform((valor) => new URL(valor).origin)
+    .default("http://localhost:5173"),
+  // "true" atrás de proxy reverso (Traefik do Dokploy), para o servidor ver o IP real do cliente.
+  TRUST_PROXY: z
+    .enum(["true", "false"], { error: 'deve ser "true" ou "false"' })
+    .default("false")
+    .transform((valor) => valor === "true"),
 });
 
 export type Config = Readonly<z.infer<typeof esquema>>;

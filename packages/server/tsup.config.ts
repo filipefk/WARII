@@ -1,7 +1,8 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  // index: o servidor; cli: comandos de administração das contas (node dist/cli.js).
+  entry: ["src/index.ts", "src/cli.ts"],
   format: ["esm"],
   platform: "node",
   target: "node24",

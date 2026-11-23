@@ -7,11 +7,15 @@
     "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
     "build": "tsup",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit",
+    "cli": "tsx --env-file-if-exists=.env src/cli.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p test",
+    "test": "tsx --env-file-if-exists=.env --test --test-concurrency=1 test/entradas.test.ts test/senha.test.ts test/tokens.test.ts test/tentativas.test.ts test/auth.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.1.5",
+    "@fastify/rate-limit": "^11.3.0",
     "@warii/engine": "workspace:*",
     "@warii/shared": "workspace:*",
     "drizzle-orm": "^0.45.4",

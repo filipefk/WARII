@@ -1,5 +1,7 @@
 // Contrato de comunicação entre servidor e front (eventos do Socket.IO e DTOs da API REST).
 
+export * from "./auth.js";
+
 export interface ServerToClientEvents {
   boasVindas: (mensagem: string) => void;
 }

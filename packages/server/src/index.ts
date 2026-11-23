@@ -1,10 +1,11 @@
 import { fileURLToPath } from "node:url";
-import Fastify from "fastify";
 import { Server } from "socket.io";
 import { conferirDados } from "@warii/engine";
 import type { ClientToServerEvents, ServerToClientEvents } from "@warii/shared";
+import { criarApp } from "./app.js";
+import { limparVencidas } from "./auth/sessoes.js";
 import { config } from "./config.js";
-import { bancoResponde, pool } from "./db/index.js";
+import { pool } from "./db/index.js";
 import { prepararBanco } from "./db/preparar.js";
 import { opcoesDoLogger } from "./logger.js";
 
@@ -16,16 +17,14 @@ const pastaDeMigrations = fileURLToPath(new URL("../drizzle", import.meta.url));
 // Tempo máximo para fechar tudo ao receber SIGTERM/SIGINT antes de forçar a saída.
 const PRAZO_ENCERRAMENTO_MS = 10_000;
 
-const app = Fastify({ logger: opcoesDoLogger });
+// Intervalo da limpeza de sessões e links de senha vencidos (também roda ao iniciar).
+const INTERVALO_LIMPEZA_MS = 6 * 60 * 60 * 1000;
+
+const app = await criarApp(opcoesDoLogger);
 
 // Conexões ociosas que caem (ex.: Postgres reiniciou) não podem derrubar o processo.
 pool.on("error", (erro) => {
   app.log.error({ err: erro }, "erro em conexão ociosa do pool do banco");
-});
-
-app.get("/api/health", async (_requisicao, resposta) => {
-  if (await bancoResponde()) return { ok: true, banco: "ok" };
-  return resposta.code(503).send({ ok: false, banco: "indisponivel" });
 });
 
 const io = new Server<ClientToServerEvents, ServerToClientEvents>(app.server, {
@@ -45,6 +44,15 @@ app.addHook("preClose", async () => {
 app.addHook("onClose", async () => {
   await pool.end();
 });
+
+async function limparSessoes(): Promise<void> {
+  try {
+    const apagados = await limparVencidas();
+    app.log.info(apagados, "limpeza de sessões e links de senha vencidos");
+  } catch (erro) {
+    app.log.error({ err: erro }, "falha na limpeza de sessões vencidas");
+  }
+}
 
 let encerrando = false;
 async function encerrar(sinal: NodeJS.Signals): Promise<void> {
@@ -75,6 +83,8 @@ try {
   }
   await prepararBanco(app.log, pastaDeMigrations);
   await app.listen({ port: config.PORT, host: config.HOST });
+  await limparSessoes();
+  setInterval(() => void limparSessoes(), INTERVALO_LIMPEZA_MS).unref();
 } catch (erro) {
   app.log.fatal({ err: erro }, "falha ao iniciar o servidor");
   process.exitCode = 1;

@@ -10,7 +10,7 @@ Este plano define **as etapas e a ordem**. Cada etapa será detalhada depois, em
 - PostgreSQL; ao iniciar, a API **cria o database se não existir** e **roda as migrations sozinha**.
 - Login com **e-mail e senha** (contas próprias).
 - Partidas **ao vivo, com reconexão** e retomada (estado salvo no banco); sem modo assíncrono por enquanto.
-- **Sem GitHub Actions.** Testes automatizados só no engine (`node:test`, rodados à mão com `pnpm test` e `pnpm test:simulacao`); servidor e front são verificados rodando a aplicação.
+- **Sem GitHub Actions.** Testes automatizados no engine e, a partir da etapa 5, no servidor (`node:test`, rodados à mão com `pnpm test` e `pnpm test:simulacao`); o front é verificado rodando a aplicação.
 - Boas práticas de programação e segurança em todas as etapas (ver seção final).
 
 ---
@@ -58,12 +58,13 @@ Funções puras `(estado, ação, rng) → { estado, eventos }`, seguindo a máq
 - **Pronto quando:** todas as fases do turno estão implementadas e conferidas com os exemplos do manual.
 - **Entregue:** `packages/engine/src/regras/` com `parametros.ts` (§13.4 mais os ⚠ desta etapa), `estado.ts` (estado serializável em JSON), `acoes.ts`, `eventos.ts`, `rng.ts` (`Rng`, `rolar`, `embaralhar`, `gravarRng`/`rngDeReplay` para o log, `rngComSemente`/`rngRoteirizado` para os cenários), `resultado.ts` (recusa com código estável, sem exceção para fora), `consultas.ts` (`calcularRecebimento`, `exercitosMoviveis` etc.), `criar.ts` (`criarPartida`), `aplicar.ts` (`aplicarAcao`) e um módulo por fase (preparação, turno, recebimento, ataques, deslocamento, cartas, objetivos, eliminação) e `visao.ts` (`visaoDoJogador`, `eventosParaJogador`). Testes em `packages/engine/test/` com `node:test`: `pnpm test` (exemplos do manual com dados roteirizados e conferência dos dados) e `pnpm test:simulacao` (partidas simuladas com robôs: invariantes, informação oculta e replay). `pnpm typecheck`, `pnpm lint`, `pnpm test` e `pnpm test:simulacao` passam (2026-11-23).
 
-### Etapa 5 — Contas e autenticação
+### Etapa 5 — Contas e autenticação ✅ CONCLUÍDA (2026-11-23)
 - Tabelas `usuarios` e `sessoes` (Drizzle + migration).
-- Cadastro, login, logout, "quem sou eu"; senha com **Argon2id**; sessão opaca em cookie `httpOnly`, `Secure`, `SameSite=Lax`, guardada (hash) no banco, com expiração e revogação.
+- ~~Cadastro~~ (decisão: só o administrador cria contas, pela CLI), login, logout, "quem sou eu"; senha com **Argon2id**; sessão opaca em cookie `httpOnly`, `Secure`, `SameSite=Lax`, guardada (hash) no banco, com expiração e revogação.
 - Rate limit e atraso progressivo no login; mensagens de erro que não revelam se o e-mail existe.
-- Recuperação de senha: definir na etapa (depende de ter envio de e-mail).
+- Recuperação de senha: definir na etapa (depende de ter envio de e-mail). **Decidido:** sem e-mail; a CLI gera um link de uso único que o administrador envia ao amigo.
 - **Pronto quando:** rotas `/api/auth/*` funcionam e as sessões aparecem/expiram corretamente no banco.
+- **Entregue:** migration `drizzle/0001_contas.sql` (`usuarios`, `sessoes`, `tokens_senha`); `packages/server/src/auth/` com `senha.ts` (Argon2id do `node:crypto`, formato PHC), `tokens.ts` (HMAC com `SESSION_SECRET`), `sessoes.ts` (30 dias deslizantes, revogação, limpeza a cada 6 h), `contas.ts`, `tentativas.ts` (atraso progressivo e bloqueio), `plugin.ts` (cookie, rate limit, checagem de Origin, `exigirSessao`) e `rotas.ts` (`/login`, `/logout`, `/eu`, `/senha/definir`, `PUT /senha`, `/sair-de-todas`); `src/cli.ts` (`conta:criar`, `senha:link`, `contas:listar`); `src/erros.ts` (erros `{ codigo, mensagem }`); DTOs em `packages/shared/src/auth.ts`; config `URL_PUBLICA` e `TRUST_PROXY`. Montagem do app em `src/app.ts` (`criarApp`) e testes em `packages/server/test/`: unitários (senha, tokens, tentativas, schemas) e integração das rotas com banco de teste (`auth.test.ts`), rodados por `pnpm test` junto com os do engine. `pnpm lint` sem avisos; verificação manual feita pelo usuário.
 
 ### Etapa 6 — Contrato `shared` e lobby (REST)
 - Em `@warii/shared`: schemas `zod` das ações do jogo, DTOs da API e tipos dos eventos do Socket.IO (validação no servidor, tipos no front).

@@ -84,13 +84,33 @@ O servidor escuta em `http://localhost:3000` (REST em `/api`, Socket.IO em `/soc
 | `pnpm format` | Formata o código com Prettier (`pnpm format:check` só confere) |
 | `pnpm typecheck` | Checagem de tipos em todos os pacotes |
 | `pnpm conferir` | Confere os dados estáticos do engine (mapa, fronteiras, cartas, objetivos, dados) contra `WARII.md`; o servidor faz a mesma conferência ao iniciar e não sobe se algo estiver errado |
-| `pnpm test` | Testes do engine (`node:test`): regras conferidas com os exemplos do manual, com dados roteirizados, e conferência dos dados estáticos |
+| `pnpm test` | Testes do engine (`node:test`): regras conferidas com os exemplos do manual, com dados roteirizados, e conferência dos dados estáticos. E do servidor: senha, tokens, limites e as rotas de autenticação de ponta a ponta, num database de teste (`DATABASE_URL_TESTE`, ou o de `DATABASE_URL` com sufixo `_teste`, criado sozinho e **apagado** a cada teste) |
 | `pnpm test:simulacao` | Simula partidas completas com robôs aleatórios, checando invariantes, informação oculta e replay depois de cada ação (`$env:PARTIDAS=N` muda a quantidade; padrão 40) |
 | `pnpm build` | Build de produção de todos os pacotes |
 
 No servidor também há `db:generate` e `db:studio` (Drizzle Kit), executados com `pnpm --filter @warii/server <script>`. Para mudar o banco: edite `packages/server/src/db/schema.ts`, rode `db:generate` e reinicie o servidor, que aplica a nova migração sozinho.
 
 `GET /api/health` responde `200` com o banco no ar e `503` quando ele não responde.
+
+## Contas
+
+Não há cadastro público: **só o administrador cria contas**, pela linha de comando do servidor. O comando mostra um link de uso único, que você manda ao amigo; é ele quem define a própria senha pelo link (o administrador nunca vê a senha). A recuperação de senha funciona do mesmo jeito, sem envio de e-mail.
+
+```powershell
+pnpm --filter @warii/server cli conta:criar amigo@exemplo.com Apelido
+```
+
+```powershell
+pnpm --filter @warii/server cli senha:link amigo@exemplo.com
+```
+
+```powershell
+pnpm --filter @warii/server cli contas:listar
+```
+
+Em produção, no terminal do container do servidor (Dokploy): `node dist/cli.js conta:criar ...`. O link de ativação vale 72 h; o de redefinição, 1 h (e invalida os anteriores). Os links usam `URL_PUBLICA` como base.
+
+Rotas em `/api/auth`: `POST /login`, `POST /logout`, `GET /eu`, `POST /senha/definir` (pelo link), `PUT /senha` (troca, logado) e `POST /sair-de-todas`. A sessão fica num cookie `httpOnly` (`SameSite=Lax`; `Secure` e prefixo `__Host-` em produção) com validade de 30 dias renovada pelo uso; no banco vai só o HMAC do token. Senhas com Argon2id; o login tem limite por IP, atraso progressivo e bloqueio temporário por e-mail.
 
 ## Deploy
 
@@ -99,7 +119,7 @@ Pensado para o **Dokploy**: um projeto com duas aplicações apontando para este
 - `packages/server/Dockerfile` — servidor Node
 - `packages/web/Dockerfile` — build do Vite servido pelo Nginx
 
-Domínio único com roteamento por caminho: `/` → web; `/api` e `/socket.io` → server. O PostgreSQL roda em container separado, e a conexão é feita pela variável `DATABASE_URL`.
+Domínio único com roteamento por caminho: `/` → web; `/api` e `/socket.io` → server. O PostgreSQL roda em container separado, e a conexão é feita pela variável `DATABASE_URL`. No servidor, defina também `URL_PUBLICA` (o endereço https do site) e `TRUST_PROXY=true` (atrás do Traefik).
 
 ## Propriedade intelectual
 
