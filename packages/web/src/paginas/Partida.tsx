@@ -1,0 +1,71 @@
+// Uma partida: carrega o lobby pela API, acompanha pelo socket e escolhe a tela conforme o status.
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router";
+import { mensagemDoErro } from "../api/cliente";
+import { apiPartidas } from "../api/partidas";
+import { Aviso, Carregando } from "../componentes/basicos";
+import { useAcompanharPartida } from "../hooks/useAcompanharPartida";
+import { useDadosPartida, usePartidas } from "../stores/partidas";
+import { useSessao } from "../stores/sessao";
+import { PartidaEmAndamento } from "./PartidaEmAndamento";
+import type { EstadoAviso } from "./Partidas";
+import { SalaDeEspera } from "./SalaDeEspera";
+
+function TelaDaPartida({ partidaId }: { partidaId: string }) {
+  const navegar = useNavigate();
+  const usuarioId = useSessao((s) => s.usuario?.id ?? "");
+  const gravarLobby = usePartidas((s) => s.gravarLobby);
+  const esquecer = usePartidas((s) => s.esquecer);
+  const { lobby, presenca, jogo, removido } = useDadosPartida(partidaId);
+  const erroSocket = useAcompanharPartida(partidaId);
+  const [erro, setErro] = useState<string | null>(null);
+
+  useEffect(() => {
+    let ativo = true;
+    apiPartidas
+      .obter(partidaId)
+      .then((dados) => ativo && gravarLobby(dados))
+      .catch((falha: unknown) => ativo && setErro(mensagemDoErro(falha)));
+    return () => {
+      ativo = false;
+      esquecer(partidaId);
+    };
+  }, [partidaId, gravarLobby, esquecer]);
+
+  // Saída forçada: removido pelo anfitrião (ou saiu em outra aba) ou partida cancelada.
+  const cancelada = lobby?.status === "cancelada";
+  useEffect(() => {
+    if (!removido && !cancelada) return;
+    const estado: EstadoAviso = {
+      aviso: removido
+        ? "Você saiu ou foi removido da partida."
+        : "A partida foi cancelada pelo anfitrião.",
+    };
+    void navegar("/partidas", { replace: true, state: estado });
+  }, [removido, cancelada, navegar]);
+
+  const falha = erro ?? (lobby ? null : erroSocket?.mensagem);
+  if (falha) {
+    return (
+      <div className="space-y-4">
+        <Aviso>{falha}</Aviso>
+        <Link to="/partidas" className="text-amber-400 hover:underline">
+          Voltar às partidas
+        </Link>
+      </div>
+    );
+  }
+  if (!lobby || cancelada || removido) return <Carregando />;
+
+  if (lobby.status === "aguardando") {
+    return <SalaDeEspera lobby={lobby} presenca={presenca} usuarioId={usuarioId} />;
+  }
+  return <PartidaEmAndamento lobby={lobby} presenca={presenca} jogo={jogo} />;
+}
+
+export function Partida() {
+  const { id } = useParams();
+  if (!id) return null;
+  // A chave remonta tudo ao trocar de partida (estado local, socket e store).
+  return <TelaDaPartida key={id} partidaId={id} />;
+}

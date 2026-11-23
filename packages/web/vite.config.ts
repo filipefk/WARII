@@ -4,6 +4,10 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Uma só cópia do React: sem isso, o pré-empacotamento do Vite embutia outra dentro do
+  // react-router (os links do pnpm no Windows apareciam como caminhos diferentes) e a tela
+  // ficava em branco com "Invalid hook call".
+  resolve: { dedupe: ["react", "react-dom"] },
   server: {
     port: 5173,
     // Abre o navegador padrão na URL do front ao rodar `pnpm dev`.

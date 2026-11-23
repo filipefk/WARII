@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "warii-server",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@warii/server", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "warii-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@warii/web", "dev"],
+      "port": 5173
+    }
+  ]
+}
