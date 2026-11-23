@@ -13,11 +13,16 @@ export function responderErro(
   return resposta.code(status).send(corpo);
 }
 
-export function responderEntradaInvalida(resposta: FastifyReply, erro: ZodError): FastifyReply {
+// Mensagem do primeiro problema de uma validação zod ("campo: motivo").
+export function mensagemDaEntradaInvalida(erro: ZodError): string {
   const primeiro = erro.issues[0];
   const campo = primeiro?.path.join(".");
   const mensagem = primeiro ? (campo ? `${campo}: ${primeiro.message}` : primeiro.message) : "";
-  return responderErro(resposta, 400, "ENTRADA_INVALIDA", mensagem || "dados inválidos");
+  return mensagem || "dados inválidos";
+}
+
+export function responderEntradaInvalida(resposta: FastifyReply, erro: ZodError): FastifyReply {
+  return responderErro(resposta, 400, "ENTRADA_INVALIDA", mensagemDaEntradaInvalida(erro));
 }
 
 function statusDoErro(erro: unknown): number | undefined {

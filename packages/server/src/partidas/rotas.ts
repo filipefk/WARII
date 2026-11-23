@@ -1,4 +1,5 @@
-// Rotas /api/partidas (lobby). Todas exigem login; as regras ficam em lobby.ts.
+// Rotas /api/partidas (lobby). Todas exigem login; as regras ficam em lobby.ts. Depois de cada
+// alteração (já gravada), o socket avisa os participantes (app.tempoReal).
 import type { FastifyInstance, FastifyReply } from "fastify";
 import {
   ConfigurarPartidaEntrada,
@@ -83,7 +84,11 @@ export async function rotasDePartidas(app: FastifyInstance): Promise<void> {
       const entrada = EntrarPartidaEntrada.safeParse(requisicao.body);
       if (!entrada.success) return responderEntradaInvalida(resposta, entrada.error);
       const usuarioId = sessaoDa(requisicao).usuario.id;
-      return responder(resposta, () => entrarComConvite(usuarioId, entrada.data.token));
+      return responder(resposta, async () => {
+        const lobby = await entrarComConvite(usuarioId, entrada.data.token);
+        app.tempoReal.lobbyAlterado(lobby.id);
+        return lobby;
+      });
     },
   );
 
@@ -100,7 +105,11 @@ export async function rotasDePartidas(app: FastifyInstance): Promise<void> {
     const entrada = EscolherCorEntrada.safeParse(requisicao.body);
     if (!entrada.success) return responderEntradaInvalida(resposta, entrada.error);
     const usuarioId = sessaoDa(requisicao).usuario.id;
-    return responder(resposta, () => escolherCor(params.data.id, usuarioId, entrada.data.cor));
+    return responder(resposta, async () => {
+      const lobby = await escolherCor(params.data.id, usuarioId, entrada.data.cor);
+      app.tempoReal.lobbyAlterado(lobby.id);
+      return lobby;
+    });
   });
 
   app.put("/:id/parametros", escrita, async (requisicao, resposta) => {
@@ -109,45 +118,63 @@ export async function rotasDePartidas(app: FastifyInstance): Promise<void> {
     const entrada = ConfigurarPartidaEntrada.safeParse(requisicao.body);
     if (!entrada.success) return responderEntradaInvalida(resposta, entrada.error);
     const usuarioId = sessaoDa(requisicao).usuario.id;
-    return responder(resposta, () =>
-      configurarParametros(params.data.id, usuarioId, entrada.data.parametros),
-    );
+    return responder(resposta, async () => {
+      const lobby = await configurarParametros(params.data.id, usuarioId, entrada.data.parametros);
+      app.tempoReal.lobbyAlterado(lobby.id);
+      return lobby;
+    });
   });
 
   app.post("/:id/convite", escrita, async (requisicao, resposta) => {
     const params = ParametroPartida.safeParse(requisicao.params);
     if (!params.success) return partidaInexistente(resposta);
     const usuarioId = sessaoDa(requisicao).usuario.id;
-    return responder(resposta, () => renovarConvite(params.data.id, usuarioId));
+    return responder(resposta, async () => {
+      const lobby = await renovarConvite(params.data.id, usuarioId);
+      app.tempoReal.lobbyAlterado(lobby.id);
+      return lobby;
+    });
   });
 
   app.post("/:id/sair", escrita, async (requisicao, resposta) => {
     const params = ParametroPartida.safeParse(requisicao.params);
     if (!params.success) return partidaInexistente(resposta);
     const usuarioId = sessaoDa(requisicao).usuario.id;
-    return responder(resposta, () => sairDaPartida(params.data.id, usuarioId));
+    return responder(resposta, async () => {
+      await sairDaPartida(params.data.id, usuarioId);
+      app.tempoReal.saiuDoLobby(params.data.id, usuarioId);
+    });
   });
 
   app.delete("/:id/participantes/:usuarioId", escrita, async (requisicao, resposta) => {
     const params = ParametroParticipante.safeParse(requisicao.params);
     if (!params.success) return partidaInexistente(resposta);
     const usuarioId = sessaoDa(requisicao).usuario.id;
-    return responder(resposta, () =>
-      removerDaPartida(params.data.id, usuarioId, params.data.usuarioId),
-    );
+    return responder(resposta, async () => {
+      const lobby = await removerDaPartida(params.data.id, usuarioId, params.data.usuarioId);
+      app.tempoReal.saiuDoLobby(lobby.id, params.data.usuarioId);
+      return lobby;
+    });
   });
 
   app.post("/:id/cancelar", escrita, async (requisicao, resposta) => {
     const params = ParametroPartida.safeParse(requisicao.params);
     if (!params.success) return partidaInexistente(resposta);
     const usuarioId = sessaoDa(requisicao).usuario.id;
-    return responder(resposta, () => cancelarPartida(params.data.id, usuarioId));
+    return responder(resposta, async () => {
+      await cancelarPartida(params.data.id, usuarioId);
+      app.tempoReal.lobbyAlterado(params.data.id);
+    });
   });
 
   app.post("/:id/iniciar", escrita, async (requisicao, resposta) => {
     const params = ParametroPartida.safeParse(requisicao.params);
     if (!params.success) return partidaInexistente(resposta);
     const usuarioId = sessaoDa(requisicao).usuario.id;
-    return responder(resposta, () => iniciarPartida(params.data.id, usuarioId));
+    return responder(resposta, async () => {
+      const lobby = await iniciarPartida(params.data.id, usuarioId);
+      app.tempoReal.partidaIniciada(lobby.id);
+      return lobby;
+    });
   });
 }

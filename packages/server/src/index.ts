@@ -1,7 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { Server } from "socket.io";
 import { conferirDados } from "@warii/engine";
-import type { ClientToServerEvents, ServerToClientEvents } from "@warii/shared";
 import { criarApp } from "./app.js";
 import { limparVencidas } from "./auth/sessoes.js";
 import { config } from "./config.js";
@@ -27,20 +25,8 @@ pool.on("error", (erro) => {
   app.log.error({ err: erro }, "erro em conexão ociosa do pool do banco");
 });
 
-const io = new Server<ClientToServerEvents, ServerToClientEvents>(app.server, {
-  path: "/socket.io",
-});
-
-// Autenticação, salas e ações da partida pelo socket entram na etapa 7.
-io.on("connection", (socket) => {
-  app.log.info({ socketId: socket.id }, "cliente conectado");
-});
-
-// Sockets saem primeiro (senão o fechamento do HTTP esperaria as conexões abertas);
-// o pool fecha por último, depois que nenhuma requisição pode mais usá-lo.
-app.addHook("preClose", async () => {
-  await io.close();
-});
+// O Socket.IO fecha no preClose (tempoReal/servidor.ts); o pool fecha por último, depois que
+// nenhuma requisição pode mais usá-lo.
 app.addHook("onClose", async () => {
   await pool.end();
 });

@@ -1,6 +1,11 @@
 // Rotas /api/auth. Não há cadastro público: contas nascem pela CLI (ver contas.ts).
 import type { FastifyInstance } from "fastify";
-import { DefinirSenhaEntrada, LoginEntrada, TrocarSenhaEntrada, type UsuarioDto } from "@warii/shared";
+import {
+  DefinirSenhaEntrada,
+  LoginEntrada,
+  TrocarSenhaEntrada,
+  type UsuarioDto,
+} from "@warii/shared";
 import { responderEntradaInvalida, responderErro } from "../erros.js";
 import { autenticar, definirSenhaComToken, ErroDeConta, trocarSenha } from "./contas.js";
 import {
@@ -66,7 +71,10 @@ export async function rotasDeAutenticacao(app: FastifyInstance): Promise<void> {
       const anterior = requisicao.cookies[NOME_COOKIE_SESSAO];
       if (anterior) {
         const sessaoAnterior = await sessaoPorToken(anterior);
-        if (sessaoAnterior) await revogarSessao(sessaoAnterior.sessaoId);
+        if (sessaoAnterior) {
+          await revogarSessao(sessaoAnterior.sessaoId);
+          app.tempoReal.sessaoEncerrada(sessaoAnterior.sessaoId);
+        }
       }
 
       const { token, expiraEm } = await criarSessao(conta.id, origemDaRequisicao(requisicao));
@@ -75,19 +83,18 @@ export async function rotasDeAutenticacao(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.post(
-    "/logout",
-    { config: { rateLimit: LIMITE_GERAL } },
-    async (requisicao, resposta) => {
-      const token = requisicao.cookies[NOME_COOKIE_SESSAO];
-      if (token) {
-        const sessao = await sessaoPorToken(token);
-        if (sessao) await revogarSessao(sessao.sessaoId);
+  app.post("/logout", { config: { rateLimit: LIMITE_GERAL } }, async (requisicao, resposta) => {
+    const token = requisicao.cookies[NOME_COOKIE_SESSAO];
+    if (token) {
+      const sessao = await sessaoPorToken(token);
+      if (sessao) {
+        await revogarSessao(sessao.sessaoId);
+        app.tempoReal.sessaoEncerrada(sessao.sessaoId);
       }
-      apagarCookieSessao(resposta);
-      return resposta.code(204).send();
-    },
-  );
+    }
+    apagarCookieSessao(resposta);
+    return resposta.code(204).send();
+  });
 
   app.get(
     "/eu",
@@ -108,6 +115,8 @@ export async function rotasDeAutenticacao(app: FastifyInstance): Promise<void> {
           entrada.data.senha,
           origemDaRequisicao(requisicao),
         );
+        // As sessões anteriores foram revogadas; a nova ainda não tem socket.
+        app.tempoReal.sessoesDoUsuarioEncerradas(conta.id);
         gravarCookieSessao(resposta, token, expiraEm);
         return paraDto(conta);
       } catch (erro) {
@@ -133,7 +142,9 @@ export async function rotasDeAutenticacao(app: FastifyInstance): Promise<void> {
         entrada.data.senhaAtual,
         entrada.data.novaSenha,
       );
-      if (!trocou) return responderErro(resposta, 400, "SENHA_ATUAL_INCORRETA", "senha atual incorreta");
+      if (!trocou)
+        return responderErro(resposta, 400, "SENHA_ATUAL_INCORRETA", "senha atual incorreta");
+      app.tempoReal.sessoesDoUsuarioEncerradas(sessao.usuario.id, sessao.sessaoId);
       return resposta.code(204).send();
     },
   );
@@ -143,7 +154,9 @@ export async function rotasDeAutenticacao(app: FastifyInstance): Promise<void> {
     "/sair-de-todas",
     { preHandler: exigirSessao, config: { rateLimit: LIMITE_GERAL } },
     async (requisicao, resposta) => {
-      await revogarSessoesDoUsuario(sessaoDa(requisicao).usuario.id);
+      const usuarioId = sessaoDa(requisicao).usuario.id;
+      await revogarSessoesDoUsuario(usuarioId);
+      app.tempoReal.sessoesDoUsuarioEncerradas(usuarioId);
       apagarCookieSessao(resposta);
       return resposta.code(204).send();
     },

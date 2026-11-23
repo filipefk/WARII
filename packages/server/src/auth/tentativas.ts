@@ -28,7 +28,11 @@ function chave(email: string, ip: string): string {
 
 function registroAtual(email: string, ip: string, agora: number): Registro | undefined {
   const registro = registros.get(chave(email, ip));
-  if (registro && agora - registro.ultimaFalha > ESQUECER_APOS_MS && registro.bloqueadoAte < agora) {
+  if (
+    registro &&
+    agora - registro.ultimaFalha > ESQUECER_APOS_MS &&
+    registro.bloqueadoAte < agora
+  ) {
     registros.delete(chave(email, ip));
     return undefined;
   }
@@ -52,7 +56,11 @@ export function atrasoAntesDaTentativa(email: string, ip: string): number {
 
 export function registrarFalha(email: string, ip: string): void {
   const agora = Date.now();
-  const registro = registroAtual(email, ip, agora) ?? { falhas: 0, ultimaFalha: 0, bloqueadoAte: 0 };
+  const registro = registroAtual(email, ip, agora) ?? {
+    falhas: 0,
+    ultimaFalha: 0,
+    bloqueadoAte: 0,
+  };
   registro.falhas += 1;
   registro.ultimaFalha = agora;
   if (registro.falhas >= FALHAS_PARA_BLOQUEIO) registro.bloqueadoAte = agora + BLOQUEIO_MS;

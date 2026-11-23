@@ -86,6 +86,19 @@ export async function sessaoPorToken(token: string): Promise<SessaoValida | unde
   };
 }
 
+// Confere se a sessão continua válida (não revogada nem vencida), sem renovar o prazo. Usada pelo
+// socket a cada pedido, pois a conexão pode durar mais que a sessão.
+export async function sessaoAtiva(sessaoId: string): Promise<boolean> {
+  const [linha] = await db
+    .select({ id: sessoes.id })
+    .from(sessoes)
+    .where(
+      and(eq(sessoes.id, sessaoId), isNull(sessoes.revogadaEm), gt(sessoes.expiraEm, new Date())),
+    )
+    .limit(1);
+  return linha !== undefined;
+}
+
 export async function revogarSessao(sessaoId: string): Promise<void> {
   await db
     .update(sessoes)

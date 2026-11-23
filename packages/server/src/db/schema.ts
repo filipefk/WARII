@@ -1,9 +1,10 @@
 // Tabelas do banco (Drizzle ORM).
 // Fluxo: editar este arquivo → `pnpm --filter @warii/server db:generate` → reiniciar o servidor,
 // que aplica as migrations novas sozinho ao subir.
-import type { CorId, EstadoPartida, Parametros, Sorteio } from "@warii/engine";
+import type { Acao, CorId, EstadoPartida, Parametros, Sorteio } from "@warii/engine";
 import type { StatusPartida } from "@warii/shared";
 import { sql } from "drizzle-orm";
+import type { AcaoCriacao } from "../partidas/inicio.js";
 import {
   check,
   customType,
@@ -172,7 +173,8 @@ export const acoesPartida = pgTable(
     // Quem enviou a ação; nulo quando é do sistema (ex.: a criação).
     usuarioId: uuid("usuario_id").references(() => usuarios.id),
     tipo: text("tipo").notNull(),
-    acao: jsonb("acao").notNull(),
+    // seq 0: AcaoCriacao; as demais: a Acao do engine enviada pelo jogador.
+    acao: jsonb("acao").$type<AcaoCriacao | Acao>().notNull(),
     sorteios: jsonb("sorteios").$type<Sorteio[]>().notNull(),
     criadaEm: instante("criada_em").notNull().defaultNow(),
   },

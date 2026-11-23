@@ -74,12 +74,14 @@ Funções puras `(estado, ação, rng) → { estado, eventos }`, seguindo a máq
 - **Decidido:** ordem da mesa sorteada ao iniciar (RNG crypto, no log); convite reutilizável, válido até iniciar, renovável pelo anfitrião; iniciar já cria o estado no engine.
 - **Entregue:** `@warii/shared` passa a depender do engine, com `acoes.ts` (`esquemaAcao`, conferido em tempo de compilação contra `Acao`), `parametros.ts` (`esquemaParametros`/`esquemaParametrosParciais`), `partidas.ts` (entradas e DTOs do lobby) e `socket.ts` (eventos da etapa 7). Migrations `0002_partidas.sql` (`partidas`, `participantes`, `acoes_partida`, `snapshots`) e `0003_log_append_only.sql` (trigger que recusa UPDATE/DELETE no log). `packages/server/src/partidas/`: `rng.ts` (`rngCrypto`), `inicio.ts` (`montarPartida`: sorteio dos assentos + `criarPartida`, usado também no replay), `lobby.ts` (operações em transação com `FOR UPDATE`, `ErroDeLobby`) e `rotas.ts` (`/api/partidas`). Testes `contrato.test.ts` e `lobby.test.ts`. `pnpm typecheck`, `pnpm lint` (sem avisos) e `pnpm test` passam; verificação feita pelo usuário.
 
-### Etapa 7 — Servidor de partida em tempo real
+### Etapa 7 — Servidor de partida em tempo real ✅ CONCLUÍDA (2026-11-23)
 - Socket.IO autenticado pelo mesmo cookie de sessão; cada partida é uma sala.
 - Fluxo de uma ação: validar payload (zod) → verificar vez/permissão → aplicar no engine com RNG `crypto` do servidor → gravar ação + resultado dos dados em transação (com número de sequência para evitar concorrência) → emitir a **visão filtrada** a cada jogador.
 - Carregamento da partida a partir de snapshot + replay do log; reconexão devolve o estado atual.
 - Rate limit por socket e tamanho máximo de mensagem.
 - **Pronto quando:** dois clientes jogam pelo socket e nenhum recebe dados ocultos do outro.
+- **Decidido:** também push do lobby (eventos `lobby` e `removido`) e presença (`presenca`); uma única instância do servidor (cache e fila por partida na memória); sem temporizador de vez.
+- **Entregue:** `packages/server/src/tempoReal/` com `servidor.ts` (`registrarTempoReal`, handlers e `app.tempoReal` para as rotas), `handshake.ts` (Origin + cookie de sessão), `partidasAtivas.ts` (cache, `naFila`, `carregarDoBanco`/`repetirLog`, despejo), `acoes.ts` (`processarAcao`, regra de snapshot), `emissao.ts` (estado, lobby, presença), `limite.ts` (balde de fichas) e `tipos.ts` (salas). Contrato `shared/src/socket.ts` com `partidaId` em todos os eventos, `lobby`, `removido`, `presenca`, `deixarPartida` e `TAMANHO_MAXIMO_MENSAGEM`. Rotas do lobby e de auth avisam o socket; `sessaoAtiva()` em `auth/sessoes.ts`. Testes em `test/socket.test.ts` (handshake, entrada, validação, serialização, partida com robôs sem vazamento, recarga e log adulterado, fim de jogo, lobby, presença, limites, sessão encerrada). `pnpm typecheck`, `pnpm lint` (sem avisos) e `pnpm test` passam; verificação feita pelo usuário.
 
 ### Etapa 8 — Front: base, autenticação e lobby
 - Roteamento, layout, stores Zustand, cliente da API e do socket tipados pelo `shared`.

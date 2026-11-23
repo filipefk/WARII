@@ -16,7 +16,8 @@ const VERSAO = 19;
 const MEMORIA_MAXIMA = 262_144;
 const PASSES_MAXIMO = 10;
 
-const FORMATO_PHC = /^\$argon2id\$v=(\d+)\$m=(\d+),t=(\d+),p=(\d+)\$([A-Za-z0-9+/]+)\$([A-Za-z0-9+/]+)$/;
+const FORMATO_PHC =
+  /^\$argon2id\$v=(\d+)\$m=(\d+),t=(\d+),p=(\d+)\$([A-Za-z0-9+/]+)\$([A-Za-z0-9+/]+)$/;
 
 async function derivar(
   senha: string,
