@@ -14,6 +14,9 @@ COPY packages/engine packages/engine
 COPY packages/shared packages/shared
 COPY packages/server packages/server
 RUN pnpm --filter @warii/server build
+# As migrations (packages/server/drizzle) vêm no COPY acima e o servidor as aplica ao iniciar
+# (dist/../drizzle). Falha o build da imagem se a pasta não vier.
+RUN test -f packages/server/drizzle/meta/_journal.json
 
 ENV NODE_ENV=production
 ENV PORT=3000

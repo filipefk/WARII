@@ -25,7 +25,7 @@ Este plano define **as etapas e a ordem**. Cada etapa será detalhada depois, em
 - **Pronto quando:** `pnpm lint` e `pnpm typecheck` passam na raiz.
 - **Entregue:** `.oxlintrc.json`, `.prettierrc.json`/`.prettierignore`, `packages/server/src/config.ts` (zod; recusa o segredo do exemplo), `packages/server/src/logger.ts` (redação com `[oculto]`, pino-pretty em dev), `packages/server/.env-exemplo` (substitui o `.env.example`) e abertura automática do navegador no `pnpm dev`. Verificação manual feita.
 
-### Etapa 2 — Banco de dados e migrations automáticas
+### Etapa 2 — Banco de dados e migrations automáticas ✅ CONCLUÍDA (2026-11-23)
 - Rotina de bootstrap em `packages/server/src/db/`:
   1. Conecta no banco de manutenção (`postgres`) com as credenciais de `DATABASE_URL`, consulta `pg_database` e executa `CREATE DATABASE` (nome validado e citado como identificador) se não existir.
   2. Obtém um `pg_advisory_lock` para que duas instâncias não migrem ao mesmo tempo.
@@ -35,6 +35,7 @@ Este plano define **as etapas e a ordem**. Cada etapa será detalhada depois, em
 - Dockerfile do server passa a copiar a pasta de migrations para a imagem.
 - Schema inicial apenas de infraestrutura (o das partidas entra nas etapas 5–6).
 - **Pronto quando:** subir a API contra um Postgres vazio cria o database e as tabelas; subir de novo não faz nada.
+- **Entregue:** `packages/server/src/db/preparar.ts` (cria o database com espera de até ~30 s pelo Postgres, trava consultiva e `migrate()`), `src/db/index.ts` (pool único e `bancoResponde()`), `src/index.ts` (bootstrap antes do `listen`, health com 503, encerramento gracioso), migration `drizzle/0000_inicial.sql` (extensão `citext`, para o e-mail na etapa 5), script `db:migrate` removido e checagem das migrations no Dockerfile. Verificação manual feita.
 
 ### Etapa 3 — Engine: dados estáticos do jogo
 - Extrair de `Tabuleiro.html` para `packages/engine/src/data/`: territórios, continentes, adjacências (grafo não direcionado), CEs e sua rede de aerotransporte, as 61 cartas de troca, as 20 cartas-objetivo, faces dos dados e tabela de bônus (§6.2).

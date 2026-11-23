@@ -65,11 +65,7 @@ Copie o arquivo de exemplo e ajuste `DATABASE_URL` e `SESSION_SECRET`. O servido
 Copy-Item packages/server/.env-exemplo packages/server/.env
 ```
 
-Aplique as migrações:
-
-```powershell
-pnpm --filter @warii/server db:migrate
-```
+Não é preciso preparar o banco à mão: ao iniciar, o servidor cria o database de `DATABASE_URL` se ele não existir (o usuário precisa da permissão `CREATEDB`) e aplica as migrações pendentes, sob uma trava para duas instâncias não migrarem juntas. Só depois disso ele abre a porta.
 
 Suba servidor e front juntos:
 
@@ -89,7 +85,9 @@ O servidor escuta em `http://localhost:3000` (REST em `/api`, Socket.IO em `/soc
 | `pnpm typecheck` | Checagem de tipos em todos os pacotes |
 | `pnpm build` | Build de produção de todos os pacotes |
 
-No servidor também há `db:generate`, `db:migrate` e `db:studio` (Drizzle Kit), executados com `pnpm --filter @warii/server <script>`.
+No servidor também há `db:generate` e `db:studio` (Drizzle Kit), executados com `pnpm --filter @warii/server <script>`. Para mudar o banco: edite `packages/server/src/db/schema.ts`, rode `db:generate` e reinicie o servidor, que aplica a nova migração sozinho.
+
+`GET /api/health` responde `200` com o banco no ar e `503` quando ele não responde.
 
 ## Deploy
 
