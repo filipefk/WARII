@@ -5,3 +5,5 @@ node_modules/
 Tabuleiro.html
 docs/
 *.md
+# Gerado por packages/web/scripts/gerar-geografia.mjs
+packages/web/src/mapa/geografia.json

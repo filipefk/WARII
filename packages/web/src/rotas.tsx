@@ -9,6 +9,7 @@ import { Entrar } from "./paginas/Entrar";
 import { NaoEncontrada } from "./paginas/NaoEncontrada";
 import { Partida } from "./paginas/Partida";
 import { Partidas } from "./paginas/Partidas";
+import { VitrineDev } from "./paginas/VitrineDev";
 
 export const roteador = createBrowserRouter([
   {
@@ -17,6 +18,7 @@ export const roteador = createBrowserRouter([
       { index: true, element: <Navigate to="/partidas" replace /> },
       { path: "entrar", element: <Entrar /> },
       { path: "definir-senha", element: <DefinirSenha /> },
+      ...(import.meta.env.DEV ? [{ path: "dev/vitrine", element: <VitrineDev /> }] : []),
       {
         element: <ExigirLogin />,
         children: [

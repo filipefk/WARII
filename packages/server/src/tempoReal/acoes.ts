@@ -1,11 +1,12 @@
 // Uma ação do jogo pelo socket: aplica no engine com a RNG crypto, grava ação + sorteios (e o
-// snapshot, quando for a hora) numa transação que confere o seq, e emite os eventos filtrados.
+// snapshot, quando for a hora) numa transação que confere o seq, e emite a cada jogador os eventos filtrados e a sua visão.
 import {
   type Acao,
   aplicarAcao,
   type EstadoPartida,
   eventosParaJogador,
   gravarRng,
+  visaoDoJogador,
 } from "@warii/engine";
 import type { Confirmacao, StatusPartida } from "@warii/shared";
 import { eq } from "drizzle-orm";
@@ -95,6 +96,7 @@ export function processarAcao(
         "eventos",
         partidaId,
         eventosParaJogador(resultado.eventos, jogador.id),
+        visaoDoJogador(novo, jogador.id),
         seq,
       );
     }

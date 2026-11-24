@@ -12,6 +12,7 @@ import {
   OBJETIVO_SUBSTITUTO_DESTRUIR,
   type Rng,
   rngComSemente,
+  visaoDoJogador,
 } from "@warii/engine";
 import type { Confirmacao } from "@warii/shared";
 import { asc, eq } from "drizzle-orm";
@@ -258,6 +259,12 @@ describe("servidor de partida (Socket.IO)", { skip: motivoSemBanco, concurrency:
         "eventos fora de ordem ou faltando",
       );
       conferirSemSegredosAlheios(j.escuta.mensagens, j.conta.id);
+      // A visão que chega com o último lote de eventos é a do estado atual.
+      const ultima = j.escuta.mensagens.findLast(
+        (m) => m.nome === "eventos" && m.seq === memoria.seq,
+      );
+      assert.ok(ultima?.nome === "eventos");
+      assert.deepEqual(ultima.visao, visaoDoJogador(memoria.estado, j.conta.id));
     }
 
     // Recarga do banco (último snapshot + repetição do log) dá o mesmo estado da memória.

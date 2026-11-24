@@ -14,9 +14,10 @@ export type Confirmacao = { ok: true } | { ok: false; erro: ErroApi };
 export interface ServerToClientEvents {
   // Estado completo da partida na visão de quem recebe (ao entrar, reconectar ou ressincronizar).
   estado: (partidaId: string, visao: VisaoPartida, seq: number) => void;
-  // Eventos de uma ação aplicada (já filtrados para quem recebe) e o seq resultante. Se o seq não
-  // for o anterior + 1, o cliente perdeu algo e deve pedir `entrarNaPartida` de novo.
-  eventos: (partidaId: string, eventos: Evento[], seq: number) => void;
+  // Eventos de uma ação aplicada (já filtrados para quem recebe), a visão resultante e o seq. A
+  // visão é a fonte do tabuleiro; os eventos servem para animar e para o log. Se o seq não for o
+  // anterior + 1, o cliente perdeu algo e deve pedir `entrarNaPartida` de novo.
+  eventos: (partidaId: string, eventos: Evento[], visao: VisaoPartida, seq: number) => void;
   // Sala de espera alterada (alguém entrou, saiu, trocou de cor; parâmetros; início; cancelamento).
   lobby: (partidaId: string, lobby: PartidaLobbyDto) => void;
   // O jogador saiu ou foi removido da sala de espera: deixa de receber os eventos dela.

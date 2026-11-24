@@ -99,7 +99,7 @@ export function semTipo(valor: unknown): Acao {
 
 export type Mensagem =
   | { nome: "estado"; partidaId: string; visao: VisaoPartida; seq: number }
-  | { nome: "eventos"; partidaId: string; eventos: Evento[]; seq: number }
+  | { nome: "eventos"; partidaId: string; eventos: Evento[]; visao: VisaoPartida; seq: number }
   | { nome: "lobby"; partidaId: string; lobby: PartidaLobbyDto }
   | { nome: "removido"; partidaId: string }
   | { nome: "presenca"; partidaId: string; conectados: string[] }
@@ -114,8 +114,8 @@ export class Escuta {
     cliente.on("estado", (partidaId, visao, seq) =>
       this.registrar({ nome: "estado", partidaId, visao, seq }),
     );
-    cliente.on("eventos", (partidaId, eventos, seq) =>
-      this.registrar({ nome: "eventos", partidaId, eventos, seq }),
+    cliente.on("eventos", (partidaId, eventos, visao, seq) =>
+      this.registrar({ nome: "eventos", partidaId, eventos, visao, seq }),
     );
     cliente.on("lobby", (partidaId, lobby) => this.registrar({ nome: "lobby", partidaId, lobby }));
     cliente.on("removido", (partidaId) => this.registrar({ nome: "removido", partidaId }));
@@ -203,21 +203,22 @@ export class Escuta {
 
 // Lança se alguma mensagem recebida por `eu` contém objetivo ou cartas de outro jogador.
 export function conferirSemSegredosAlheios(mensagens: readonly Mensagem[], eu: string): void {
-  for (const m of mensagens) {
-    if (m.nome === "estado") {
-      const { visao } = m;
-      if ("monte" in visao) throw new Error(`${eu} recebeu a ordem do monte`);
-      if (visao.voce !== eu) throw new Error(`${eu} recebeu a visão de ${String(visao.voce)}`);
-      for (const j of visao.jogadores) {
-        if (j.id === eu) continue;
-        const vencedorRevelado = visao.fase === "FIM" && visao.vencedor === j.id;
-        if (j.cartas !== null) throw new Error(`${eu} vê as cartas de ${j.id}`);
-        if (!vencedorRevelado && (j.objetivoId !== null || j.objetivoOriginalId !== null)) {
-          throw new Error(`${eu} vê o objetivo de ${j.id}`);
-        }
+  const conferirVisao = (visao: VisaoPartida) => {
+    if ("monte" in visao) throw new Error(`${eu} recebeu a ordem do monte`);
+    if (visao.voce !== eu) throw new Error(`${eu} recebeu a visão de ${String(visao.voce)}`);
+    for (const j of visao.jogadores) {
+      if (j.id === eu) continue;
+      const vencedorRevelado = visao.fase === "FIM" && visao.vencedor === j.id;
+      if (j.cartas !== null) throw new Error(`${eu} vê as cartas de ${j.id}`);
+      if (!vencedorRevelado && (j.objetivoId !== null || j.objetivoOriginalId !== null)) {
+        throw new Error(`${eu} vê o objetivo de ${j.id}`);
       }
     }
+  };
+  for (const m of mensagens) {
+    if (m.nome === "estado") conferirVisao(m.visao);
     if (m.nome === "eventos") {
+      conferirVisao(m.visao);
       for (const e of m.eventos) {
         switch (e.tipo) {
           case "objetivoSorteado":

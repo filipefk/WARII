@@ -75,8 +75,10 @@ function ligarOuvintes(): void {
   socket.on("removido", (partidaId) => partidas.marcarRemovido(partidaId));
   socket.on("presenca", (partidaId, conectados) => partidas.gravarPresenca(partidaId, conectados));
   socket.on("estado", (partidaId, visao, seq) => partidas.gravarEstado(partidaId, visao, seq));
-  socket.on("eventos", (partidaId, eventos, seq) => {
-    if (!usePartidas.getState().gravarEventos(partidaId, eventos, seq)) ressincronizar(partidaId);
+  socket.on("eventos", (partidaId, eventos, visao, seq) => {
+    if (!usePartidas.getState().gravarEventos(partidaId, eventos, visao, seq)) {
+      ressincronizar(partidaId);
+    }
   });
   socket.on("erro", (erro) => conexao.avisar(erro));
 }
