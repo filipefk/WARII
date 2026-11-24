@@ -10,8 +10,8 @@ Plano detalhado da etapa 9 de `PLANO-WARII-ONLINE.md`, com o andamento. **Pronto
 | 9.2 Geometria pré-calculada | ✅ concluída |
 | 9.3 Componentes do tabuleiro | ✅ concluída (conferida no navegador pela vitrine `/dev/vitrine`) |
 | 9.4 Envio de ações e pré-visualização | ✅ concluída (prévia conferida contra o engine numa partida simulada) |
-| 9.5 Tela da partida e HUD | ⏳ próxima |
-| 9.6 Interações por fase | ⏳ pendente |
+| 9.5 Tela da partida e HUD | ✅ concluída (conferida no navegador com a partida "Teste do lobby") |
+| 9.6 Interações por fase | ⏳ próxima |
 | 9.7 Galeria e guia de regras em React | ⏳ pendente |
 | 9.8 Documentação | ⏳ pendente |
 
@@ -76,11 +76,22 @@ Decisões do usuário:
     - consultas: `euSouDaVez`, `eu`, `territoriosOcupaveis`, `inicioDoisVagos`/`parceirosDoisVagos`, `territoriosPosicionaveis`/`maximoPosicionar`, `origensDeAtaque`/`alvosTerrestres`/`maximoDados`, `alvosAereos`, `origensDeDeslocamento`/`destinosDeDeslocamento`/`maximoDeslocar`/`ehAerotransporte`, `territoriosParaReforco`, `paresDeTransporte`/`maximoTransportar` e `maoAcimaDoLimite`.
   - `web/src/stores/jogo.ts` (`useJogo`, só de interface) guarda o `modo` da interação, `origem`, `destino`, `cartas`, `selecionado` e `seqAnimado`. As funções são `abrirPartida`, `sincronizarVez(chaveDaVez(...))` (zera a interação a cada vez), `selecionar`, `iniciar`, `definirOrigem`/`definirDestino`, `alternarCarta`, `cancelar` e `marcarAnimado`.
 
+- **Tela da partida (9.5).**
+  - `web/src/paginas/TelaDoJogo.tsx`, aberta por `Partida.tsx` quando a partida está em andamento ou encerrada. Carrega a geografia, monta `DefsDoJogo`, chama `abrirPartida`/`sincronizarVez` do `useJogo` e põe o mapa (clique seleciona e desseleciona) ao lado do painel de 340px. No desktop ocupa a altura da janela (`h-[calc(100vh-84px)]`, painel com rolagem própria); abaixo de 861px o mapa fica com 62vh e o painel desce.
+  - O bloco **Ação** do painel ainda só diz de quem é a vez: é ali que entram os controles da 9.6.
+  - `web/src/componentes/jogo/`: `Paineis.tsx` (`Bloco`, `PainelVez`, `PainelRecebimento`, `PainelMesa`, `MinhasCartas` com `onAlternar` opcional, `MeuObjetivo`, `LogDaPartida`), `InfoTerritorio.tsx` e `TabelaContinentes.tsx`.
+  - `web/src/jogo/mesa.ts`: `montarMesa(lobby, visao)` dá `nome(id)`, `cor(id)` e `jogadorDaVez`; `totaisPorJogador(visao)`.
+  - `web/src/ui/textosEventos.ts`: `NOMES_FASES` e `textoDoEvento(evento, nome)`, com `switch` exaustivo (um evento novo no engine quebra a compilação ali).
+  - `Layout.tsx`: `useTelaLarga()` tira o `max-w-5xl` quando a rota é `/partidas/:id` e a partida está em andamento ou encerrada.
+  - `PartidaEmAndamento.tsx` e a vitrine foram apagados.
+
 ### Cuidados descobertos no caminho
 
 - **Tailwind 4 e variáveis dinâmicas.** Só são emitidas as variáveis de tema citadas por extenso no código. Montar `--color-cont-${x}` em tempo de execução devolve vazio, e os territórios saíram pretos. Use nomes literais, como em `ui/tokens.ts`.
 - **React duplicado no Vite.** Ao passar a importar o d3, a tela ficou em branco com "Invalid hook call". Resolve apagando `packages/web/node_modules/.vite` antes de subir o Vite.
-- **Vitrine temporária.** `web/src/paginas/VitrineDev.tsx` (rota `/dev/vitrine`, só em dev, registrada em `rotas.tsx`) mostra o tabuleiro, os dados, as cartas e os objetivos com uma partida local do engine, sem login nem banco. **Remover na 9.5**, junto com a rota.
+- **Vitrine removida.** A `/dev/vitrine` usada para conferir a 9.3 já foi apagada na 9.5.
+- **Log da partida.** Só mostra os eventos recebidos desde o último `estado`: ao recarregar a página, começa vazio. Um histórico persistente exigiria uma rota nova no servidor.
+- **Vite caindo.** Numa das subidas o `vite` saiu com o código 3221226505 (falha nativa) logo depois de ficar pronto; subir de novo resolveu.
 - **Carta-objetivo.** Nas cartas de "destruir cor", o número do canto encosta no texto, como no protótipo. Ajuste pendente.
 - **Nomes dos donos.** Na visão, o dono de um território é o `JogadorId` (o id do usuário). Para o mapa, converta para a cor com `visao.jogadores`. Os nomes vêm de `lobby.participantes`.
 - **Espectadores.** O servidor só envia `estado` e `eventos` aos jogadores da partida.
@@ -103,14 +114,14 @@ Decisões do usuário:
 São os componentes do sistema de design; ler o README de cada um no artifact antes de mexer.
 - `Tabuleiro`: moldura, radar, territórios, fronteiras, rotas, rótulos, bases e zoom. Os estados visuais são selecionado, marcado, opção e esmaecido.
 - `MarcadorTerritorio`, `BaseAerea`, `Dado`, `CartaTroca` (com `DefsDoJogo`), `CartaObjetivo`, `Modal` e `Abas`.
-- Ainda falta: abaixo de 860px, o mapa ocupar 62vh com o painel embaixo. Isso entra no layout da 9.5.
+- O layout abaixo de 860px (mapa com 62vh e painel embaixo) foi resolvido na 9.5.
 
 ### 9.4 Estado de UI, envio de ações e pré-visualização ✅
 - `jogo/enviarAcao.ts` (`enviarAcao`, `useEnviarAcao`). Com `ESTADO_DESATUALIZADO`, só avisa, porque o servidor já reenviou o estado.
 - `jogo/previa.ts`: pseudo-estado a partir da visão e uma RNG que interrompe no primeiro sorteio. Nenhuma regra é reescrita no front.
 - `stores/jogo.ts`: a interação, zerada a cada vez.
 
-### 9.5 Tela da partida e HUD ⏳
+### 9.5 Tela da partida e HUD ✅
 - `paginas/Partida.tsx` passa a abrir `TelaDoJogo` (nova) no lugar de `PartidaEmAndamento`, que é apagado.
 - Remover a vitrine `/dev/vitrine` (`VitrineDev.tsx` e a entrada em `rotas.tsx`).
 - O `Layout` ganha uma variante larga para `/partidas/:id` com o jogo em andamento: sem `max-w-5xl` e com o mapa ocupando a largura.

@@ -7,9 +7,9 @@ import { Aviso, Carregando } from "../componentes/basicos";
 import { useAcompanharPartida } from "../hooks/useAcompanharPartida";
 import { useDadosPartida, usePartidas } from "../stores/partidas";
 import { useSessao } from "../stores/sessao";
-import { PartidaEmAndamento } from "./PartidaEmAndamento";
 import type { EstadoAviso } from "./Partidas";
 import { SalaDeEspera } from "./SalaDeEspera";
+import { TelaDoJogo } from "./TelaDoJogo";
 
 function TelaDaPartida({ partidaId }: { partidaId: string }) {
   const navegar = useNavigate();
@@ -60,7 +60,7 @@ function TelaDaPartida({ partidaId }: { partidaId: string }) {
   if (lobby.status === "aguardando") {
     return <SalaDeEspera lobby={lobby} presenca={presenca} usuarioId={usuarioId} />;
   }
-  return <PartidaEmAndamento lobby={lobby} presenca={presenca} jogo={jogo} />;
+  return <TelaDoJogo partidaId={partidaId} lobby={lobby} presenca={presenca} jogo={jogo} />;
 }
 
 export function Partida() {

@@ -1,6 +1,7 @@
 // Moldura das telas: cabeçalho (logotipo, navegação, usuário, sair, situação da conexão).
-import { Link, NavLink, Outlet, useNavigate } from "react-router";
+import { Link, NavLink, Outlet, useMatch, useNavigate } from "react-router";
 import { useConexao, type SituacaoConexao } from "../stores/conexao";
+import { usePartidas } from "../stores/partidas";
 import { useSessao } from "../stores/sessao";
 import { FundoDeGuerra } from "./FundoDeGuerra";
 
@@ -26,7 +27,17 @@ function IndicadorConexao() {
 // A navegação é uma linha de abas: a da tela atual fica ativa.
 const classeAba = ({ isActive }: { isActive: boolean }) => `botao ${isActive ? "ativo" : ""}`;
 
+// A partida em jogo (ou encerrada) ocupa a largura toda; as demais telas ficam centralizadas.
+function useTelaLarga(): boolean {
+  const rota = useMatch("/partidas/:id");
+  const id = rota?.params.id;
+  const status = usePartidas((s) => (id ? s.porId[id]?.lobby?.status : undefined));
+  return status === "em_andamento" || status === "encerrada";
+}
+
 export function Layout() {
+  const larga = useTelaLarga();
+  const largura = larga ? "max-w-none" : "max-w-5xl";
   const usuario = useSessao((s) => s.usuario);
   const sair = useSessao((s) => s.sair);
   const ultimoErro = useConexao((s) => s.ultimoErro);
@@ -43,7 +54,9 @@ export function Layout() {
     <div className="relative isolate min-h-screen">
       <FundoDeGuerra />
       <header className="border-b border-border bg-panel">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-espaco-8 gap-y-espaco-3 px-espaco-7 py-espaco-5">
+        <div
+          className={`mx-auto flex ${largura} flex-wrap items-center gap-x-espaco-8 gap-y-espaco-3 px-espaco-7 py-espaco-5`}
+        >
           <Link
             to={usuario ? "/partidas" : "/entrar"}
             className="flex items-end gap-espaco-3 text-text no-underline"
@@ -76,7 +89,7 @@ export function Layout() {
         {ultimoErro && (
           <div
             role="alert"
-            className="mx-auto flex max-w-5xl items-center gap-espaco-5 px-espaco-7 pb-espaco-3 text-bad"
+            className={`mx-auto flex ${largura} items-center gap-espaco-5 px-espaco-7 pb-espaco-3 text-bad`}
           >
             <span>{ultimoErro.mensagem}</span>
             <button type="button" onClick={() => avisar(null)} className="link dica">
@@ -85,7 +98,7 @@ export function Layout() {
           </div>
         )}
       </header>
-      <main className="mx-auto max-w-5xl px-espaco-7 py-espaco-8">
+      <main className={`mx-auto ${largura} px-espaco-7 ${larga ? "py-espaco-5" : "py-espaco-8"}`}>
         <Outlet />
       </main>
     </div>
