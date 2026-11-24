@@ -31,9 +31,7 @@ function igual(a: unknown, b: unknown): boolean {
   const chavesA = Object.keys(a);
   const chavesB = Object.keys(b);
   if (chavesA.length !== chavesB.length) return false;
-  return chavesA.every(
-    (k) => Object.hasOwn(b, k) && igual(Reflect.get(a, k), Reflect.get(b, k)),
-  );
+  return chavesA.every((k) => Object.hasOwn(b, k) && igual(Reflect.get(a, k), Reflect.get(b, k)));
 }
 
 // Campo numérico vazio vira NaN, que a validação recusa com mensagem.
@@ -50,14 +48,13 @@ function chavesAlteradas(rascunho: Parametros, servidor: Parametros): Chave[] {
 function SeloPadrao({ diferente }: { diferente: boolean }) {
   if (!diferente) return null;
   return (
-    <span className="ml-2 rounded bg-sky-500/20 px-1.5 text-xs text-sky-300" title="diferente do padrão">
+    <span className="tag" title="Diferente do padrão">
       alterado
     </span>
   );
 }
 
-const classeNumero =
-  "w-16 rounded border border-slate-600 bg-slate-900 px-2 py-1 text-right text-sm disabled:opacity-60";
+const classeNumero = "campo w-16 py-espaco-1 text-right tabular-nums";
 
 function CampoFaces({
   faces,
@@ -69,7 +66,7 @@ function CampoFaces({
   aoMudar: (faces: number[]) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-wrap gap-espaco-2">
       {faces.map((valor, i) => (
         <input
           // As faces são posições fixas (sempre 6): o índice é a identidade.
@@ -99,20 +96,20 @@ function TabelaBonus({
   const alterar = (c: ContinenteId, campo: keyof BonusContinente, valor: number) =>
     aoMudar({ ...bonus, [c]: { ...bonus[c], [campo]: valor } });
   return (
-    <table className="text-sm">
+    <table className="text-tabela">
       <thead>
-        <tr className="text-left text-slate-400">
-          <th className="pr-4 font-normal">Continente</th>
-          <th className="pr-2 font-normal">Maioria</th>
-          <th className="font-normal">Totalidade</th>
+        <tr className="text-left text-muted">
+          <th className="pr-espaco-7 font-normal">Continente</th>
+          <th className="pr-espaco-3 text-right font-normal">Maioria</th>
+          <th className="text-right font-normal">Totalidade</th>
         </tr>
       </thead>
       <tbody>
         {IDS_CONTINENTES.map((c) => (
           <tr key={c}>
-            <td className="py-0.5 pr-4">{CONTINENTES[c].nome}</td>
+            <td className="py-espaco-1 pr-espaco-7">{CONTINENTES[c].nome}</td>
             {(["maioria", "totalidade"] as const).map((campo) => (
-              <td key={campo} className="py-0.5 pr-2">
+              <td key={campo} className="py-espaco-1 pr-espaco-3 text-right">
                 <input
                   type="number"
                   min={0}
@@ -145,12 +142,12 @@ function LinhaParametro({
   const campo = CAMPOS_PARAMETROS[chave];
   const diferente = !igual(valores[chave], PARAMETROS_PADRAO[chave]);
   const titulo = (
-    <span className="font-medium">
+    <span className="font-bold">
       {campo.rotulo}
       <SeloPadrao diferente={diferente} />
     </span>
   );
-  const descricao = <span className="block text-xs text-slate-400">{campo.descricao}</span>;
+  const descricao = <span className="dica block">{campo.descricao}</span>;
 
   const valor = valores[chave];
 
@@ -159,10 +156,10 @@ function LinhaParametro({
       if (typeof valor !== "boolean") return null;
       const bloqueio = "desabilitado" in campo ? campo.desabilitado : undefined;
       return (
-        <label className="flex items-start gap-3 py-2">
+        <label className="flex items-start gap-espaco-5 py-espaco-3">
           <input
             type="checkbox"
-            className="mt-1 h-4 w-4 accent-amber-500"
+            className="mt-espaco-1 h-4 w-4"
             checked={valor}
             disabled={!editavel || bloqueio !== undefined}
             onChange={(e) => alterar(chave, e.target.checked as Parametros[typeof chave])}
@@ -170,7 +167,7 @@ function LinhaParametro({
           <span>
             {titulo}
             {descricao}
-            {bloqueio && <span className="block text-xs text-amber-300">{bloqueio}</span>}
+            {bloqueio && <span className="dica block text-text">{bloqueio}</span>}
           </span>
         </label>
       );
@@ -178,7 +175,7 @@ function LinhaParametro({
     case "inteiro": {
       if (typeof valor !== "number") return null;
       return (
-        <div className="flex items-start justify-between gap-3 py-2">
+        <div className="flex items-start justify-between gap-espaco-5 py-espaco-3">
           <span>
             {titulo}
             {descricao}
@@ -189,9 +186,7 @@ function LinhaParametro({
             aria-label={campo.rotulo}
             disabled={!editavel}
             value={exibirNumero(valor)}
-            onChange={(e) =>
-              alterar(chave, paraNumero(e.target.value) as Parametros[typeof chave])
-            }
+            onChange={(e) => alterar(chave, paraNumero(e.target.value) as Parametros[typeof chave])}
             className={classeNumero}
           />
         </div>
@@ -200,7 +195,7 @@ function LinhaParametro({
     case "faces":
       if (!ehFaces(valor)) return null;
       return (
-        <div className="space-y-1 py-2">
+        <div className="space-y-espaco-1 py-espaco-3">
           {titulo}
           {descricao}
           <CampoFaces
@@ -212,7 +207,7 @@ function LinhaParametro({
       );
     case "bonus":
       return (
-        <div className="space-y-1 py-2">
+        <div className="space-y-espaco-1 py-espaco-3">
           {titulo}
           {descricao}
           <TabelaBonus
@@ -253,7 +248,10 @@ export function ParametrosPartida({
   };
 
   const restaurarPadrao = () =>
-    setRascunho((r) => ({ valores: structuredClone(PARAMETROS_PADRAO), base: r?.base ?? servidor }));
+    setRascunho((r) => ({
+      valores: structuredClone(PARAMETROS_PADRAO),
+      base: r?.base ?? servidor,
+    }));
 
   const descartar = () => {
     setRascunho(null);
@@ -290,10 +288,8 @@ export function ParametrosPartida({
 
   return (
     <Cartao titulo="Regras da partida">
-      {!editavel && (
-        <p className="mb-2 text-sm text-slate-400">Só o anfitrião altera as regras.</p>
-      )}
-      <div className="divide-y divide-slate-700/60">
+      {!editavel && <p className="dica mb-espaco-3">Só o anfitrião altera as regras.</p>}
+      <div className="divide-y divide-border">
         {ORDEM_PARAMETROS.map((chave) => (
           <LinhaParametro
             key={chave}
@@ -305,23 +301,22 @@ export function ParametrosPartida({
         ))}
       </div>
       {editavel && (
-        <div className="mt-4 space-y-3">
+        <div className="mt-espaco-7 space-y-espaco-5">
           {mudouNoServidor && (
             <Aviso tipo="info">
-              As regras foram alteradas em outra janela enquanto você editava. Salvar aplica as
-              suas mudanças por cima; descartar mostra as atuais.
+              As regras foram alteradas em outra janela enquanto você editava. Salvar aplica as suas
+              mudanças por cima; descartar mostra as atuais.
             </Aviso>
           )}
           {erro && <Aviso>{erro}</Aviso>}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-espaco-2">
             <Botao ocupado={salvando} disabled={alteradas.length === 0} onClick={salvar}>
               Salvar{alteradas.length > 0 ? ` (${alteradas.length})` : ""}
             </Botao>
-            <Botao variante="secundario" disabled={!rascunho || salvando} onClick={descartar}>
+            <Botao disabled={!rascunho || salvando} onClick={descartar}>
               Descartar
             </Botao>
             <Botao
-              variante="secundario"
               disabled={salvando || igual(valores, PARAMETROS_PADRAO)}
               onClick={restaurarPadrao}
             >

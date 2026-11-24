@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1600 360" width="1600" height="360">
+<defs>
+  <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#090d12"/><stop offset=".55" stop-color="#171512"/><stop offset="1" stop-color="#21150f"/></linearGradient>
+  <linearGradient id="horizon" x2="0" y2="1"><stop stop-color="#b65b2e" stop-opacity=".0"/><stop offset=".55" stop-color="#b65b2e" stop-opacity=".17"/><stop offset="1" stop-color="#e18a4a" stop-opacity=".02"/></linearGradient>
+  <radialGradient id="fire"><stop stop-color="#ffc17a" stop-opacity=".62"/><stop offset=".22" stop-color="#d66a32" stop-opacity=".36"/><stop offset=".62" stop-color="#79351d" stop-opacity=".13"/><stop offset="1" stop-color="#4b2418" stop-opacity="0"/></radialGradient>
+  <linearGradient id="searchlight" x2="0" y2="1"><stop stop-color="#e5d7bf" stop-opacity="0"/><stop offset="1" stop-color="#e5d7bf" stop-opacity=".13"/></linearGradient>
+  <linearGradient id="metal" x2="0" y2="1"><stop stop-color="#342b24"/><stop offset=".5" stop-color="#17130f"/><stop offset="1" stop-color="#080807"/></linearGradient>
+  <filter id="blur"><feGaussianBlur stdDeviation="12"/></filter>
+  <filter id="soft"><feGaussianBlur stdDeviation="4"/></filter>
+  <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".8" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values=".3 0 0 0 0 .3 0 0 0 0 .3 0 0 0 0 0 0 0 .13 0"/></filter>
+  <g id="tank" fill="url(#metal)" stroke="#070706" stroke-width="2" stroke-linejoin="round">
+    <path d="M7 49Q8 39 20 37L36 27 112 27 139 38Q151 42 153 52L157 61Q154 72 140 73H18Q4 70 4 60Z"/>
+    <path d="M19 43L37 29Q44 23 56 23H111Q125 25 139 43Z" fill="#29221b"/>
+    <path d="M46 29Q51 12 67 10H94Q108 11 116 29Z"/>
+    <path d="M99 16L175 14 177 19 105 23Z" fill="#100e0b"/>
+    <path d="M171 12L185 12 185 21 172 21Z"/>
+    <path d="M54 32L62 26M69 31L77 25M85 31L94 25M103 32L112 27" fill="none" stroke="#77614a" stroke-opacity=".3"/>
+    <path d="M13 54H145M18 66H141" fill="none" stroke="#6b5741" stroke-opacity=".25"/>
+    <g fill="#090908" stroke="#5a4938" stroke-opacity=".5" stroke-width="1.5">
+      <circle cx="27" cy="59" r="10"/><circle cx="52" cy="59" r="10"/><circle cx="78" cy="59" r="10"/><circle cx="104" cy="59" r="10"/><circle cx="132" cy="59" r="10"/>
+    </g>
+    <path d="M18 48Q77 40 143 49" fill="none" stroke="#8c7151" stroke-opacity=".2" stroke-width="2"/>
+    <rect x="72" y="3" width="17" height="7" rx="2"/><path d="M78 3V-10" stroke="#0a0908" stroke-width="2"/>
+  </g>
+  <g id="soldier" fill="#090908" stroke="#070706" stroke-width="1.4" stroke-linejoin="round">
+    <!-- rifle and helmet -->
+    <path d="M13 13Q13 4 22 3Q31 4 32 13L28 16H15Z"/>
+    <path d="M14 12Q22 8 32 12L31 15H14Z" fill="#28221a"/>
+    <path d="M19 15Q24 13 29 17L30 24 20 25 16 21Z"/>
+    <path d="M15 23Q21 19 30 23L34 43 14 44 11 31Z"/>
+    <path d="M13 25L7 30 10 43 16 42 18 31Z"/>
+    <path d="M29 25L37 31 34 40 29 39 25 31Z"/>
+    <path d="M16 42L11 55 6 68 13 69 21 55 24 44Z"/>
+    <path d="M26 43L31 54 37 67 44 66 38 51 34 41Z"/>
+    <path d="M6 67L15 67 17 71H4Z M36 66L45 65 49 70 37 71Z"/>
+    <path d="M14 27L4 40 8 44 20 34M30 27L39 37 36 41 26 34" fill="none" stroke="#292219" stroke-width="4"/>
+    <path d="M7 38L44 17 46 20 10 42Z"/>
+    <path d="M39 18L53 11 55 13 45 21Z"/>
+    <path d="M20 26L29 26M18 33L30 33" stroke="#6a5944" stroke-opacity=".25"/>
+    <path d="M17 44L31 44 30 49 16 49Z" fill="#282117"/>
+    <path d="M12 51L21 53M29 52L37 54" stroke="#756047" stroke-opacity=".25"/>
+  </g>
+  <g id="crouched" fill="#090908" stroke="#070706" stroke-width="1.5" stroke-linejoin="round">
+    <path d="M18 22Q18 13 27 13Q36 14 37 22L33 25H19Z"/><path d="M20 24L33 23 36 30 22 33Z"/>
+    <path d="M17 31Q27 27 37 33L40 47 25 52 13 43Z"/>
+    <path d="M17 40L6 48 4 60 12 61 18 52 29 48Z"/><path d="M29 46L42 48 50 58 45 63 35 55 25 54Z"/>
+    <path d="M24 31L54 27 56 30 26 36Z"/><path d="M49 27L60 23 61 26 55 31Z"/>
+    <path d="M8 59L15 59 17 64 5 64Z M43 60L51 59 54 64 44 65Z"/>
+  </g>
+  <g id="ship" fill="#0a0908" stroke="#050505" stroke-width="2" stroke-linejoin="round">
+    <path d="M4 54L253 54 232 78Q221 83 196 83H39Q18 80 4 54Z"/>
+    <path d="M36 53V43H216V55Z" fill="#211b15"/>
+    <path d="M79 43L84 29 101 24 145 24 157 43Z"/>
+    <path d="M100 24L105 8 119 8 124 24Z"/><path d="M108 8V-2M113 8V-5" stroke="#090908" stroke-width="2"/>
+    <path d="M155 43L162 33 188 33 197 43Z"/><path d="M178 33V21M183 33V17" stroke="#090908" stroke-width="2"/>
+    <path d="M51 43L57 33 77 33 83 43Z"/>
+    <path d="M29 36L74 36M178 38L221 38" stroke="#6c5942" stroke-opacity=".25" stroke-width="2"/>
+    <path d="M15 60Q88 69 239 60" fill="none" stroke="#80664a" stroke-opacity=".25" stroke-width="2"/>
+    <rect x="131" y="15" width="2" height="29"/><path d="M132 16L151 21 132 23Z" fill="#211a13"/>
+  </g>
+  <g id="plane" fill="#080909"><path d="M0 15L37 12Q48 12 55 15 48 18 37 18L0 16Z"/><path d="M22 14L34 14 27 29 20 29Z"/><path d="M25 14L34 13 40 3 33 3Z"/><path d="M2 14L7 5 12 5 10 15Z"/></g>
+</defs>
+
+<rect width="1600" height="360" fill="url(#sky)"/>
+<rect y="190" width="1600" height="170" fill="url(#horizon)"/>
+<!-- distant fire and atmospheric glow -->
+<ellipse cx="690" cy="250" rx="320" ry="125" fill="url(#fire)"/>
+<ellipse cx="1260" cy="250" rx="240" ry="110" fill="url(#fire)" opacity=".7"/>
+<ellipse cx="145" cy="260" rx="170" ry="90" fill="url(#fire)" opacity=".55"/>
+<path d="M235 267L332 0 396 0Z M1450 300L1175 0 1240 0Z M1500 298L1557 0 1600 0Z" fill="url(#searchlight)"/>
+<!-- smoke columns, deliberately soft and low contrast -->
+<g fill="#211d19" opacity=".55" filter="url(#blur)">
+ <path d="M610 263Q574 211 628 175Q594 132 647 101Q620 58 671 28Q720 1 738 54Q772 91 725 126Q765 167 724 201Q760 235 715 269Z"/>
+ <path d="M1198 265Q1167 224 1215 189Q1184 151 1234 121Q1213 83 1260 52Q1305 23 1326 67Q1352 105 1316 137Q1350 177 1311 209Q1340 242 1302 270Z"/>
+ <ellipse cx="340" cy="235" rx="110" ry="38"/><ellipse cx="1000" cy="240" rx="125" ry="32"/>
+</g>
+<g fill="#4b3021" opacity=".17" filter="url(#soft)"><ellipse cx="682" cy="232" rx="90" ry="26"/><ellipse cx="1275" cy="230" rx="75" ry="22"/></g>
+<!-- distant aircraft -->
+<g opacity=".55"><use xlink:href="#plane" transform="translate(850 65) scale(.72)"/><use xlink:href="#plane" transform="translate(916 92) scale(.55)"/><use xlink:href="#plane" transform="translate(968 55) scale(.5)"/><use xlink:href="#plane" transform="translate(1018 83) scale(.42)"/></g>
+<!-- far terrain and ruined structures -->
+<path d="M0 270L55 258 86 264 120 244 150 260 192 251 225 268 278 257 315 269 360 253 410 267 465 257 520 270 570 258 620 270 670 256 720 270 780 258 830 269 890 255 945 269 1000 256 1050 270 1110 257 1170 271 1230 256 1290 268 1350 254 1410 268 1470 255 1530 267 1600 252V360H0Z" fill="#0c0b09" opacity=".78"/>
+<g fill="#100e0b" opacity=".8"><path d="M180 267V220L196 208 207 220V266Z M194 215L217 228 217 266H207V229Z"/><path d="M1120 266V232L1140 217 1153 230V267Z M1140 222L1160 233V267H1153V233Z"/><path d="M1164 267V244L1183 232 1194 242V267Z"/></g>
+<!-- warship at left -->
+<g opacity=".92"><use xlink:href="#ship" transform="translate(48 190) scale(.93 .9)"/></g>
+<!-- uneven foreground embankment -->
+<path d="M0 300Q110 279 225 294T460 290Q540 273 635 291T830 289Q945 271 1055 291T1260 286Q1405 270 1600 292V360H0Z" fill="#0a0908"/>
+<path d="M0 315Q150 300 285 311T550 305T830 310T1110 305T1370 311T1600 306" fill="none" stroke="#443326" stroke-opacity=".22" stroke-width="3"/>
+<!-- tank and troops, foreground silhouettes -->
+<g opacity=".98"><use xlink:href="#crouched" transform="translate(386 224) scale(.92)"/><use xlink:href="#tank" transform="translate(744 219) scale(1.03)"/><use xlink:href="#soldier" transform="translate(594 221) scale(1.02)"/><use xlink:href="#soldier" transform="translate(655 229) scale(.9)"/><use xlink:href="#soldier" transform="translate(936 229) scale(.96)"/><use xlink:href="#soldier" transform="translate(990 225) scale(1.04)"/><use xlink:href="#crouched" transform="translate(1034 230) scale(.95)"/></g>
+<!-- right flank: tank, soldiers and artillery -->
+<g opacity=".94"><use xlink:href="#tank" transform="translate(1405 221) scale(-.58 .58)"/><use xlink:href="#soldier" transform="translate(1475 222) scale(-.58 .58)"/><use xlink:href="#soldier" transform="translate(1512 227) scale(-.49 .49)"/></g>
+<!-- field artillery on left -->
+<g fill="#090908" stroke="#050505" stroke-width="2" stroke-linejoin="round"><circle cx="464" cy="278" r="17"/><circle cx="464" cy="278" r="7" fill="#282016"/><path d="M451 263L552 224 557 230 466 273Z"/><path d="M438 265L486 255 490 270 449 280Z"/><path d="M461 280L425 301 431 304 472 285Z"/></g>
+<!-- barbed wire in the middle distance -->
+<g fill="none" stroke="#080807" stroke-width="2" opacity=".85"><path d="M1060 292L1080 279 1100 293 1120 279 1140 292 1160 279 1180 292 1200 279 1220 291 1240 280 1260 291"/><path d="M1060 281L1080 293 1100 281 1120 293 1140 281 1160 293 1180 281 1200 292 1220 281 1240 292 1260 281"/><path d="M1078 272V300M1138 270V300M1198 270V299M1250 272V298"/></g>
+<!-- subtle debris silhouettes -->
+<g fill="#050505" opacity=".8"><path d="M270 331l18-19 5 3-9 16 22 3-2 5-29-2zM535 343l14-22 4 2-6 19 17 1-1 5-24-1zM1320 338l17-26 4 2-7 23 20 2-1 5-28-2zM1550 344l13-19 5 3-5 17 16 2-1 4-24-2z"/></g>
+<!-- subtle vignette and texture -->
+<rect width="1600" height="360" fill="none" stroke="#020303" stroke-width="34" opacity=".28"/>
+<rect width="1600" height="360" filter="url(#grain)" opacity=".12"/>
+</svg>

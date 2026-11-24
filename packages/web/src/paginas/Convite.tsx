@@ -33,16 +33,16 @@ export function Convite() {
 
   if (!tokenValido || erro) {
     return (
-      <div className="mx-auto max-w-md space-y-4">
+      <div className="mx-auto max-w-md space-y-espaco-7">
         <Aviso>{erro ?? "convite inválido ou expirado"}</Aviso>
-        <p className="text-sm text-slate-400">
+        <p className="dica">
           Peça um link novo ao anfitrião.{" "}
-          <Link to="/partidas" className="text-amber-400 hover:underline">
+          <Link to="/partidas" className="link">
             Ver minhas partidas
           </Link>
         </p>
       </div>
     );
   }
-  return <Carregando texto="entrando na partida…" />;
+  return <Carregando texto="Entrando na partida…" />;
 }

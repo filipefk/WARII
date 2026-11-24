@@ -1,4 +1,5 @@
-// Tons de exibição das cores dos jogadores (os mesmos do Tabuleiro.html). Os nomes vêm do engine.
+// Tons de exibição das cores dos jogadores: os tokens jogador-* do sistema de design (definidos em
+// index.css). Os nomes das cores vêm do engine.
 import type { CorId } from "@warii/engine";
 
 export interface TomDaCor {
@@ -7,10 +8,10 @@ export interface TomDaCor {
 }
 
 export const TONS: Readonly<Record<CorId, TomDaCor>> = {
-  branco: { fundo: "#f5f5f5", texto: "#222222" },
-  vermelho: { fundo: "#d62828", texto: "#ffffff" },
-  azul: { fundo: "#1f6fe0", texto: "#ffffff" },
-  preto: { fundo: "#222222", texto: "#ffffff" },
-  verde: { fundo: "#2e9e3a", texto: "#ffffff" },
-  amarelo: { fundo: "#ffd21f", texto: "#222222" },
+  branco: { fundo: "var(--color-jogador-branco)", texto: "var(--color-jogador-branco-texto)" },
+  vermelho: { fundo: "var(--color-jogador-vermelho)", texto: "var(--color-jogador-texto-claro)" },
+  azul: { fundo: "var(--color-jogador-azul)", texto: "var(--color-jogador-texto-claro)" },
+  preto: { fundo: "var(--color-jogador-preto)", texto: "var(--color-jogador-texto-claro)" },
+  verde: { fundo: "var(--color-jogador-verde)", texto: "var(--color-jogador-texto-claro)" },
+  amarelo: { fundo: "var(--color-jogador-amarelo)", texto: "var(--color-jogador-amarelo-texto)" },
 };

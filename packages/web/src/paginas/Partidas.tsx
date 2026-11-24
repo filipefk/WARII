@@ -56,7 +56,7 @@ function NovaPartida() {
 
   return (
     <Cartao titulo="Nova partida">
-      <form onSubmit={aoEnviar} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+      <form onSubmit={aoEnviar} className="flex flex-col gap-espaco-5 sm:flex-row sm:items-end">
         <div className="flex-1">
           <Campo
             rotulo="Nome da partida"
@@ -70,7 +70,7 @@ function NovaPartida() {
         </Botao>
       </form>
       {erro && (
-        <div className="mt-3">
+        <div className="mt-espaco-5">
           <Aviso>{erro}</Aviso>
         </div>
       )}
@@ -84,15 +84,15 @@ function LinhaPartida({ partida }: { partida: PartidaResumoDto }) {
     <li>
       <Link
         to={`/partidas/${partida.id}`}
-        className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded px-3 py-2 hover:bg-slate-700/60"
+        className="flex flex-wrap items-center gap-x-espaco-7 gap-y-espaco-1 rounded-raio-md border border-border bg-panel-2 px-espaco-4 py-espaco-3 hover:border-accent"
       >
-        <span className="font-semibold">{partida.nome}</span>
-        <span className="text-sm text-slate-400">anfitrião: {partida.anfitriao.nome}</span>
-        <span className="text-sm text-slate-400">
+        <span className="text-destaque">{partida.nome}</span>
+        <span className="text-muted">anfitrião: {partida.anfitriao.nome}</span>
+        <span className="text-muted">
           {partida.quantidadeParticipantes}{" "}
           {partida.quantidadeParticipantes === 1 ? "jogador" : "jogadores"}
         </span>
-        <span className="ml-auto text-xs text-slate-500">{formatoData.format(new Date(quando))}</span>
+        <span className="dica ml-auto tabular-nums">{formatoData.format(new Date(quando))}</span>
       </Link>
     </li>
   );
@@ -116,13 +116,13 @@ export function Partidas() {
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-espaco-8">
       {aviso && <Aviso tipo="info">{aviso}</Aviso>}
       <NovaPartida />
       {erro && <Aviso>{erro}</Aviso>}
       {!lista && !erro && <Carregando />}
       {lista && lista.length === 0 && (
-        <p className="text-slate-400">
+        <p className="text-muted">
           Você ainda não está em nenhuma partida. Crie uma ou peça um convite a um amigo.
         </p>
       )}
@@ -132,7 +132,7 @@ export function Partidas() {
           if (doGrupo.length === 0) return null;
           return (
             <Cartao key={status} titulo={titulo}>
-              <ul className="-mx-3 divide-y divide-slate-700/60">
+              <ul className="space-y-espaco-2">
                 {doGrupo.map((p) => (
                   <LinhaPartida key={p.id} partida={p} />
                 ))}

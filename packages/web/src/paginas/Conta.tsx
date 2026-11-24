@@ -4,7 +4,7 @@ import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router";
 import { apiAuth } from "../api/auth";
 import { mensagemDoErro } from "../api/cliente";
-import { Aviso, Botao, Campo, Cartao } from "../componentes/basicos";
+import { Aviso, Botao, Campo, Cartao, TituloDaTela } from "../componentes/basicos";
 import { useSessao } from "../stores/sessao";
 
 function TrocarSenha() {
@@ -43,7 +43,7 @@ function TrocarSenha() {
 
   return (
     <Cartao titulo="Trocar senha">
-      <form onSubmit={aoEnviar} className="max-w-sm space-y-4" noValidate>
+      <form onSubmit={aoEnviar} className="max-w-sm space-y-espaco-7" noValidate>
         <Campo
           rotulo="Senha atual"
           type="password"
@@ -97,15 +97,15 @@ function SairDeTodas() {
 
   return (
     <Cartao titulo="Sessões">
-      <p className="mb-3 text-sm text-slate-300">
+      <p className="mb-espaco-5">
         Esqueceu a conta aberta em outro computador? Encerre todas as sessões de uma vez.
       </p>
       {erro && (
-        <div className="mb-3">
+        <div className="mb-espaco-5">
           <Aviso>{erro}</Aviso>
         </div>
       )}
-      <Botao variante="perigo" ocupado={enviando} onClick={aoClicar}>
+      <Botao ocupado={enviando} onClick={aoClicar}>
         Sair de todos os dispositivos
       </Botao>
     </Cartao>
@@ -115,11 +115,8 @@ function SairDeTodas() {
 export function Conta() {
   const usuario = useSessao((s) => s.usuario);
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">{usuario?.nome}</h1>
-        <p className="text-sm text-slate-400">{usuario?.email}</p>
-      </div>
+    <div className="space-y-espaco-8">
+      <TituloDaTela titulo={usuario?.nome} apoio={usuario?.email} />
       <TrocarSenha />
       <SairDeTodas />
     </div>

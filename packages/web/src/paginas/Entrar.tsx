@@ -57,7 +57,7 @@ export function Entrar() {
   return (
     <div className="mx-auto max-w-sm">
       <Cartao titulo="Entrar">
-        <form onSubmit={aoEnviar} className="space-y-4" noValidate>
+        <form onSubmit={aoEnviar} className="space-y-espaco-7" noValidate>
           <Campo
             rotulo="E-mail"
             type="email"
@@ -79,7 +79,7 @@ export function Entrar() {
             Entrar
           </Botao>
         </form>
-        <p className="mt-4 text-xs text-slate-400">
+        <p className="dica mt-espaco-7">
           Não tem conta ou esqueceu a senha? Peça um link ao administrador.
         </p>
       </Cartao>

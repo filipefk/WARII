@@ -1,1 +1,244 @@
 @import "tailwindcss";
+
+/*
+ * Sistema de design "War II Online" (https://claude.ai/artifact/7SyGTb2V7z3Pn7327iTDiQ).
+ * Os valores abaixo são os de project/tokens.json do sistema: ao mudar um token lá, mudar aqui.
+ * As paletas e escalas padrão do Tailwind são zeradas para que só os tokens do sistema existam
+ * como utilitários (bg-panel, text-muted, border-border, rounded-raio-sm, p-espaco-7, text-secao…).
+ * Não existe tema claro.
+ */
+@theme {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+
+  /* Interface */
+  --color-bg: #1b1410;
+  --color-panel: #261c16;
+  --color-panel-2: #31241c;
+  --color-tool-bg: #1f1712;
+  --color-border: #3d2e24;
+  --color-text: #f3e9df;
+  --color-muted: #b9a797;
+  --color-accent: #ffb347;
+  --color-on-accent: #1b1410;
+  --color-overlay: rgba(10, 6, 4, 0.78);
+  --color-good: #7bd88f;
+  --color-bad: #ff8a7a;
+  --color-note: #6fa8dc;
+  --color-warn: #e0a020;
+
+  /* Tabuleiro */
+  --color-board-glow: #7a3417;
+  --color-board-mid: #4a1f10;
+  --color-board-edge: #2a120a;
+  --color-board-frame: #120a06;
+  --color-board-rings: #ffb38a;
+  --color-map-border: #fff6ea;
+  --color-route: #ffffff;
+  --color-label-halo: rgba(30, 15, 8, 0.85);
+  --color-ocean-label: #4fb3ff;
+  --color-base-frame: #c9763f;
+  --color-base-fill: rgba(20, 8, 4, 0.55);
+  --color-ce-dot: #9a9a9a;
+
+  /* Continentes */
+  --color-cont-an: #f0821e;
+  --color-cont-as: #4fb52f;
+  --color-cont-eu: #2f8fe0;
+  --color-cont-af: #de3f96;
+  --color-cont-asi: #f2be22;
+  --color-cont-oc: #e0462f;
+
+  /* Jogadores */
+  --color-jogador-branco: #f5f5f5;
+  --color-jogador-branco-texto: #222222;
+  --color-jogador-vermelho: #d62828;
+  --color-jogador-azul: #1f6fe0;
+  --color-jogador-preto: #222222;
+  --color-jogador-verde: #2e9e3a;
+  --color-jogador-amarelo: #ffd21f;
+  --color-jogador-amarelo-texto: #222222;
+  --color-jogador-texto-claro: #ffffff;
+
+  /* Dados e cartas */
+  --color-dado-ataque: #c62a22;
+  --color-dado-defesa: #f2c21b;
+  --color-dado-defesa-tinta: #2a1a08;
+  --color-dado-aereo: #2f86d8;
+  --color-carta-moldura: #15213b;
+  --color-carta-vermelho: #e23a2c;
+  --color-carta-vermelho-medio: #b3221a;
+  --color-carta-vermelho-fundo: #7d1410;
+  --color-carta-papel: #f4efe6;
+  --color-carta-contorno-texto: #4a0b08;
+  --color-objetivo-borda: #7a2a1c;
+  --color-objetivo-azul: #26415f;
+  --color-objetivo-azul-fundo: #0f1c30;
+  --color-objetivo-numero: #9fb4cc;
+  --color-objetivo-legenda: #c9d6e4;
+
+  /* Tipografia: uma família só, a do sistema */
+  --font-sans: "Segoe UI", system-ui, sans-serif;
+
+  --text-titulo: 18px;
+  --text-titulo--line-height: 1.3;
+  --text-titulo--font-weight: 700;
+  --text-secao: 13px;
+  --text-secao--line-height: 1.45;
+  --text-secao--font-weight: 700;
+  --text-secao--letter-spacing: 0.06em;
+  --text-corpo: 14px;
+  --text-corpo--line-height: 1.45;
+  --text-destaque: 15px;
+  --text-destaque--line-height: 1.45;
+  --text-destaque--font-weight: 700;
+  --text-tabela: 13px;
+  --text-tabela--line-height: 1.45;
+  --text-dica: 12px;
+  --text-dica--line-height: 1.45;
+  --text-etiqueta: 11px;
+  --text-etiqueta--line-height: 1.45;
+  --text-regra-titulo: 21px;
+  --text-regra-titulo--line-height: 1.3;
+  --text-regra-titulo--font-weight: 700;
+  --text-regra-subtitulo: 15px;
+  --text-regra-subtitulo--line-height: 1.4;
+  --text-regra-subtitulo--font-weight: 700;
+  --text-regra-corpo: 14px;
+  --text-regra-corpo--line-height: 1.6;
+
+  /* Espaçamento: valores do protótipo, não arredondar */
+  --spacing-espaco-1: 4px;
+  --spacing-espaco-2: 6px;
+  --spacing-espaco-3: 8px;
+  --spacing-espaco-4: 10px;
+  --spacing-espaco-5: 12px;
+  --spacing-espaco-6: 14px;
+  --spacing-espaco-7: 16px;
+  --spacing-espaco-8: 26px;
+
+  /* Raios */
+  --radius-raio-sm: 6px;
+  --radius-raio-md: 8px;
+  --radius-raio-lg: 10px;
+  --radius-raio-xl: 12px;
+  --radius-raio-tabuleiro: 14px;
+  --radius-raio-circulo: 50%;
+
+  /* Sombras: só em peças físicas */
+  --shadow-sombra-carta: 0 3px 10px rgba(0, 0, 0, 0.5);
+  --shadow-sombra-dado: 0 3px 5px rgba(0, 0, 0, 0.55);
+  --shadow-sombra-ficha: 0 0 0 2px rgba(0, 0, 0, 0.4);
+  --shadow-marca-ativo: inset 3px 0 0 #ffb347;
+}
+
+:root {
+  --opacidade-esmaecido: 0.35;
+  --opacidade-desabilitado: 0.5;
+  --opacidade-radar: 0.09;
+  color-scheme: dark;
+}
+
+@layer base {
+  body {
+    @apply bg-bg font-sans text-corpo text-text;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--color-accent);
+  }
+}
+
+@layer components {
+  /* Botão único (componente Botao): panel-2, borda border, hover só na borda, sem "primário". */
+  .botao {
+    @apply rounded-raio-sm border border-border bg-panel-2 px-espaco-4 py-espaco-2 text-text;
+    font: inherit;
+    cursor: pointer;
+  }
+  .botao:hover {
+    @apply border-accent;
+  }
+  .botao:disabled,
+  .botao[aria-disabled="true"] {
+    @apply border-border;
+    opacity: var(--opacidade-desabilitado);
+    cursor: default;
+  }
+  /* Aba ou filtro ativo (componente Abas). */
+  .botao.ativo {
+    @apply border-accent bg-accent text-on-accent;
+  }
+
+  /* Link-botão: sem fundo nem borda, texto accent sublinhado. */
+  .link {
+    @apply text-accent underline;
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+  }
+  .link:disabled {
+    opacity: var(--opacidade-desabilitado);
+    cursor: default;
+  }
+
+  /* Inputs e selects com a aparência do botão. */
+  .campo {
+    @apply rounded-raio-sm border border-border bg-panel-2 px-espaco-4 py-espaco-2 text-text;
+    font: inherit;
+  }
+  .campo:focus {
+    @apply border-accent;
+    outline: none;
+  }
+  .campo:disabled {
+    opacity: var(--opacidade-desabilitado);
+  }
+
+  /* Título de bloco do painel: caixa alta, muted. */
+  .secao {
+    @apply text-secao text-muted uppercase;
+  }
+
+  /* Pílulas (componente Tag). */
+  .tag {
+    @apply inline-block rounded-raio-lg bg-accent px-1.5 py-px text-etiqueta text-on-accent;
+  }
+  .qty {
+    @apply inline-block rounded-raio-lg border border-border bg-panel-2 px-[7px] text-etiqueta text-accent;
+  }
+
+  .dica {
+    @apply text-dica text-muted;
+  }
+
+  /* Caças do fundo ilustrado (FundoDeGuerra): sobem e descem devagar. */
+  .fundo-caca {
+    animation: fundo-caca-voo 14s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes fundo-caca-voo {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(-14px, -10px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fundo-caca {
+    animation: none;
+  }
+}

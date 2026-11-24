@@ -64,7 +64,8 @@ export const CAMPOS_PARAMETROS = {
   sobreviventesAereoVoltamParaBase: {
     tipo: "booleano",
     rotulo: "Sobreviventes do ataque aéreo voltam à base",
-    descricao: "📘 Vídeo: voltam para a base aérea. Desligado: voltam para a caixa (manual) (§7.3).",
+    descricao:
+      "📘 Vídeo: voltam para a base aérea. Desligado: voltam para a caixa (manual) (§7.3).",
   },
   somarBaseECaixa: {
     tipo: "booleano",

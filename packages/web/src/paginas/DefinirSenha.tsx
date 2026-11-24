@@ -49,7 +49,7 @@ export function DefinirSenha() {
   return (
     <div className="mx-auto max-w-sm">
       <Cartao titulo="Definir senha">
-        <form onSubmit={aoEnviar} className="space-y-4" noValidate>
+        <form onSubmit={aoEnviar} className="space-y-espaco-7" noValidate>
           <Campo
             rotulo="Nova senha"
             type="password"

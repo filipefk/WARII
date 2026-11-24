@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { mensagemDoErro } from "../api/cliente";
 import { apiPartidas } from "../api/partidas";
-import { Aviso, Botao, Cartao, CorJogador } from "../componentes/basicos";
+import { Aviso, Botao, Cartao, CorJogador, Presenca, TituloDaTela } from "../componentes/basicos";
 import { usePartidas } from "../stores/partidas";
 import { TONS } from "../ui/cores";
 import { ParametrosPartida } from "./ParametrosPartida";
@@ -46,30 +46,25 @@ function Participantes({ lobby, presenca, usuarioId }: Props) {
 
   return (
     <Cartao titulo={`Jogadores (${lobby.participantes.length} de ${MAXIMO_JOGADORES})`}>
-      <ul className="space-y-2">
+      <ul className="space-y-espaco-3">
         {lobby.participantes.map((p) => {
           const online = presenca.includes(p.usuarioId);
           return (
-            <li key={p.usuarioId} className="flex items-center gap-3">
-              <span
-                title={online ? "na sala" : "fora da sala"}
-                className={`inline-block h-2 w-2 rounded-full ${online ? "bg-emerald-400" : "bg-slate-600"}`}
-              />
+            <li key={p.usuarioId} className="flex flex-wrap items-center gap-espaco-5">
               <CorJogador cor={p.cor} />
-              <span className={p.usuarioId === usuarioId ? "font-semibold" : ""}>
+              <span className={p.usuarioId === usuarioId ? "font-bold" : ""}>
                 {p.nome}
                 {p.usuarioId === usuarioId && " (você)"}
               </span>
-              {p.anfitriao && (
-                <span className="rounded bg-amber-500/20 px-1.5 text-xs text-amber-300">
-                  anfitrião
-                </span>
-              )}
-              {p.cor === null && <span className="text-xs text-slate-500">escolhendo cor…</span>}
+              {p.anfitriao && <span className="tag">anfitrião</span>}
+              {p.cor === null && <span className="dica">escolhendo cor…</span>}
+              <span className="ml-auto">
+                <Presenca online={online} textos={["na sala", "fora da sala"]} />
+              </span>
               {souAnfitriao && !p.anfitriao && (
                 <button
                   type="button"
-                  className="ml-auto text-xs text-slate-400 hover:text-red-400 disabled:opacity-50"
+                  className="link dica"
                   disabled={ocupado !== null}
                   onClick={() => remover(p.usuarioId, p.nome)}
                 >
@@ -81,7 +76,7 @@ function Participantes({ lobby, presenca, usuarioId }: Props) {
         })}
       </ul>
       {erro && (
-        <div className="mt-3">
+        <div className="mt-espaco-5">
           <Aviso>{erro}</Aviso>
         </div>
       )}
@@ -97,7 +92,7 @@ function EscolhaDeCor({ lobby, usuarioId }: Omit<Props, "presenca">) {
 
   return (
     <Cartao titulo="Sua cor">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-espaco-2">
         {IDS_CORES.map((cor) => {
           const dono = donoDa(cor);
           const ocupada = dono !== undefined && dono.usuarioId !== usuarioId;
@@ -111,19 +106,21 @@ function EscolhaDeCor({ lobby, usuarioId }: Omit<Props, "presenca">) {
                 executar(cor, async () => gravarLobby(await apiPartidas.escolherCor(lobby.id, cor)))
               }
               title={ocupada ? `escolhida por ${dono.nome}` : CORES[cor].nome}
-              className={`rounded px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed ${
-                escolhida ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-800" : ""
-              } ${ocupada ? "opacity-30" : "hover:brightness-110"}`}
+              className={`min-w-20 rounded-raio-sm border-2 px-espaco-4 py-espaco-2 font-bold ${
+                escolhida
+                  ? "border-accent outline-2 outline-offset-2 outline-accent"
+                  : "border-[#888] hover:border-accent"
+              } ${ocupada ? "cursor-default opacity-(--opacidade-esmaecido) hover:border-[#888]" : "cursor-pointer"}`}
               style={{ backgroundColor: TONS[cor].fundo, color: TONS[cor].texto }}
             >
               {CORES[cor].nome}
-              {ocupada && <span className="block text-[10px] font-normal">{dono.nome}</span>}
+              {ocupada && <span className="block text-etiqueta font-normal">{dono.nome}</span>}
             </button>
           );
         })}
       </div>
       {erro && (
-        <div className="mt-3">
+        <div className="mt-espaco-5">
           <Aviso>{erro}</Aviso>
         </div>
       )}
@@ -155,23 +152,21 @@ function ConviteDaPartida({ lobby }: { lobby: PartidaLobbyDto }) {
 
   return (
     <Cartao titulo="Convite">
-      <p className="mb-2 text-sm text-slate-300">
-        Envie este link aos amigos. Ele vale até a partida começar.
-      </p>
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <p className="mb-espaco-3">Envie este link aos amigos. Ele vale até a partida começar.</p>
+      <div className="flex flex-col gap-espaco-2 sm:flex-row">
         <input
           readOnly
           value={link}
           onFocus={(e) => e.target.select()}
-          className="flex-1 rounded border border-slate-600 bg-slate-900 px-3 py-2 font-mono text-xs text-slate-300"
+          className="campo flex-1 font-mono text-dica"
         />
         <Botao onClick={copiar}>{copiado ? "Copiado!" : "Copiar"}</Botao>
-        <Botao variante="secundario" ocupado={ocupado === "renovar"} onClick={renovar}>
+        <Botao ocupado={ocupado === "renovar"} onClick={renovar}>
           Gerar novo link
         </Botao>
       </div>
       {erro && (
-        <div className="mt-3">
+        <div className="mt-espaco-5">
           <Aviso>{erro}</Aviso>
         </div>
       )}
@@ -224,8 +219,8 @@ function Comandos({ lobby, usuarioId }: Omit<Props, "presenca">) {
   return (
     <Cartao>
       {souAnfitriao ? (
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-2">
+        <div className="space-y-espaco-5">
+          <div className="flex flex-wrap gap-espaco-2">
             <Botao
               ocupado={ocupado === "iniciar"}
               disabled={pendencias.length > 0 || ocupado !== null}
@@ -233,17 +228,12 @@ function Comandos({ lobby, usuarioId }: Omit<Props, "presenca">) {
             >
               Iniciar partida
             </Botao>
-            <Botao
-              variante="perigo"
-              ocupado={ocupado === "cancelar"}
-              disabled={ocupado !== null}
-              onClick={cancelar}
-            >
+            <Botao ocupado={ocupado === "cancelar"} disabled={ocupado !== null} onClick={cancelar}>
               Cancelar partida
             </Botao>
           </div>
           {pendencias.length > 0 && (
-            <ul className="list-inside list-disc text-sm text-slate-400">
+            <ul className="dica list-inside list-disc">
               {pendencias.map((p) => (
                 <li key={p}>{p}</li>
               ))}
@@ -251,22 +241,15 @@ function Comandos({ lobby, usuarioId }: Omit<Props, "presenca">) {
           )}
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-3">
-          <p className="text-sm text-slate-300">
-            Aguardando {lobby.anfitriao.nome} iniciar a partida.
-          </p>
-          <Botao
-            variante="secundario"
-            ocupado={ocupado === "sair"}
-            onClick={sair}
-            className="ml-auto"
-          >
+        <div className="flex flex-wrap items-center gap-espaco-5">
+          <p>Aguardando {lobby.anfitriao.nome} iniciar a partida.</p>
+          <Botao ocupado={ocupado === "sair"} onClick={sair} className="ml-auto">
             Sair da partida
           </Botao>
         </div>
       )}
       {erro && (
-        <div className="mt-3">
+        <div className="mt-espaco-5">
           <Aviso>{erro}</Aviso>
         </div>
       )}
@@ -278,12 +261,12 @@ export function SalaDeEspera(props: Props) {
   const { lobby, usuarioId } = props;
   const souAnfitriao = lobby.anfitriao.id === usuarioId;
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">{lobby.nome}</h1>
-        <p className="text-sm text-slate-400">Sala de espera · anfitrião: {lobby.anfitriao.nome}</p>
-      </div>
-      <div className="grid gap-6 md:grid-cols-2">
+    <div className="space-y-espaco-8">
+      <TituloDaTela
+        titulo={lobby.nome}
+        apoio={`Sala de espera · anfitrião: ${lobby.anfitriao.nome}`}
+      />
+      <div className="grid gap-espaco-8 md:grid-cols-2">
         <Participantes {...props} />
         <EscolhaDeCor lobby={lobby} usuarioId={usuarioId} />
       </div>

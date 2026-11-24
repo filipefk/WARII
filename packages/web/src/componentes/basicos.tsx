@@ -1,32 +1,27 @@
-// Peças pequenas de interface reaproveitadas pelas telas.
+// Peças pequenas de interface reaproveitadas pelas telas, no sistema de design War II Online
+// (tokens e classes .botao/.campo/.secao/.tag em index.css).
 import { CORES, type CorId } from "@warii/engine";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
 import { TONS } from "../ui/cores";
 
-type Variante = "primario" | "secundario" | "perigo";
-
-const CLASSES_VARIANTE: Record<Variante, string> = {
-  primario: "bg-amber-500 text-slate-950 hover:bg-amber-400",
-  secundario: "bg-slate-700 text-slate-100 hover:bg-slate-600",
-  perigo: "bg-red-700 text-white hover:bg-red-600",
-};
-
+// Não existe botão "primário" colorido: a ação em destaque é a primeira da linha. `ativo` é a
+// aba ou o filtro selecionado.
 export function Botao({
-  variante = "primario",
   ocupado = false,
+  ativo = false,
   className = "",
   disabled,
   children,
   ...resto
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variante?: Variante; ocupado?: boolean }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { ocupado?: boolean; ativo?: boolean }) {
   return (
     <button
       type="button"
       {...resto}
       disabled={disabled === true || ocupado}
-      className={`rounded px-3 py-1.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${CLASSES_VARIANTE[variante]} ${className}`}
+      className={`botao ${ativo ? "ativo" : ""} ${className}`}
     >
-      {ocupado ? "aguarde…" : children}
+      {ocupado ? "Aguarde…" : children}
     </button>
   );
 }
@@ -38,16 +33,14 @@ export function Campo({
 }: InputHTMLAttributes<HTMLInputElement> & { rotulo: string; dica?: string }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm text-slate-300">{rotulo}</span>
-      <input
-        {...resto}
-        className="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 outline-none focus:border-amber-500 disabled:opacity-60"
-      />
-      {dica && <span className="mt-1 block text-xs text-slate-400">{dica}</span>}
+      <span className="mb-espaco-1 block">{rotulo}</span>
+      <input {...resto} className="campo w-full" />
+      {dica && <span className="dica mt-espaco-1 block">{dica}</span>}
     </label>
   );
 }
 
+// Aviso no painel: a cor vai no texto e a mensagem sempre diz o que aconteceu (nunca só a cor).
 export function Aviso({
   tipo = "erro",
   children,
@@ -55,44 +48,67 @@ export function Aviso({
   tipo?: "erro" | "info" | "sucesso";
   children: ReactNode;
 }) {
-  const cores = {
-    erro: "border-red-700 bg-red-950/60 text-red-200",
-    info: "border-sky-700 bg-sky-950/60 text-sky-200",
-    sucesso: "border-emerald-700 bg-emerald-950/60 text-emerald-200",
-  }[tipo];
+  const cor = { erro: "text-bad", info: "text-text", sucesso: "text-good" }[tipo];
   return (
-    <div role={tipo === "erro" ? "alert" : "status"} className={`rounded border px-3 py-2 text-sm ${cores}`}>
+    <div
+      role={tipo === "erro" ? "alert" : "status"}
+      className={`rounded-raio-md border border-border bg-panel-2 px-espaco-4 py-espaco-3 ${cor}`}
+    >
       {children}
     </div>
   );
 }
 
-export function Carregando({ texto = "carregando…" }: { texto?: string }) {
-  return <p className="py-8 text-center text-slate-400">{texto}</p>;
+export function Carregando({ texto = "Carregando…" }: { texto?: string }) {
+  return <p className="dica py-8 text-center">{texto}</p>;
 }
 
+// Bloco de painel: `panel`, borda `border`, título `secao`.
 export function Cartao({ titulo, children }: { titulo?: ReactNode; children: ReactNode }) {
   return (
-    <section className="rounded-lg border border-slate-700 bg-slate-800/60 p-4">
-      {titulo && <h2 className="mb-3 text-lg font-semibold">{titulo}</h2>}
+    <section className="rounded-raio-md border border-border bg-panel/90 p-espaco-7">
+      {titulo && <h2 className="secao mb-espaco-3">{titulo}</h2>}
       {children}
     </section>
   );
 }
 
+// Título da tela (estilo `titulo`) com uma linha de apoio opcional.
+export function TituloDaTela({ titulo, apoio }: { titulo: ReactNode; apoio?: ReactNode }) {
+  return (
+    <div>
+      <h1 className="text-titulo">{titulo}</h1>
+      {apoio && <p className="dica">{apoio}</p>}
+    </div>
+  );
+}
+
+// Presença: ponto colorido sempre acompanhado da palavra.
+export function Presenca({ online, textos }: { online: boolean; textos: [string, string] }) {
+  return (
+    <span className="dica inline-flex items-center gap-espaco-1">
+      <span
+        className={`inline-block h-2 w-2 rounded-raio-circulo ${online ? "bg-good" : "bg-border"}`}
+      />
+      {online ? textos[0] : textos[1]}
+    </span>
+  );
+}
+
+// Amostra de cor do jogador: sempre com contorno (o preto quase some sobre bg).
 export function CorJogador({ cor, tamanho = "w-4 h-4" }: { cor: CorId | null; tamanho?: string }) {
   if (cor === null) {
     return (
       <span
-        title="sem cor"
-        className={`inline-block rounded-full border border-dashed border-slate-500 ${tamanho}`}
+        title="Sem cor"
+        className={`inline-block rounded-raio-circulo border border-dashed border-muted ${tamanho}`}
       />
     );
   }
   return (
     <span
       title={CORES[cor].nome}
-      className={`inline-block rounded-full border border-slate-400 ${tamanho}`}
+      className={`inline-block rounded-raio-circulo border border-[#888] ${tamanho}`}
       style={{ backgroundColor: TONS[cor].fundo }}
     />
   );

@@ -47,9 +47,9 @@ function TelaDaPartida({ partidaId }: { partidaId: string }) {
   const falha = erro ?? (lobby ? null : erroSocket?.mensagem);
   if (falha) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-espaco-7">
         <Aviso>{falha}</Aviso>
-        <Link to="/partidas" className="text-amber-400 hover:underline">
+        <Link to="/partidas" className="link">
           Voltar às partidas
         </Link>
       </div>

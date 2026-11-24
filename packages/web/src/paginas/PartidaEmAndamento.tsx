@@ -2,7 +2,14 @@
 // que a visão do jogo está chegando pelo socket.
 import type { Fase } from "@warii/engine";
 import type { PartidaLobbyDto } from "@warii/shared";
-import { Aviso, Cartao, Carregando, CorJogador } from "../componentes/basicos";
+import {
+  Aviso,
+  Cartao,
+  Carregando,
+  CorJogador,
+  Presenca,
+  TituloDaTela,
+} from "../componentes/basicos";
 import type { JogoRecebido } from "../stores/partidas";
 
 const NOMES_FASES: Record<Fase, string> = {
@@ -29,41 +36,30 @@ export function PartidaEmAndamento({
   const nomeDe = (id: string) => lobby.participantes.find((p) => p.usuarioId === id)?.nome ?? "?";
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">{lobby.nome}</h1>
-        <p className="text-sm text-slate-400">
-          {lobby.status === "encerrada" ? "Partida encerrada" : "Partida em andamento"}
-        </p>
-      </div>
+    <div className="space-y-espaco-8">
+      <TituloDaTela
+        titulo={lobby.nome}
+        apoio={lobby.status === "encerrada" ? "Partida encerrada" : "Partida em andamento"}
+      />
 
       <Aviso tipo="info">O tabuleiro chega na próxima etapa (9). Por ora, só a mesa.</Aviso>
 
       <Cartao titulo="Mesa">
-        <ol className="space-y-2">
+        <ol className="space-y-espaco-3">
           {lobby.participantes.map((p) => {
             const online = presenca.includes(p.usuarioId);
             return (
-              <li key={p.usuarioId} className="flex items-center gap-3">
-                <span className="w-5 text-right text-sm text-slate-500">
+              <li key={p.usuarioId} className="flex flex-wrap items-center gap-espaco-5">
+                <span className="w-5 text-right text-muted tabular-nums">
                   {(p.assento ?? 0) + 1}.
                 </span>
-                <span
-                  title={online ? "acompanhando" : "fora"}
-                  className={`inline-block h-2 w-2 rounded-full ${online ? "bg-emerald-400" : "bg-slate-600"}`}
-                />
                 <CorJogador cor={p.cor} />
                 <span>{p.nome}</span>
-                {p.usuarioId === daVez && !vencedor && (
-                  <span className="rounded bg-amber-500/20 px-1.5 text-xs text-amber-300">
-                    na vez
-                  </span>
-                )}
-                {p.usuarioId === vencedor && (
-                  <span className="rounded bg-emerald-500/20 px-1.5 text-xs text-emerald-300">
-                    vencedor
-                  </span>
-                )}
+                {p.usuarioId === daVez && !vencedor && <span className="tag">na vez</span>}
+                {p.usuarioId === vencedor && <span className="tag">vencedor</span>}
+                <span className="ml-auto">
+                  <Presenca online={online} textos={["acompanhando", "fora"]} />
+                </span>
               </li>
             );
           })}
@@ -72,16 +68,16 @@ export function PartidaEmAndamento({
 
       <Cartao titulo="Estado recebido">
         {!jogo || !visao ? (
-          <Carregando texto="aguardando o estado do jogo…" />
+          <Carregando texto="Aguardando o estado do jogo…" />
         ) : (
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-4">
-            <dt className="text-slate-400">Sequência</dt>
+          <dl className="grid grid-cols-2 gap-x-espaco-8 gap-y-espaco-1 sm:grid-cols-4">
+            <dt className="text-muted">Sequência</dt>
             <dd>{jogo.seq}</dd>
-            <dt className="text-slate-400">Rodada</dt>
+            <dt className="text-muted">Rodada</dt>
             <dd>{visao.rodada}</dd>
-            <dt className="text-slate-400">Fase</dt>
+            <dt className="text-muted">Fase</dt>
             <dd>{NOMES_FASES[visao.fase]}</dd>
-            <dt className="text-slate-400">Vez de</dt>
+            <dt className="text-muted">Vez de</dt>
             <dd>{daVez ? nomeDe(daVez) : "—"}</dd>
           </dl>
         )}
