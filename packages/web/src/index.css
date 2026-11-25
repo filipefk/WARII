@@ -36,6 +36,7 @@
   --color-board-frame: #120a06;
   --color-board-rings: #ffb38a;
   --color-map-border: #fff6ea;
+  --color-map-land: #8f857c;
   --color-route: #ffffff;
   --color-label-halo: rgba(30, 15, 8, 0.85);
   --color-ocean-label: #4fb3ff;
@@ -229,9 +230,15 @@
   .mapa:active {
     cursor: grabbing;
   }
+  .mapa-terra {
+    fill: var(--color-map-land);
+    pointer-events: none;
+  }
   .mapa-territorio {
     cursor: pointer;
-    transition: opacity 0.15s;
+    transition:
+      opacity 0.15s,
+      fill 0.3s;
   }
   .mapa-territorio:hover {
     filter: brightness(1.12);
@@ -245,9 +252,9 @@
   .mapa-fronteiras path {
     fill: none;
     stroke: var(--color-map-border);
-    stroke-width: 0.9;
+    stroke-width: 1.1;
     stroke-linejoin: round;
-    opacity: 0.85;
+    opacity: 0.95;
     pointer-events: none;
     vector-effect: non-scaling-stroke;
   }
@@ -300,6 +307,14 @@
     fill: var(--color-route);
     stroke-width: 2.5px;
     opacity: 0.9;
+  }
+  /* Selo de exércitos: peça física, por isso tem sombra. */
+  .mapa-selo {
+    filter: drop-shadow(0 1.5px 1.5px rgba(0, 0, 0, 0.6));
+  }
+  .mapa-selo-reflexo {
+    fill: #ffffff;
+    opacity: 0.5;
   }
   .mapa-rotulo .mapa-exercitos {
     font-size: 12px;

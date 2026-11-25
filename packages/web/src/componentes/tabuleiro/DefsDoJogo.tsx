@@ -16,6 +16,7 @@ export const ID_CARTA_VERMELHO = "carta-vermelho";
 export const ID_CARTA_MIOLO = "carta-miolo";
 export const ID_CARTA_AVIAO = "carta-aviao";
 export const ID_CARTA_SOLDADO = "carta-soldado";
+export const ID_SELO_BRILHO = "selo-brilho";
 
 // Uma parte desenhada: caminho próprio ou país dividido recortado pela região.
 export function UsoDaParte({
@@ -68,6 +69,15 @@ export function DefsDoJogo({ geografia }: { geografia: Geografia }) {
             </clipPath>
           ) : null,
         )}
+
+        {/* Volume do selo de exércitos (componente MarcadorTerritorio): luz no alto à esquerda e
+            sombra na borda, sobrepostos à cor do dono. */}
+        <radialGradient id={ID_SELO_BRILHO} cx="35%" cy="30%" r="75%">
+          <stop offset="0" stopColor="#ffffff" stopOpacity={0.6} />
+          <stop offset=".45" stopColor="#ffffff" stopOpacity={0} />
+          <stop offset=".7" stopColor="#000000" stopOpacity={0} />
+          <stop offset="1" stopColor="#000000" stopOpacity={0.45} />
+        </radialGradient>
 
         {/* Peças da carta de troca (componente CartaTroca). */}
         <radialGradient id={ID_CARTA_VERMELHO} cx="50%" cy="50%" r="65%">

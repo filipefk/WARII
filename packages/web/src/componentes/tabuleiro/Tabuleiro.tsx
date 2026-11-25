@@ -1,5 +1,6 @@
 // Mapa do jogo (componente Tabuleiro do sistema): moldura com radar, territórios, fronteiras, rotas
-// marítimas, rótulos e as 6 bases aéreas, com zoom pela roda e arraste. Só desenha: o estado vem
+// marítimas, rótulos e as 6 bases aéreas, com zoom pela roda e arraste. Território livre tem a cor
+// do continente; ocupado, a do dono. Só desenha: o estado vem
 // da visão da partida e os cliques são repassados a quem usa.
 import {
   CONTINENTES,
@@ -13,6 +14,7 @@ import {
 import { select, zoom } from "d3";
 import { type MouseEvent, useEffect, useMemo, useRef } from "react";
 import { chaveDaRota, type Geografia } from "../../mapa/geografia";
+import { TONS } from "../../ui/cores";
 import { corClareadaDoContinente, corDoTerritorio } from "../../ui/tokens";
 import { BaseAerea } from "./BaseAerea";
 import { idContornoPais, idRecorteFronteira, UsoDaParte } from "./DefsDoJogo";
@@ -181,9 +183,20 @@ export function Tabuleiro({
         />
         <Radar largura={largura} altura={altura} />
 
+        {/* Terra opaca sob os territórios: o esmaecido (opacidade) clareia sobre ela em vez de
+            deixar o tabuleiro aparecer, o que faria o território preto sumir no fundo. */}
+        <g className="mapa-terra" aria-hidden="true">
+          {TERRITORIOS.map((t) =>
+            geografia.territorios[t.id].partes.map((parte, i) => (
+              <UsoDaParte key={`${t.id}-${i}`} territorio={t.id} indice={i} parte={parte} />
+            )),
+          )}
+        </g>
+
         <g>
           {TERRITORIOS.map((t) => {
             const geo = geografia.territorios[t.id];
+            const { dono } = territorio(t.id);
             const esmaecido = opcoes !== null && !opcoes.has(t.id) && !realcados.has(t.id);
             const classes = ["mapa-territorio"];
             if (realcados.has(t.id)) classes.push("realcado");
@@ -194,7 +207,7 @@ export function Tabuleiro({
                 key={t.id}
                 data-territorio={t.id}
                 className={classes.join(" ")}
-                fill={cores.get(t.id)}
+                fill={dono ? TONS[dono].fundo : cores.get(t.id)}
               >
                 <title>{t.nome}</title>
                 {geo.partes.map((parte, i) => (
