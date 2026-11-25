@@ -115,6 +115,48 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
     else if (!ocupado) void enviar(efeito.acao);
   };
   const fim = visao.fase === "FIM";
+  // Fim de ataque aéreo no último lote: os sobreviventes voltam voando para a base.
+  const encerrado = jogo?.ultimos.find((e) => e.tipo === "ataqueAereoEncerrado");
+  const iniciado = jogo?.ultimos.find((e) => e.tipo === "ataqueAereoIniciado");
+  const ciclo = jogo?.ultimos.find((e) => e.tipo === "cicloAereo");
+  const assentoDoAtacante = encerrado
+    ? visao.jogadores.findIndex((j) => j.id === encerrado.jogador)
+    : -1;
+  const atacante = visao.jogadores[assentoDoAtacante];
+  // Perdas do ciclo aéreo do último lote. Se o ataque começou neste lote, espera a esquadrilha
+  // chegar: 1,5 s no voo ou 1,37 s na ida e volta (ataque que já acabou).
+  const atacanteDoCiclo =
+    ciclo?.tipo === "cicloAereo" ? visao.jogadores.findIndex((j) => j.id === ciclo.jogador) : -1;
+  const explosoes =
+    ciclo?.tipo === "cicloAereo" &&
+    atacanteDoCiclo >= 0 &&
+    (ciclo.bombardeirosAbatidos > 0 || ciclo.exercitosAbatidos > 0)
+      ? {
+          seq: jogo?.seqEventos ?? 0,
+          base: atacanteDoCiclo,
+          alvo: ciclo.alvo,
+          restantes:
+            visao.turno.ataqueAereo?.emCombate ??
+            (encerrado?.tipo === "ataqueAereoEncerrado" ? encerrado.sobreviventes : 0),
+          avioes: ciclo.bombardeirosAbatidos,
+          exercitos: ciclo.exercitosAbatidos,
+          atraso: iniciado ? (encerrado ? 1370 : 1500) : 0,
+        }
+      : null;
+  const volta =
+    encerrado?.tipo === "ataqueAereoEncerrado" &&
+    (encerrado.sobreviventes > 0 || iniciado) &&
+    atacante
+      ? {
+          base: assentoDoAtacante,
+          cor: atacante.cor,
+          alvo: encerrado.alvo,
+          bombardeiros: encerrado.sobreviventes,
+          seq: jogo?.seqEventos ?? 0,
+          saida:
+            iniciado?.tipo === "ataqueAereoIniciado" ? iniciado.daBase + iniciado.daCaixa : null,
+        }
+      : null;
 
   return (
     // No desktop a tela ocupa a altura da janela (menos o cabeçalho de ~60px e o respiro do
@@ -134,6 +176,20 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
           selecionado={selecionado}
           marcados={destaques.marcados}
           opcoes={destaques.opcoes}
+          voo={
+            visao.turno.ataqueAereo && mesa.jogadorDaVez
+              ? {
+                  base: visao.vez,
+                  cor: mesa.jogadorDaVez.cor,
+                  alvo: visao.turno.ataqueAereo.alvo,
+                  bombardeiros: visao.turno.ataqueAereo.emCombate,
+                  abatidosNaChegada:
+                    iniciado && ciclo?.tipo === "cicloAereo" ? ciclo.bombardeirosAbatidos : 0,
+                }
+              : null
+          }
+          volta={volta}
+          explosoes={explosoes}
           onClicar={clicar}
         />
       </div>

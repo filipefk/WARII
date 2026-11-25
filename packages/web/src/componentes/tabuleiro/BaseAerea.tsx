@@ -2,7 +2,7 @@
 // caça delta, preenchidas na cor do dono conforme os bombardeiros na base.
 import { CORES, type CorId } from "@warii/engine";
 import { TONS } from "../../ui/cores";
-import { CACA_DELTA, RASTRO_CACA } from "./pecas";
+import { CACA_DELTA, Caca3D, RASTRO_CACA } from "./pecas";
 
 export const VAGAS_DA_BASE = 10;
 
@@ -39,17 +39,27 @@ export function BaseAerea({ x, y, dono, bombardeiros }: Props) {
       )}
       {Array.from({ length: VAGAS_DA_BASE }, (_, k) => {
         const ocupada = k < n;
+        const deCabeca = k % 2 === 0;
+        const posicao = `translate(${x - 78 + k * 24} ${y + (k % 2 ? 1 : -1)}) scale(.4)`;
+        if (ocupada && cor) {
+          return (
+            <g key={k} className="mapa-vaga ocupada" transform={posicao}>
+              <path
+                className="rastro"
+                d={RASTRO_CACA}
+                transform={deCabeca ? "rotate(180)" : undefined}
+              />
+              <Caca3D cor={cor} rotacao={deCabeca ? 180 : 0} />
+            </g>
+          );
+        }
         return (
           <g
             key={k}
-            className={ocupada ? "mapa-vaga ocupada" : "mapa-vaga"}
-            transform={`translate(${x - 78 + k * 24} ${y + (k % 2 ? 1 : -1)}) scale(.4)${k % 2 ? "" : " rotate(180)"}`}
+            className="mapa-vaga"
+            transform={`${posicao}${deCabeca ? " rotate(180)" : ""}`}
           >
-            <path
-              className="corpo"
-              d={CACA_DELTA}
-              style={ocupada && cor ? { fill: cor } : undefined}
-            />
+            <path className="corpo" d={CACA_DELTA} />
             <path className="rastro" d={RASTRO_CACA} />
           </g>
         );

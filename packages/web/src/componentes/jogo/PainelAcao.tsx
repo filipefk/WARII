@@ -4,13 +4,14 @@
 import {
   type Acao,
   cartaDeTroca,
+  CONTINENTES,
   type CartaId,
   territorio,
   type TerritorioId,
   type VisaoPartida,
 } from "@warii/engine";
 import { type ReactNode, useState } from "react";
-import type { Etapa } from "../../jogo/interacao";
+import { type Etapa, temAvioes } from "../../jogo/interacao";
 import type { Mesa } from "../../jogo/mesa";
 import { eu } from "../../jogo/previa";
 import type { Geografia } from "../../mapa/geografia";
@@ -148,17 +149,21 @@ function EncerrarAtaques({ ctx }: { ctx: Contexto }) {
   );
 }
 
-function AbasDeAtaque({ aereo }: { aereo: boolean }) {
+function AbasDeAtaque({ ctx, aereo }: { ctx: Contexto; aereo: boolean }) {
   const iniciar = useJogo((s) => s.iniciar);
+  const avioes = temAvioes(ctx.visao);
   return (
-    <Linha>
-      <Botao ativo={!aereo} onClick={() => iniciar("ataqueTerrestre")}>
-        Ataque terrestre
-      </Botao>
-      <Botao ativo={aereo} onClick={() => iniciar("ataqueAereo")}>
-        Ataque aéreo
-      </Botao>
-    </Linha>
+    <>
+      <Linha>
+        <Botao ativo={!aereo} onClick={() => iniciar("ataqueTerrestre")}>
+          Ataque terrestre
+        </Botao>
+        <Botao ativo={aereo} disabled={!avioes} onClick={() => iniciar("ataqueAereo")}>
+          Ataque aéreo
+        </Botao>
+      </Linha>
+      {!avioes && <Dica>Sem bombardeiros disponíveis para um ataque aéreo.</Dica>}
+    </>
   );
 }
 
@@ -256,12 +261,21 @@ function Posicionar({
   ctx,
   territorio: t,
   maximo,
+  pendente,
+  encerrarAoTerminar,
 }: {
   ctx: Contexto;
   territorio: TerritorioId;
   maximo: number;
+  pendente: number;
+  // Sem cartas para oferecer, colocar o último exército já encerra o recebimento.
+  encerrarAoTerminar: boolean;
 }) {
   const [quantidade, setQuantidade] = useQuantidade(maximo);
+  const encerrar =
+    encerrarAoTerminar && quantidade === pendente
+      ? () => ctx.mandar({ tipo: "encerrarRecebimento" })
+      : undefined;
   return (
     <>
       <p className="mt-espaco-3">
@@ -271,9 +285,11 @@ function Posicionar({
       <Linha>
         <Botao
           disabled={ctx.ocupado}
-          onClick={() => ctx.mandar({ tipo: "posicionar", territorio: t, quantidade })}
+          onClick={() => ctx.mandar({ tipo: "posicionar", territorio: t, quantidade }, encerrar)}
         >
           Colocar {quantidade} em {nomeT(t)}
+          {encerrar &&
+            (ctx.visao.etapaPrimeiraRodada === 1 ? " e passar a vez" : " e ir ao ataque")}
         </Botao>
       </Linha>
     </>
@@ -281,38 +297,86 @@ function Posicionar({
 }
 
 function Receber({ ctx, etapa }: { ctx: Contexto; etapa: Extract<Etapa, { tipo: "receber" }> }) {
+  const iniciar = useJogo((s) => s.iniciar);
   const primeiraEtapa = ctx.visao.rodada === 1 && ctx.visao.etapaPrimeiraRodada === 1;
+  const encerrar = primeiraEtapa ? "Encerrar recebimento e passar a vez" : "Encerrar recebimento";
+  const quantos = plural(etapa.doPasso, "exército", "exércitos");
+  const posicionar =
+    etapa.territorio && etapa.maximo > 0 ? (
+      <Posicionar
+        key={`${etapa.passo}:${etapa.territorio}:${etapa.maximo}`}
+        ctx={ctx}
+        territorio={etapa.territorio}
+        maximo={etapa.maximo}
+        pendente={etapa.pendente}
+        encerrarAoTerminar={!etapa.temCartas}
+      />
+    ) : null;
+  const cartas = eu(ctx.visao)?.cartas?.length ?? 0;
   return (
     <>
-      {etapa.pendente > 0 ? (
-        <p>
-          {etapa.pendente === 1 ? "Falta" : "Faltam"}{" "}
-          <b>{plural(etapa.pendente, "exército", "exércitos")}</b> para colocar.
-        </p>
-      ) : (
-        <p>Todos os exércitos foram colocados.</p>
+      {etapa.passo === "continente" && etapa.continente !== null && (
+        <>
+          <p>
+            Coloque <b>{quantos}</b> na <b>{CONTINENTES[etapa.continente].nome}</b>, o bônus do
+            continente.
+          </p>
+          {posicionar ?? (
+            <Dica>
+              Clique num território seu da {CONTINENTES[etapa.continente].nome} (os destacados).
+            </Dica>
+          )}
+        </>
       )}
-      {etapa.pendente > 0 &&
-        (etapa.territorio && etapa.maximo > 0 ? (
-          <Posicionar
-            key={`${etapa.territorio}:${etapa.maximo}`}
-            ctx={ctx}
-            territorio={etapa.territorio}
-            maximo={etapa.maximo}
-          />
-        ) : (
-          <Dica>Clique num território seu (os destacados) para colocar exércitos.</Dica>
-        ))}
-      <Linha>
-        <Botao
-          disabled={ctx.ocupado || etapa.pendente > 0}
-          onClick={() => ctx.mandar({ tipo: "encerrarRecebimento" })}
-        >
-          {primeiraEtapa ? "Encerrar recebimento e passar a vez" : "Encerrar recebimento"}
-        </Botao>
-      </Linha>
+      {etapa.passo === "livres" && (
+        <>
+          <p>
+            Coloque <b>{quantos}</b> em qualquer território seu.
+          </p>
+          {posicionar ?? <Dica>Clique num território seu (os destacados).</Dica>}
+        </>
+      )}
+      {etapa.passo === "cartas" && (
+        <>
+          <p>Todos os exércitos foram colocados.</p>
+          {etapa.temCartas ? (
+            <>
+              <p className="mt-espaco-3">
+                Você tem {plural(cartas, "carta", "cartas")}. Quer usá-las agora?
+              </p>
+              <Linha>
+                <Botao onClick={() => iniciar("reforco")}>Reforçar com cartas</Botao>
+                <Botao onClick={() => iniciar("transporte")}>Transportar com cartas</Botao>
+                <Botao onClick={() => iniciar("descarte")}>Descartar cartas</Botao>
+              </Linha>
+              <Linha>
+                <Botao
+                  disabled={ctx.ocupado}
+                  onClick={() => ctx.mandar({ tipo: "encerrarRecebimento" })}
+                >
+                  {primeiraEtapa ? "Não usar e passar a vez" : "Não usar e encerrar recebimento"}
+                </Botao>
+              </Linha>
+            </>
+          ) : (
+            <Linha>
+              <Botao
+                disabled={ctx.ocupado}
+                onClick={() => ctx.mandar({ tipo: "encerrarRecebimento" })}
+              >
+                {encerrar}
+              </Botao>
+            </Linha>
+          )}
+        </>
+      )}
+      {etapa.passo !== "cartas" && etapa.pendente > etapa.doPasso && (
+        <Dica>
+          Ao todo {etapa.pendente === 1 ? "falta" : "faltam"}{" "}
+          {plural(etapa.pendente, "exército", "exércitos")}.
+        </Dica>
+      )}
       {primeiraEtapa && <Dica>Na primeira volta da rodada 1 só se recebe exércitos.</Dica>}
-      <BotoesDeCartas ctx={ctx} />
     </>
   );
 }
@@ -397,7 +461,7 @@ function Terrestre({
   const { origem, alvo, maximoDados } = etapa;
   return (
     <>
-      <AbasDeAtaque aereo={false} />
+      <AbasDeAtaque ctx={ctx} aereo={false} />
       {origem === null ? (
         <Dica>
           {etapa.origens.size > 0
@@ -440,7 +504,7 @@ function Aereo({ ctx, etapa }: { ctx: Contexto; etapa: Extract<Etapa, { tipo: "a
   const { alvo, cartas } = etapa;
   return (
     <>
-      <AbasDeAtaque aereo />
+      <AbasDeAtaque ctx={ctx} aereo />
       <p className="mt-espaco-3">
         Bombardeiros: {meu?.bombardeirosBase ?? 0} na base · {meu?.bombardeirosCaixa ?? 0} na caixa.
       </p>

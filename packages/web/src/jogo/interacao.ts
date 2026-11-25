@@ -10,7 +10,10 @@ import {
   cartaDeTroca,
   type CartaId,
   type ConquistaPendente,
+  type ContinenteId,
+  IDS_CONTINENTES,
   pendenteDeRecebimento,
+  territorio as dadosDoTerritorio,
   type TerritorioId,
   type VisaoPartida,
 } from "@warii/engine";
@@ -47,11 +50,19 @@ export type Etapa =
   | { tipo: "escolha5j"; centros: readonly CartaId[]; doisVagosPossivel: boolean }
   | { tipo: "doisVagos"; primeiro: T | null; segundo: T | null; opcoes: Conjunto }
   | { tipo: "ocupar"; opcoes: Conjunto }
+  // Recebimento guiado: primeiro o bônus de cada continente (um continente por vez, só nos seus
+  // territórios), depois os livres em qualquer lugar e, no fim, a oferta de usar cartas.
   | {
       tipo: "receber";
+      passo: "continente" | "livres" | "cartas";
+      // Continente do passo atual (só no passo "continente").
+      continente: ContinenteId | null;
+      // Exércitos do passo atual (os do continente ou os livres).
+      doPasso: number;
       territorio: T | null;
       maximo: number;
       pendente: number;
+      temCartas: boolean;
       opcoes: Conjunto;
     }
   | { tipo: "conquista"; conquista: ConquistaPendente }
@@ -164,16 +175,56 @@ function doisVagos(visao: VisaoPartida, i: Interacao): Etapa {
 }
 
 function receber(visao: VisaoPartida, i: Interacao): Etapa {
-  const opcoes = lembrar(visao, "posicionaveis", () => conjunto(territoriosPosicionaveis(visao)));
-  const territorio = valendo(i.destino, opcoes);
+  const posicionaveis = lembrar(visao, "posicionaveis", () =>
+    conjunto(territoriosPosicionaveis(visao)),
+  );
   const r = visao.turno.recebimento;
+  const pendente = r ? pendenteDeRecebimento(r) : 0;
+  const temCartas = (eu(visao)?.cartas?.length ?? 0) > 0;
+  const continente = r
+    ? (IDS_CONTINENTES.find((c) => (r.porContinente[c] ?? 0) > 0) ?? null)
+    : null;
+  let passo: "continente" | "livres" | "cartas" = "cartas";
+  let doPasso = 0;
+  let opcoes: Conjunto = VAZIO;
+  if (r && continente !== null) {
+    passo = "continente";
+    doPasso = r.porContinente[continente] ?? 0;
+    opcoes = lembrar(visao, `posicionaveis:${continente}`, () =>
+      conjunto([...posicionaveis].filter((t) => dadosDoTerritorio(t).continente === continente)),
+    );
+  } else if (r && r.livres > 0) {
+    passo = "livres";
+    doPasso = r.livres;
+    opcoes = posicionaveis;
+  }
+  // Com um território só no passo, ele já vem escolhido.
+  const [unico] = opcoes.size === 1 ? [...opcoes] : [];
+  const territorio = valendo(i.destino, opcoes) ?? unico ?? null;
   return {
     tipo: "receber",
+    passo,
+    continente,
+    doPasso,
     territorio,
-    maximo: territorio ? maximoPosicionar(visao, territorio) : 0,
-    pendente: r ? pendenteDeRecebimento(r) : 0,
+    // No passo do continente, o máximo fica no bônus dele (o engine gastaria os livres em seguida).
+    maximo: territorio ? Math.min(maximoPosicionar(visao, territorio), doPasso) : 0,
+    pendente,
+    temCartas,
     opcoes,
   };
+}
+
+// Há bombardeiros para um ataque aéreo: na base ou, com uma carta de território para chamá-los,
+// na caixa (§9.3 B).
+export function temAvioes(visao: VisaoPartida): boolean {
+  const meu = eu(visao);
+  if (!meu) return false;
+  if (meu.bombardeirosBase > 0) return true;
+  return (
+    meu.bombardeirosCaixa > 0 &&
+    (meu.cartas ?? []).some((c) => cartaDeTroca(c)?.tipo !== "numerica")
+  );
 }
 
 function terrestre(visao: VisaoPartida, i: Interacao): Etapa {
@@ -334,7 +385,7 @@ export function derivarEtapa(visao: VisaoPartida, i: Interacao): Etapa {
   }
   if (visao.fase === "RECEBER") return receber(visao, i);
   if (visao.fase === "ATACAR")
-    return i.modo === "ataqueAereo" ? aereo(visao, i) : terrestre(visao, i);
+    return i.modo === "ataqueAereo" && temAvioes(visao) ? aereo(visao, i) : terrestre(visao, i);
   return deslocar(visao, i);
 }
 
@@ -355,6 +406,8 @@ export function destaquesDoMapa(etapa: Etapa): DestaquesDoMapa {
     case "ocupar":
       return { opcoes: etapa.opcoes, marcados: VAZIO };
     case "receber":
+      if (etapa.passo === "cartas") return { opcoes: null, marcados: VAZIO };
+      return { opcoes: etapa.opcoes, marcados: marcar(etapa.territorio) };
     case "reforco":
       return { opcoes: etapa.opcoes, marcados: marcar(etapa.territorio) };
     case "terrestre":

@@ -543,6 +543,66 @@
     @apply inline-block h-[38px] w-[38px] rounded-[7px] border border-dashed border-border;
   }
 
+  /* Esquadrilha do ataque aéreo (Tabuleiro): voa da base até o alvo e fica pairando; a sombra
+     começa longe (avião alto) e se aproxima ao chegar. */
+  .mapa-esquadrilha {
+    pointer-events: none;
+  }
+  .caca-voo {
+    animation:
+      caca-voo 1.5s cubic-bezier(0.45, 0, 0.2, 1) var(--atraso) both,
+      caca-pairar 2.2s ease-in-out calc(var(--atraso) + 1.5s) infinite alternate;
+  }
+  .caca-voo-sombra {
+    animation: caca-voo-sombra 1.5s cubic-bezier(0.45, 0, 0.2, 1) var(--atraso) both;
+  }
+  .caca-volta {
+    animation: caca-volta 1.5s cubic-bezier(0.45, 0, 0.55, 1) var(--atraso) both;
+  }
+  /* Ataque que começou e acabou no mesmo lance: ida, um momento sobre o alvo e volta. */
+  .caca-ida-volta {
+    animation: caca-ida-volta 3.6s ease-in-out var(--atraso) both;
+  }
+  .caca-ida-abatido {
+    animation: caca-ida-abatido 3.6s ease-in-out var(--atraso) both;
+  }
+  .caca-rumo-ida {
+    animation: caca-rumo-ida 3.6s step-end var(--atraso) both;
+  }
+  .caca-rumo-volta {
+    animation: caca-rumo-volta 3.6s step-end var(--atraso) both;
+  }
+  /* Abatido no primeiro ciclo: chega com os outros e some (a explosão cobre a queda). */
+  .caca-voo-abatido {
+    animation: caca-voo-abatido 1.7s cubic-bezier(0.45, 0, 0.2, 1) var(--atraso) both;
+  }
+
+  /* Explosão (Tabuleiro): clarão, bola de fogo, faíscas e fumaça, uma vez só. */
+  .mapa-explosoes {
+    pointer-events: none;
+  }
+  .explosao > * {
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+  .explosao-clarao {
+    animation: explosao-clarao 0.45s ease-out var(--atraso) both;
+  }
+  .explosao-fogo {
+    animation: explosao-fogo 0.9s ease-out var(--atraso) both;
+  }
+  .explosao-faiscas {
+    animation: explosao-faiscas 0.6s ease-out var(--atraso) both;
+  }
+  .explosao-fumaca {
+    animation: explosao-fumaca 1.6s ease-out var(--atraso) both;
+  }
+
+  .caca-volta-sombra {
+    animation: caca-voo-sombra 1.5s cubic-bezier(0.45, 0, 0.55, 1) var(--atraso) both reverse;
+  }
+
   /* Caças do fundo ilustrado (FundoDeGuerra): sobem e descem devagar. */
   .fundo-caca {
     animation: fundo-caca-voo 14s ease-in-out infinite alternate;
@@ -555,6 +615,169 @@
   }
   to {
     transform: translate(-14px, -10px);
+  }
+}
+
+@keyframes caca-voo {
+  from {
+    transform: translate(var(--dx), var(--dy)) scale(0.7);
+  }
+  to {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes caca-volta {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(0.7);
+    opacity: 0;
+  }
+}
+
+@keyframes caca-ida-volta {
+  0% {
+    transform: translate(var(--dx), var(--dy)) scale(0.7);
+    opacity: 1;
+  }
+  38%,
+  62% {
+    transform: translate(0, 0) scale(1);
+  }
+  94% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(0.7);
+    opacity: 0;
+  }
+}
+
+@keyframes caca-ida-abatido {
+  0% {
+    transform: translate(var(--dx), var(--dy)) scale(0.7);
+    opacity: 1;
+  }
+  38% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  55%,
+  100% {
+    transform: translate(0, 0) scale(0.6);
+    opacity: 0;
+  }
+}
+
+@keyframes caca-rumo-ida {
+  0% {
+    opacity: 1;
+  }
+  62%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes caca-rumo-volta {
+  0% {
+    opacity: 0;
+  }
+  62%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes caca-voo-abatido {
+  0% {
+    transform: translate(var(--dx), var(--dy)) scale(0.7);
+    opacity: 1;
+  }
+  88% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, 0) scale(0.6);
+    opacity: 0;
+  }
+}
+
+@keyframes explosao-clarao {
+  0% {
+    transform: scale(0.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes explosao-fogo {
+  0% {
+    transform: scale(0.3);
+    opacity: 1;
+  }
+  35% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes explosao-faiscas {
+  0% {
+    transform: scale(0.4) rotate(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.8) rotate(25deg);
+    opacity: 0;
+  }
+}
+
+@keyframes explosao-fumaca {
+  0% {
+    transform: scale(0.4) translate(0, 0);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.9) translate(0, -6px);
+    opacity: 0;
+  }
+}
+
+@keyframes caca-pairar {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(0, -3px);
+  }
+}
+
+@keyframes caca-voo-sombra {
+  from {
+    transform: translate(18px, 30px);
+    opacity: 0.35;
+  }
+  to {
+    transform: translate(0, 0);
+    opacity: 1;
   }
 }
 
@@ -573,7 +796,20 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* Sem movimento, a volta só não aparece: os aviões já estão contados na base. */
+  .caca-volta,
+  .caca-ida-volta,
+  .caca-ida-abatido,
+  .caca-voo-abatido,
+  .explosao {
+    animation: none;
+    opacity: 0;
+  }
+
   .fundo-caca,
+  .caca-voo,
+  .caca-voo-sombra,
+  .caca-volta-sombra,
   .dado.rolando {
     animation: none;
   }

@@ -12,13 +12,14 @@ import {
   type TerritorioId,
 } from "@warii/engine";
 import { select, zoom } from "d3";
-import { type MouseEvent, useEffect, useMemo, useRef } from "react";
+import { type CSSProperties, type MouseEvent, useEffect, useMemo, useRef } from "react";
 import { chaveDaRota, type Geografia } from "../../mapa/geografia";
 import { TONS } from "../../ui/cores";
 import { corClareadaDoContinente, corDoTerritorio } from "../../ui/tokens";
 import { BaseAerea } from "./BaseAerea";
 import { idContornoPais, idRecorteFronteira, UsoDaParte } from "./DefsDoJogo";
 import { MarcadorTerritorio } from "./MarcadorTerritorio";
+import { Caca3D, ID_VOLUME_CACA } from "./pecas";
 
 export interface TerritorioNoMapa {
   dono: CorId | null;
@@ -28,6 +29,31 @@ export interface TerritorioNoMapa {
 export interface BaseNoMapa {
   dono: CorId;
   bombardeiros: number;
+}
+
+// Ataque aéreo em curso: os bombardeiros em combate saem da base do atacante e ficam sobre o alvo.
+export interface VooNoMapa {
+  // Assento do atacante (índice em `bases`).
+  base: number;
+  cor: CorId;
+  alvo: TerritorioId;
+  bombardeiros: number;
+  // Abatidos no primeiro ciclo, quando o ataque começa neste lote: voam junto e caem ao chegar.
+  abatidosNaChegada?: number;
+}
+
+export interface ExplosoesNoMapa {
+  // Identifica o lote (as explosões tocam uma vez por lote).
+  seq: number;
+  base: number;
+  alvo: TerritorioId;
+  // Bombardeiros que seguem em combate (ou sobreviventes): os abatidos vêm logo depois deles na
+  // formação.
+  restantes: number;
+  avioes: number;
+  exercitos: number;
+  // Espera (ms) até a esquadrilha chegar ao alvo, quando ela parte neste mesmo lote.
+  atraso: number;
 }
 
 interface Props {
@@ -42,6 +68,13 @@ interface Props {
   marcados?: ReadonlySet<TerritorioId>;
   // Quando definido, só estes respondem ao clique como opção; os demais ficam esmaecidos.
   opcoes?: ReadonlySet<TerritorioId> | null;
+  voo?: VooNoMapa | null;
+  // Fim do ataque aéreo: os sobreviventes voltam do alvo para a base (`seq` identifica o lote).
+  // `saida` = bombardeiros que partiram, quando o ataque começou e acabou no mesmo lote: aí a
+  // esquadrilha faz a ida e a volta, e os abatidos somem sobre o alvo.
+  volta?: (VooNoMapa & { seq: number; saida: number | null }) | null;
+  // Perdas de um ciclo aéreo: explosões nos bombardeiros abatidos e sobre o alvo.
+  explosoes?: ExplosoesNoMapa | null;
   onClicar?: (territorio: TerritorioId | null) => void;
 }
 
@@ -91,6 +124,9 @@ export function Tabuleiro({
   selecionado = null,
   marcados,
   opcoes = null,
+  voo = null,
+  volta = null,
+  explosoes = null,
   onClicar,
 }: Props) {
   const { largura, altura } = geografia;
@@ -165,6 +201,20 @@ export function Tabuleiro({
           <stop offset="0%" stopColor="var(--color-board-glow)" />
           <stop offset="55%" stopColor="var(--color-board-mid)" />
           <stop offset="100%" stopColor="var(--color-board-edge)" />
+        </radialGradient>
+        {/* Volume dos caças: luz na asa esquerda, brilho na fuselagem e sombra na direita. */}
+        <linearGradient id={ID_VOLUME_CACA} x1="0" y1="0" x2="1" y2="0.25">
+          <stop offset="0" stopColor="#fff" stopOpacity={0.5} />
+          <stop offset=".42" stopColor="#fff" stopOpacity={0.08} />
+          <stop offset=".5" stopColor="#fff" stopOpacity={0.35} />
+          <stop offset=".58" stopColor="#000" stopOpacity={0.08} />
+          <stop offset="1" stopColor="#000" stopOpacity={0.5} />
+        </linearGradient>
+        <radialGradient id={ID_FOGO}>
+          <stop offset="0" stopColor="#fff" />
+          <stop offset=".3" stopColor="var(--color-accent)" />
+          <stop offset=".7" stopColor="var(--color-bad)" stopOpacity={0.85} />
+          <stop offset="1" stopColor="var(--color-bad)" stopOpacity={0} />
         </radialGradient>
         <clipPath id="tabuleiro-moldura">
           <rect x={10} y={10} width={largura - 20} height={altura - 20} rx={14} />
@@ -295,7 +345,218 @@ export function Tabuleiro({
             );
           })}
         </g>
+
+        {voo && voo.bombardeiros > 0 && (
+          <Esquadrilha
+            key={`${voo.base}:${voo.alvo}`}
+            de={POSICOES_BASES(largura, altura)[voo.base] ?? [largura / 2, 40]}
+            para={geografia.territorios[voo.alvo].rotulo}
+            cor={TONS[voo.cor].fundo}
+            bombardeiros={voo.bombardeiros}
+            abatidos={voo.abatidosNaChegada ?? 0}
+          />
+        )}
+        {!voo && volta && volta.bombardeiros > 0 && (
+          <Esquadrilha
+            key={`volta:${volta.seq}`}
+            de={POSICOES_BASES(largura, altura)[volta.base] ?? [largura / 2, 40]}
+            para={geografia.territorios[volta.alvo].rotulo}
+            cor={TONS[volta.cor].fundo}
+            bombardeiros={volta.bombardeiros}
+            saida={volta.saida}
+            volta
+          />
+        )}
+        {explosoes && (
+          <Explosoes
+            key={`explosoes:${explosoes.seq}`}
+            de={POSICOES_BASES(largura, altura)[explosoes.base] ?? [largura / 2, 40]}
+            para={geografia.territorios[explosoes.alvo].rotulo}
+            explosoes={explosoes}
+          />
+        )}
       </g>
     </svg>
+  );
+}
+
+// Rumo (graus, 0 = nariz para cima) da base até o alvo e posição do k-ésimo avião na formação:
+// em leque atrás do alvo, o primeiro na frente e os demais alternando dos lados.
+function rumoDoVoo(de: readonly [number, number], para: readonly [number, number]): number {
+  return (Math.atan2(para[1] - de[1], para[0] - de[0]) * 180) / Math.PI + 90;
+}
+
+function posicaoNaFormacao(
+  para: readonly [number, number],
+  rumo: number,
+  k: number,
+): [number, number] {
+  const lado = k === 0 ? 0 : k % 2 ? 1 : -1;
+  const fila = Math.ceil(k / 2);
+  const angulo = ((rumo - 90) * Math.PI) / 180;
+  const tras = 30 + fila * 16;
+  return [
+    para[0] - Math.cos(angulo) * tras - Math.sin(angulo) * lado * fila * 20,
+    para[1] - Math.sin(angulo) * tras + Math.cos(angulo) * lado * fila * 20,
+  ];
+}
+
+// Intervalo (ms) entre a partida de um avião e a do seguinte: o `--atraso` das animações.
+const INTERVALO_DA_FORMACAO = 90;
+
+// Bombardeiros do ataque aéreo: voam juntos da base até o alvo e ficam pairando em volta dele,
+// apontados para ele. Os abatidos somem (a quantidade vem da visão a cada ciclo). Com `volta`,
+// fazem o caminho inverso: dão meia-volta na formação e somem ao chegar à base.
+function Esquadrilha({
+  de,
+  para,
+  cor,
+  bombardeiros,
+  volta = false,
+  saida = null,
+  abatidos = 0,
+}: {
+  de: readonly [number, number];
+  para: readonly [number, number];
+  cor: string;
+  bombardeiros: number;
+  volta?: boolean;
+  saida?: number | null;
+  abatidos?: number;
+}) {
+  const rumo = rumoDoVoo(de, para);
+  const total = volta ? Math.max(bombardeiros, saida ?? 0) : bombardeiros + abatidos;
+  return (
+    <g className="mapa-esquadrilha" aria-hidden="true">
+      {Array.from({ length: total }, (_, k) => {
+        const [px, py] = posicaoNaFormacao(para, rumo, k);
+        const estilo: CSSProperties & Record<`--${string}`, string> = {
+          "--dx": `${de[0] - px}px`,
+          "--dy": `${de[1] - py}px`,
+          "--atraso": `${k * INTERVALO_DA_FORMACAO}ms`,
+        };
+        return (
+          <g key={k} transform={`translate(${px} ${py})`}>
+            {volta && saida !== null ? (
+              <g
+                className={k < bombardeiros ? "caca-ida-volta" : "caca-ida-abatido"}
+                style={estilo}
+              >
+                <g transform="scale(.55)">
+                  <g className="caca-rumo-ida">
+                    <Caca3D cor={cor} rotacao={rumo} altura={1.6} />
+                  </g>
+                  <g className="caca-rumo-volta">
+                    <Caca3D cor={cor} rotacao={rumo + 180} altura={1.6} />
+                  </g>
+                </g>
+              </g>
+            ) : (
+              <g
+                className={
+                  volta ? "caca-volta" : k < bombardeiros ? "caca-voo" : "caca-voo-abatido"
+                }
+                style={estilo}
+              >
+                <g transform="scale(.55)">
+                  <Caca3D
+                    cor={cor}
+                    rotacao={volta ? rumo + 180 : rumo}
+                    altura={2.2}
+                    classeSombra={volta ? "caca-volta-sombra" : "caca-voo-sombra"}
+                  />
+                </g>
+              </g>
+            )}
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+const ID_FOGO = "explosao-fogo";
+
+// Uma explosão: clarão, bola de fogo, faíscas e fumaça, que tocam uma vez e somem.
+function Explosao({
+  x,
+  y,
+  tamanho,
+  atraso,
+}: {
+  x: number;
+  y: number;
+  tamanho: number;
+  atraso: number;
+}) {
+  const estilo: CSSProperties & Record<`--${string}`, string> = { "--atraso": `${atraso}ms` };
+  return (
+    <g transform={`translate(${x} ${y}) scale(${tamanho})`}>
+      <g className="explosao" style={estilo}>
+        <circle className="explosao-fumaca" r={14} fill="var(--color-muted)" />
+        <circle className="explosao-clarao" r={16} fill={`url(#${ID_FOGO})`} />
+        <g className="explosao-faiscas" stroke="var(--color-accent)" strokeLinecap="round">
+          {Array.from({ length: 8 }, (_, i) => {
+            const a = (i * Math.PI) / 4 + 0.3;
+            return (
+              <line
+                key={i}
+                x1={Math.cos(a) * 9}
+                y1={Math.sin(a) * 9}
+                x2={Math.cos(a) * 17}
+                y2={Math.sin(a) * 17}
+                strokeWidth={1.6}
+              />
+            );
+          })}
+        </g>
+        <circle className="explosao-fogo" r={10} fill={`url(#${ID_FOGO})`} />
+      </g>
+    </g>
+  );
+}
+
+// Perdas de um ciclo aéreo: uma explosão em cada bombardeiro abatido (na posição dele na
+// formação) e uma por exército perdido sobre o marcador do alvo, um pouco espalhadas.
+function Explosoes({
+  de,
+  para,
+  explosoes,
+}: {
+  de: readonly [number, number];
+  para: readonly [number, number];
+  explosoes: ExplosoesNoMapa;
+}) {
+  const rumo = rumoDoVoo(de, para);
+  const { restantes, avioes, exercitos, atraso } = explosoes;
+  return (
+    <g className="mapa-explosoes" aria-hidden="true">
+      {Array.from({ length: avioes }, (_, i) => {
+        const k = restantes + i;
+        const [x, y] = posicaoNaFormacao(para, rumo, k);
+        return (
+          <Explosao
+            key={`a${i}`}
+            x={x}
+            y={y}
+            tamanho={1.1}
+            atraso={atraso ? atraso + k * INTERVALO_DA_FORMACAO : i * 120}
+          />
+        );
+      })}
+      {Array.from({ length: Math.min(exercitos, 6) }, (_, i) => {
+        const a = i * 2.4;
+        const r = i === 0 ? 0 : 9;
+        return (
+          <Explosao
+            key={`e${i}`}
+            x={para[0] + Math.cos(a) * r}
+            y={para[1] + Math.sin(a) * r}
+            tamanho={1.5}
+            atraso={atraso + 250 + i * 160}
+          />
+        );
+      })}
+    </g>
   );
 }
