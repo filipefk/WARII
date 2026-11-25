@@ -2,8 +2,8 @@
 // Tabuleiro e InfoTerritorio do sistema). A visão vem do socket; a interação fica em useJogo.
 import type { TerritorioId } from "@warii/engine";
 import type { PartidaLobbyDto } from "@warii/shared";
-import { useEffect, useMemo, useState } from "react";
-import { Aviso, Carregando } from "../componentes/basicos";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Aviso, Botao, Carregando } from "../componentes/basicos";
 import { InfoTerritorio } from "../componentes/jogo/InfoTerritorio";
 import {
   Bloco,
@@ -15,14 +15,17 @@ import {
   PainelVez,
 } from "../componentes/jogo/Paineis";
 import { TabelaContinentes } from "../componentes/jogo/TabelaContinentes";
+import { PainelCombate } from "../componentes/jogo/Combate";
+import { PainelAcao } from "../componentes/jogo/PainelAcao";
+import { TelaDeVitoria } from "../componentes/jogo/TelaDeVitoria";
 import { DefsDoJogo } from "../componentes/tabuleiro/DefsDoJogo";
 import { Tabuleiro } from "../componentes/tabuleiro/Tabuleiro";
+import { useEnviarAcao } from "../jogo/enviarAcao";
+import { cliqueNoMapa, derivarEtapa, destaquesDoMapa, type Etapa } from "../jogo/interacao";
 import { montarMesa } from "../jogo/mesa";
-import { euSouDaVez } from "../jogo/previa";
 import { carregarGeografia, type Geografia } from "../mapa/geografia";
-import { chaveDaVez, useJogo } from "../stores/jogo";
+import { chaveDaFase, useJogo } from "../stores/jogo";
 import type { JogoRecebido } from "../stores/partidas";
-import { NOMES_FASES } from "../ui/textosEventos";
 
 function useGeografia(): { geografia: Geografia | null; erro: string | null } {
   const [geografia, setGeografia] = useState<Geografia | null>(null);
@@ -53,6 +56,14 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
   const cartasMarcadas = useJogo((s) => s.cartas);
   const abrirPartida = useJogo((s) => s.abrirPartida);
   const sincronizarVez = useJogo((s) => s.sincronizarVez);
+  const definirOrigem = useJogo((s) => s.definirOrigem);
+  const definirDestino = useJogo((s) => s.definirDestino);
+  const modo = useJogo((s) => s.modo);
+  const origem = useJogo((s) => s.origem);
+  const destino = useJogo((s) => s.destino);
+  const daBase = useJogo((s) => s.daBase);
+  const { ocupado, erro: erroAcao, enviar, limparErro } = useEnviarAcao(partidaId);
+  const [vitoriaFechada, setVitoriaFechada] = useState(false);
 
   const visao = jogo?.visao;
   const seq = jogo?.seq;
@@ -60,17 +71,47 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
     if (seq !== undefined) abrirPartida(partidaId, seq);
   }, [partidaId, seq, abrirPartida]);
   useEffect(() => {
-    if (visao) sincronizarVez(chaveDaVez(visao.rodada, visao.vez, visao.etapaPrimeiraRodada));
+    if (!visao) return;
+    sincronizarVez(chaveDaFase(visao.rodada, visao.vez, visao.etapaPrimeiraRodada, visao.fase));
   }, [visao, sincronizarVez]);
+  // A recusa da ação anterior não vale para a próxima vez nem para a próxima fase.
+  const chave = visao
+    ? chaveDaFase(visao.rodada, visao.vez, visao.etapaPrimeiraRodada, visao.fase)
+    : null;
+  const chaveDoErro = useRef(chave);
+  useEffect(() => {
+    if (chaveDoErro.current === chave) return;
+    chaveDoErro.current = chave;
+    limparErro();
+  }, [chave, limparErro]);
 
   const mesa = useMemo(() => (visao ? montarMesa(lobby, visao) : null), [lobby, visao]);
+  const etapa: Etapa = useMemo(
+    () =>
+      visao
+        ? derivarEtapa(visao, { modo, origem, destino, cartas: cartasMarcadas, daBase })
+        : { tipo: "espera" },
+    [visao, modo, origem, destino, cartasMarcadas, daBase],
+  );
+  const destaques = useMemo(() => destaquesDoMapa(etapa), [etapa]);
 
   if (erro) return <Aviso>{erro}</Aviso>;
   if (!visao || !mesa || !geografia || !jogo) return <Carregando texto="Carregando a partida…" />;
 
-  const clicar = (t: TerritorioId | null) => selecionar(t === selecionado ? null : t);
-  const daVez = mesa.jogadorDaVez;
-  const minhaVez = euSouDaVez(visao);
+  // Um clique que faz parte da interação escolhe o território; os outros só o mostram no painel.
+  const clicar = (t: TerritorioId | null) => {
+    const efeito = t === null ? null : cliqueNoMapa(etapa, t);
+    if (efeito === null) {
+      selecionar(t === selecionado ? null : t);
+      return;
+    }
+    limparErro();
+    selecionar(t);
+    if (efeito.tipo === "origem") definirOrigem(efeito.territorio);
+    else if (efeito.tipo === "destino") definirDestino(efeito.territorio);
+    else if (!ocupado) void enviar(efeito.acao);
+  };
+  const fim = visao.fase === "FIM";
 
   return (
     // No desktop a tela ocupa a altura da janela (menos o cabeçalho de ~60px e o respiro do
@@ -88,6 +129,8 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
             j.eliminado ? null : { dono: j.cor, bombardeiros: j.bombardeirosBase },
           )}
           selecionado={selecionado}
+          marcados={destaques.marcados}
+          opcoes={destaques.opcoes}
           onClicar={clicar}
         />
       </div>
@@ -97,17 +140,21 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
 
         <PainelVez visao={visao} mesa={mesa} presenca={presenca} />
 
-        {visao.fase !== "FIM" && (
-          <Bloco titulo="Ação">
-            {minhaVez ? (
-              <p>
-                Sua vez: <b>{NOMES_FASES[visao.fase]}</b>.
-              </p>
-            ) : (
-              <p className="dica">Aguardando {mesa.nome(daVez?.id ?? null)}.</p>
-            )}
-          </Bloco>
+        {fim ? (
+          <div className="mt-espaco-3">
+            <Botao onClick={() => setVitoriaFechada(false)}>Ver resultado</Botao>
+          </div>
+        ) : (
+          <PainelAcao
+            visao={visao}
+            mesa={mesa}
+            geografia={geografia}
+            etapa={etapa}
+            envio={{ ocupado, erro: erroAcao, enviar }}
+          />
         )}
+
+        <PainelCombate jogo={jogo} visao={visao} mesa={mesa} />
 
         <PainelRecebimento visao={visao} />
 
@@ -125,6 +172,9 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
 
         <LogDaPartida eventos={jogo.eventos} mesa={mesa} />
       </aside>
+      {fim && !vitoriaFechada && (
+        <TelaDeVitoria visao={visao} mesa={mesa} onFechar={() => setVitoriaFechada(true)} />
+      )}
     </div>
   );
 }

@@ -14,22 +14,30 @@ export type ModoInteracao =
   | "transporte"
   | "descarte";
 
-interface Interacao {
+export interface Interacao {
   modo: ModoInteracao;
   // Primeiro território escolhido (origem do ataque/deslocamento/transporte, 1º dos dois vagos).
   origem: TerritorioId | null;
   // Segundo território escolhido (alvo ou destino), à espera da quantidade.
   destino: TerritorioId | null;
   cartas: CartaId[];
+  // Bombardeiros da base no ataque aéreo (null = o padrão da situação).
+  daBase: number | null;
 }
 
-const SEM_INTERACAO: Interacao = { modo: "nenhum", origem: null, destino: null, cartas: [] };
+const SEM_INTERACAO: Interacao = {
+  modo: "nenhum",
+  origem: null,
+  destino: null,
+  cartas: [],
+  daBase: null,
+};
 
 interface EstadoJogo extends Interacao {
   partidaId: string | null;
   // Território mostrado no painel (só informação; não altera a interação).
   selecionado: TerritorioId | null;
-  // Identifica a vez atual ("rodada:vez:etapa"); quando muda, a interação é zerada.
+  // Identifica a vez e a fase atuais ("rodada:vez:etapa:fase"); quando muda, a interação é zerada.
   chaveDaVez: string | null;
   // Seq do último lote de eventos já animado.
   seqAnimado: number;
@@ -41,6 +49,7 @@ interface EstadoJogo extends Interacao {
   definirOrigem: (territorio: TerritorioId | null) => void;
   definirDestino: (territorio: TerritorioId | null) => void;
   alternarCarta: (carta: CartaId) => void;
+  definirDaBase: (quantidade: number) => void;
   cancelar: () => void;
   marcarAnimado: (seq: number) => void;
 }
@@ -68,10 +77,21 @@ export const useJogo = create<EstadoJogo>()((set, get) => ({
     set((s) => ({
       cartas: s.cartas.includes(carta) ? s.cartas.filter((c) => c !== carta) : [...s.cartas, carta],
     })),
+  definirDaBase: (daBase) => set({ daBase }),
   cancelar: () => set(SEM_INTERACAO),
   marcarAnimado: (seq) => set((s) => ({ seqAnimado: Math.max(s.seqAnimado, seq) })),
 }));
 
 export function chaveDaVez(rodada: number, vez: number, etapa: 1 | 2 | null): string {
   return `${rodada}:${vez}:${etapa ?? "-"}`;
+}
+
+// A interação também é zerada quando a fase muda dentro da mesma vez.
+export function chaveDaFase(
+  rodada: number,
+  vez: number,
+  etapa: 1 | 2 | null,
+  fase: string,
+): string {
+  return `${chaveDaVez(rodada, vez, etapa)}:${fase}`;
 }

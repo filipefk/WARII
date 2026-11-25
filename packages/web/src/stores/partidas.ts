@@ -17,7 +17,11 @@ export interface JogoRecebido {
   seqEventos: number;
   // Eventos do lote mais recente.
   ultimos: Evento[];
+  // Último lote com combate (ataque terrestre ou ciclo aéreo), para o painel de combate.
+  combate: { seq: number; eventos: Evento[] } | null;
 }
+
+const TEM_COMBATE = (e: Evento) => e.tipo === "ataqueTerrestre" || e.tipo === "cicloAereo";
 
 export interface DadosPartida {
   lobby: PartidaLobbyDto | null;
@@ -57,13 +61,16 @@ export const usePartidas = create<EstadoPartidas>()((set, get) => {
     gravarLobby: (lobby) => alterar(lobby.id, { lobby }),
     gravarPresenca: (partidaId, presenca) => alterar(partidaId, { presenca }),
     gravarEstado: (partidaId, visao, seq) =>
-      alterar(partidaId, { jogo: { visao, seq, eventos: [], seqEventos: 0, ultimos: [] } }),
+      alterar(partidaId, {
+        jogo: { visao, seq, eventos: [], seqEventos: 0, ultimos: [], combate: null },
+      }),
     gravarEventos(partidaId, eventos, visao, seq) {
       const jogo = get().porId[partidaId]?.jogo;
       if (!jogo || seq !== jogo.seq + 1) return false;
       const todos = [...jogo.eventos, ...eventos].slice(-MAXIMO_EVENTOS_GUARDADOS);
+      const combate = eventos.some(TEM_COMBATE) ? { seq, eventos } : jogo.combate;
       alterar(partidaId, {
-        jogo: { visao, seq, eventos: todos, seqEventos: seq, ultimos: eventos },
+        jogo: { visao, seq, eventos: todos, seqEventos: seq, ultimos: eventos, combate },
       });
       return true;
     },

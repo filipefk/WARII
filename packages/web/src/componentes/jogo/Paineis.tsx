@@ -77,7 +77,8 @@ export function PainelRecebimento({ visao }: { visao: VisaoPartida }) {
   return (
     <Bloco titulo="Recebimento">
       <p>
-        Faltam <b>{pendente}</b> {pendente === 1 ? "exército" : "exércitos"} para colocar.
+        {pendente === 1 ? "Falta" : "Faltam"} <b>{pendente}</b>{" "}
+        {pendente === 1 ? "exército" : "exércitos"} para colocar.
       </p>
       <ul className="dica mt-espaco-1 space-y-px">
         <li>{r.livres} em qualquer território seu</li>

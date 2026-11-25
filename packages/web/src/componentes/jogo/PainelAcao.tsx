@@ -1,0 +1,797 @@
+// Bloco "Ação" do painel da partida: os controles da etapa atual (ver jogo/interacao.ts). Só o
+// jogador da vez vê controles; os demais veem quem está jogando. Os cliques no mapa são tratados
+// pela tela (TelaDoJogo); aqui ficam quantidades, cartas e os botões de envio.
+import {
+  type Acao,
+  cartaDeTroca,
+  type CartaId,
+  territorio,
+  type TerritorioId,
+  type VisaoPartida,
+} from "@warii/engine";
+import { type ReactNode, useState } from "react";
+import type { Etapa } from "../../jogo/interacao";
+import type { Mesa } from "../../jogo/mesa";
+import { eu } from "../../jogo/previa";
+import type { Geografia } from "../../mapa/geografia";
+import { useJogo } from "../../stores/jogo";
+import { NOMES_FASES } from "../../ui/textosEventos";
+import { Aviso, Botao } from "../basicos";
+import { CartaTroca } from "../tabuleiro/CartaTroca";
+import { Bloco } from "./Paineis";
+
+const nomeT = (t: TerritorioId) => territorio(t).nome;
+const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
+
+export interface Envio {
+  ocupado: boolean;
+  erro: string | null;
+  enviar: (acao: Acao) => Promise<boolean>;
+}
+
+interface Contexto {
+  visao: VisaoPartida;
+  mesa: Mesa;
+  geografia: Geografia;
+  ocupado: boolean;
+  // Envia e, se aceita, chama `depois`.
+  mandar: (acao: Acao, depois?: () => void) => void;
+}
+
+// ---- Peças ----
+
+function Linha({ children }: { children: ReactNode }) {
+  return <div className="mt-espaco-3 flex flex-wrap items-center gap-espaco-2">{children}</div>;
+}
+
+function Dica({ children }: { children: ReactNode }) {
+  return <p className="dica mt-espaco-2">{children}</p>;
+}
+
+function Quantidade({
+  rotulo,
+  valor,
+  minimo = 1,
+  maximo,
+  onMudar,
+}: {
+  rotulo: string;
+  valor: number;
+  minimo?: number;
+  maximo: number;
+  onMudar: (n: number) => void;
+}) {
+  const fixar = (n: number) =>
+    onMudar(Math.max(minimo, Math.min(maximo, Number.isFinite(n) ? Math.trunc(n) : minimo)));
+  return (
+    <div className="mt-espaco-3 flex flex-wrap items-center gap-espaco-2">
+      <span>{rotulo}</span>
+      <Botao aria-label="Menos" disabled={valor <= minimo} onClick={() => fixar(valor - 1)}>
+        −
+      </Botao>
+      <input
+        type="number"
+        aria-label={rotulo}
+        className="campo w-16 text-center tabular-nums"
+        min={minimo}
+        max={maximo}
+        value={valor}
+        onChange={(e) => fixar(Number(e.target.value))}
+      />
+      <Botao aria-label="Mais" disabled={valor >= maximo} onClick={() => fixar(valor + 1)}>
+        +
+      </Botao>
+      <span className="dica">
+        de {minimo} a {maximo}
+      </span>
+    </div>
+  );
+}
+
+// Quantidade com estado local que começa no máximo (a chave de quem usa a reinicia).
+function useQuantidade(maximo: number): [number, (n: number) => void] {
+  const [valor, setValor] = useState(maximo);
+  return [Math.min(valor, maximo), setValor];
+}
+
+// Mão do jogador com as cartas marcáveis, para as etapas que usam cartas.
+function SeletorDeCartas({ ctx }: { ctx: Contexto }) {
+  const marcadas = useJogo((s) => s.cartas);
+  const alternarCarta = useJogo((s) => s.alternarCarta);
+  const cartas = eu(ctx.visao)?.cartas ?? [];
+  if (cartas.length === 0) return <Dica>Você não tem cartas.</Dica>;
+  return (
+    <div className="mt-espaco-3 flex flex-wrap gap-espaco-2">
+      {cartas.map((id) => {
+        const carta = cartaDeTroca(id);
+        if (!carta) return null;
+        return (
+          <CartaTroca
+            key={id}
+            carta={carta}
+            geografia={ctx.geografia}
+            largura={56}
+            marcada={marcadas.includes(id)}
+            onClick={() => alternarCarta(id)}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function BotoesDeCartas({ ctx }: { ctx: Contexto }) {
+  const iniciar = useJogo((s) => s.iniciar);
+  if ((eu(ctx.visao)?.cartas?.length ?? 0) === 0) return null;
+  return (
+    <div className="mt-espaco-5 border-t border-border pt-espaco-3">
+      <p className="dica">Cartas</p>
+      <Linha>
+        <Botao onClick={() => iniciar("reforco")}>Reforçar com cartas</Botao>
+        <Botao onClick={() => iniciar("transporte")}>Transportar com cartas</Botao>
+        <Botao onClick={() => iniciar("descarte")}>Descartar cartas</Botao>
+      </Linha>
+    </div>
+  );
+}
+
+function EncerrarAtaques({ ctx }: { ctx: Contexto }) {
+  return (
+    <Linha>
+      <Botao disabled={ctx.ocupado} onClick={() => ctx.mandar({ tipo: "encerrarAtaques" })}>
+        Encerrar ataques
+      </Botao>
+      <Botao disabled={ctx.ocupado} onClick={() => ctx.mandar({ tipo: "encerrarJogada" })}>
+        Encerrar jogada
+      </Botao>
+    </Linha>
+  );
+}
+
+function AbasDeAtaque({ aereo }: { aereo: boolean }) {
+  const iniciar = useJogo((s) => s.iniciar);
+  return (
+    <Linha>
+      <Botao ativo={!aereo} onClick={() => iniciar("ataqueTerrestre")}>
+        Ataque terrestre
+      </Botao>
+      <Botao ativo={aereo} onClick={() => iniciar("ataqueAereo")}>
+        Ataque aéreo
+      </Botao>
+    </Linha>
+  );
+}
+
+// ---- Etapas ----
+
+function EscolhaCincoJogadores({
+  ctx,
+  etapa,
+}: {
+  ctx: Contexto;
+  etapa: Extract<Etapa, { tipo: "escolha5j" }>;
+}) {
+  const iniciar = useJogo((s) => s.iniciar);
+  return (
+    <>
+      <p>Escolha uma opção:</p>
+      <p className="mt-espaco-2">
+        <b>(a)</b> Pegue uma das cartas de CE que sobraram e ponha 2 exércitos no CE:
+      </p>
+      <div className="mt-espaco-2 flex flex-wrap gap-espaco-3">
+        {etapa.centros.map((id) => {
+          const carta = cartaDeTroca(id);
+          if (carta?.tipo !== "territorio" || !carta.centro) return null;
+          const ce = carta.centro;
+          return (
+            <div key={id} className="flex flex-col items-center gap-espaco-1">
+              <CartaTroca
+                carta={carta}
+                geografia={ctx.geografia}
+                largura={70}
+                onClick={() => ctx.mandar({ tipo: "pegarCentroExtra", carta: id })}
+              />
+              <Botao
+                disabled={ctx.ocupado}
+                onClick={() => ctx.mandar({ tipo: "pegarCentroExtra", carta: id })}
+              >
+                Pegar {nomeT(ce)}
+              </Botao>
+            </div>
+          );
+        })}
+      </div>
+      <p className="mt-espaco-5">
+        <b>(b)</b> Ocupe 2 territórios vagos, sem CE e de continentes diferentes, com 1 exército em
+        cada.
+      </p>
+      <Linha>
+        <Botao disabled={!etapa.doisVagosPossivel} onClick={() => iniciar("doisVagos")}>
+          Ocupar dois vagos
+        </Botao>
+      </Linha>
+      {!etapa.doisVagosPossivel && <Dica>A opção (b) não está disponível agora.</Dica>}
+    </>
+  );
+}
+
+function DoisVagos({
+  ctx,
+  etapa,
+}: {
+  ctx: Contexto;
+  etapa: Extract<Etapa, { tipo: "doisVagos" }>;
+}) {
+  const cancelar = useJogo((s) => s.cancelar);
+  const { primeiro, segundo } = etapa;
+  return (
+    <>
+      {primeiro === null ? (
+        <Dica>Clique no primeiro território vago (sem CE).</Dica>
+      ) : segundo === null ? (
+        <Dica>{nomeT(primeiro)} escolhido. Agora clique no segundo, de outro continente.</Dica>
+      ) : (
+        <p className="mt-espaco-2">
+          {nomeT(primeiro)} e {nomeT(segundo)}.
+        </p>
+      )}
+      <Linha>
+        {primeiro !== null && segundo !== null && (
+          <Botao
+            disabled={ctx.ocupado}
+            onClick={() =>
+              ctx.mandar({ tipo: "ocuparDoisVagos", territorios: [primeiro, segundo] })
+            }
+          >
+            Ocupar os dois
+          </Botao>
+        )}
+        <Botao onClick={cancelar}>Voltar</Botao>
+      </Linha>
+    </>
+  );
+}
+
+function Posicionar({
+  ctx,
+  territorio: t,
+  maximo,
+}: {
+  ctx: Contexto;
+  territorio: TerritorioId;
+  maximo: number;
+}) {
+  const [quantidade, setQuantidade] = useQuantidade(maximo);
+  return (
+    <>
+      <p className="mt-espaco-3">
+        Em <b>{nomeT(t)}</b>:
+      </p>
+      <Quantidade rotulo="Exércitos" valor={quantidade} maximo={maximo} onMudar={setQuantidade} />
+      <Linha>
+        <Botao
+          disabled={ctx.ocupado}
+          onClick={() => ctx.mandar({ tipo: "posicionar", territorio: t, quantidade })}
+        >
+          Colocar {quantidade} em {nomeT(t)}
+        </Botao>
+      </Linha>
+    </>
+  );
+}
+
+function Receber({ ctx, etapa }: { ctx: Contexto; etapa: Extract<Etapa, { tipo: "receber" }> }) {
+  const primeiraEtapa = ctx.visao.rodada === 1 && ctx.visao.etapaPrimeiraRodada === 1;
+  return (
+    <>
+      {etapa.pendente > 0 ? (
+        <p>
+          {etapa.pendente === 1 ? "Falta" : "Faltam"}{" "}
+          <b>{plural(etapa.pendente, "exército", "exércitos")}</b> para colocar.
+        </p>
+      ) : (
+        <p>Todos os exércitos foram colocados.</p>
+      )}
+      {etapa.pendente > 0 &&
+        (etapa.territorio && etapa.maximo > 0 ? (
+          <Posicionar
+            key={`${etapa.territorio}:${etapa.maximo}`}
+            ctx={ctx}
+            territorio={etapa.territorio}
+            maximo={etapa.maximo}
+          />
+        ) : (
+          <Dica>Clique num território seu (os destacados) para colocar exércitos.</Dica>
+        ))}
+      <Linha>
+        <Botao
+          disabled={ctx.ocupado || etapa.pendente > 0}
+          onClick={() => ctx.mandar({ tipo: "encerrarRecebimento" })}
+        >
+          {primeiraEtapa ? "Encerrar recebimento e passar a vez" : "Encerrar recebimento"}
+        </Botao>
+      </Linha>
+      {primeiraEtapa && <Dica>Na primeira volta da rodada 1 só se recebe exércitos.</Dica>}
+      <BotoesDeCartas ctx={ctx} />
+    </>
+  );
+}
+
+function Conquista({
+  ctx,
+  etapa,
+}: {
+  ctx: Contexto;
+  etapa: Extract<Etapa, { tipo: "conquista" }>;
+}) {
+  const { origem, alvo, maximo } = etapa.conquista;
+  const [quantidade, setQuantidade] = useQuantidade(maximo);
+  return (
+    <div className="rounded-raio-md border border-accent bg-panel-2 p-espaco-4">
+      <p>
+        Você conquistou <b>{nomeT(alvo)}</b>. Quantos exércitos entram, vindos de {nomeT(origem)}?
+      </p>
+      <Dica>O primeiro já entrou; o total vai de 1 até os dados do último ataque.</Dica>
+      <Quantidade rotulo="Total" valor={quantidade} maximo={maximo} onMudar={setQuantidade} />
+      <Linha>
+        <Botao
+          disabled={ctx.ocupado}
+          onClick={() => ctx.mandar({ tipo: "moverAposConquista", quantidade })}
+        >
+          Mover {plural(quantidade, "exército", "exércitos")}
+        </Botao>
+      </Linha>
+    </div>
+  );
+}
+
+function AereoEmCurso({
+  ctx,
+  etapa,
+}: {
+  ctx: Contexto;
+  etapa: Extract<Etapa, { tipo: "aereoEmCurso" }>;
+}) {
+  const { alvo, defensor, emCombate, ciclos } = etapa.ataque;
+  return (
+    <div className="rounded-raio-md border border-accent bg-panel-2 p-espaco-4">
+      <p>
+        Ataque aéreo sobre <b>{nomeT(alvo)}</b> ({ctx.mesa.nome(defensor)}):{" "}
+        {plural(emCombate, "bombardeiro", "bombardeiros")} em combate depois de{" "}
+        {plural(ciclos, "ciclo", "ciclos")}.
+      </p>
+      <Dica>O ataque aéreo nunca conquista: o alvo fica com pelo menos 1 exército.</Dica>
+      <Linha>
+        <Botao disabled={ctx.ocupado} onClick={() => ctx.mandar({ tipo: "continuarAtaqueAereo" })}>
+          Continuar
+        </Botao>
+        {ctx.visao.parametros.interromperAtaqueAereo && (
+          <Botao disabled={ctx.ocupado} onClick={() => ctx.mandar({ tipo: "encerrarAtaqueAereo" })}>
+            Encerrar
+          </Botao>
+        )}
+      </Linha>
+    </div>
+  );
+}
+
+function MaoCheia({ ctx, etapa }: { ctx: Contexto; etapa: Extract<Etapa, { tipo: "maoCheia" }> }) {
+  return (
+    <>
+      <Aviso tipo="info">
+        Você está com {etapa.quantidade} cartas e o limite é {etapa.limite}. Use ou descarte cartas
+        até ficar com no máximo {etapa.limite} para continuar a vez.
+      </Aviso>
+      <BotoesDeCartas ctx={ctx} />
+    </>
+  );
+}
+
+function Terrestre({
+  ctx,
+  etapa,
+}: {
+  ctx: Contexto;
+  etapa: Extract<Etapa, { tipo: "terrestre" }>;
+}) {
+  const { origem, alvo, maximoDados } = etapa;
+  return (
+    <>
+      <AbasDeAtaque aereo={false} />
+      {origem === null ? (
+        <Dica>
+          {etapa.origens.size > 0
+            ? "Clique no território de onde parte o ataque (precisa de 2 ou mais exércitos)."
+            : "Nenhum território seu pode atacar por terra agora."}
+        </Dica>
+      ) : alvo === null ? (
+        <Dica>
+          De <b>{nomeT(origem)}</b>: clique no alvo vizinho. Clique de novo na origem para trocá-la.
+        </Dica>
+      ) : (
+        <>
+          <p className="mt-espaco-3">
+            <b>{nomeT(origem)}</b> → <b>{nomeT(alvo)}</b>
+          </p>
+          <Linha>
+            {Array.from({ length: maximoDados }, (_, k) => maximoDados - k).map((dados) => (
+              <Botao
+                key={dados}
+                disabled={ctx.ocupado}
+                onClick={() => ctx.mandar({ tipo: "atacar", origem, alvo, dados })}
+              >
+                Atacar com {plural(dados, "dado", "dados")}
+              </Botao>
+            ))}
+          </Linha>
+          <Dica>Cada dado é um exército que ataca; a origem fica sempre com pelo menos 1.</Dica>
+        </>
+      )}
+      <EncerrarAtaques ctx={ctx} />
+      <BotoesDeCartas ctx={ctx} />
+    </>
+  );
+}
+
+function Aereo({ ctx, etapa }: { ctx: Contexto; etapa: Extract<Etapa, { tipo: "aereo" }> }) {
+  const definirDaBase = useJogo((s) => s.definirDaBase);
+  const meu = eu(ctx.visao);
+  const total = etapa.daBase + etapa.daCaixa;
+  const { alvo, cartas } = etapa;
+  return (
+    <>
+      <AbasDeAtaque aereo />
+      <p className="mt-espaco-3">
+        Bombardeiros: {meu?.bombardeirosBase ?? 0} na base · {meu?.bombardeirosCaixa ?? 0} na caixa.
+      </p>
+      <Quantidade
+        rotulo="Da base"
+        valor={etapa.daBase}
+        minimo={0}
+        maximo={etapa.maximoBase}
+        onMudar={definirDaBase}
+      />
+      <p className="dica mt-espaco-3">
+        Opcional: marque a carta do alvo (e numéricas) para usar bombardeiros da caixa — vale 1 + as
+        numéricas.
+        {!ctx.visao.parametros.somarBaseECaixa &&
+          " Nesta partida o ataque usa a base ou as cartas, não as duas."}
+      </p>
+      <SeletorDeCartas ctx={ctx} />
+      {etapa.problemaCartas && <Dica>{etapa.problemaCartas}</Dica>}
+      {cartas && (
+        <Dica>Das cartas: {plural(etapa.daCaixa, "bombardeiro", "bombardeiros")} da caixa.</Dica>
+      )}
+      {total === 0 ? (
+        <Dica>Escolha ao menos 1 bombardeiro.</Dica>
+      ) : etapa.opcoes.size === 0 ? (
+        <Dica>Nenhum alvo possível com essa combinação.</Dica>
+      ) : alvo === null ? (
+        <Dica>Clique no alvo: território de um adversário com 2 ou mais exércitos.</Dica>
+      ) : (
+        <Linha>
+          <Botao
+            disabled={ctx.ocupado}
+            onClick={() =>
+              ctx.mandar({
+                tipo: "iniciarAtaqueAereo",
+                alvo,
+                daBase: etapa.daBase,
+                ...(cartas && { cartas }),
+              })
+            }
+          >
+            Bombardear {nomeT(alvo)} com {total}
+          </Botao>
+        </Linha>
+      )}
+      <EncerrarAtaques ctx={ctx} />
+      <BotoesDeCartas ctx={ctx} />
+    </>
+  );
+}
+
+function QuantoDeslocar({
+  ctx,
+  origem,
+  destino,
+  maximo,
+  aereo,
+}: {
+  ctx: Contexto;
+  origem: TerritorioId;
+  destino: TerritorioId;
+  maximo: number;
+  aereo: boolean;
+}) {
+  const definirDestino = useJogo((s) => s.definirDestino);
+  const [quantidade, setQuantidade] = useQuantidade(maximo);
+  return (
+    <>
+      <p className="mt-espaco-3">
+        <b>{nomeT(origem)}</b> → <b>{nomeT(destino)}</b>
+        {aereo && <span className="tag ml-espaco-2">aerotransporte</span>}
+      </p>
+      <Quantidade rotulo="Exércitos" valor={quantidade} maximo={maximo} onMudar={setQuantidade} />
+      <Linha>
+        <Botao
+          disabled={ctx.ocupado}
+          onClick={() =>
+            ctx.mandar({ tipo: "deslocar", origem, destino, quantidade }, () =>
+              definirDestino(null),
+            )
+          }
+        >
+          Deslocar {quantidade} para {nomeT(destino)}
+        </Botao>
+      </Linha>
+    </>
+  );
+}
+
+function Deslocar({ ctx, etapa }: { ctx: Contexto; etapa: Extract<Etapa, { tipo: "deslocar" }> }) {
+  const { origem, destino } = etapa;
+  return (
+    <>
+      {origem === null ? (
+        <Dica>
+          {etapa.origens.size > 0
+            ? "Clique no território de onde saem os exércitos."
+            : "Nenhum exército pode ser deslocado agora."}
+        </Dica>
+      ) : destino === null ? (
+        <Dica>
+          De <b>{nomeT(origem)}</b>: clique no destino (vizinho seu ou, entre CEs, aerotransporte).
+        </Dica>
+      ) : (
+        <QuantoDeslocar
+          key={`${origem}:${destino}:${etapa.maximo}`}
+          ctx={ctx}
+          origem={origem}
+          destino={destino}
+          maximo={etapa.maximo}
+          aereo={etapa.aereo}
+        />
+      )}
+      <Dica>Cada exército só se move uma vez por vez; quem chegou nesta vez fica.</Dica>
+      <Linha>
+        <Botao disabled={ctx.ocupado} onClick={() => ctx.mandar({ tipo: "encerrarJogada" })}>
+          Encerrar jogada
+        </Botao>
+      </Linha>
+      <BotoesDeCartas ctx={ctx} />
+    </>
+  );
+}
+
+function Cancelar() {
+  const cancelar = useJogo((s) => s.cancelar);
+  return <Botao onClick={cancelar}>Cancelar</Botao>;
+}
+
+function Reforco({ ctx, etapa }: { ctx: Contexto; etapa: Extract<Etapa, { tipo: "reforco" }> }) {
+  const cancelar = useJogo((s) => s.cancelar);
+  const { carta, territorio: t } = etapa;
+  return (
+    <>
+      <p>
+        <b>Reforço com cartas:</b> +1 exército (mais as numéricas) num território seu da carta.
+      </p>
+      <SeletorDeCartas ctx={ctx} />
+      {etapa.problema ? (
+        <Dica>{etapa.problema}</Dica>
+      ) : etapa.opcoes.size === 0 ? (
+        <Dica>Nenhum território seu está nessa carta.</Dica>
+      ) : t === null ? (
+        <Dica>Clique no território que recebe +{etapa.valor}.</Dica>
+      ) : null}
+      <Linha>
+        {carta && t && (
+          <Botao
+            disabled={ctx.ocupado}
+            onClick={() =>
+              ctx.mandar(
+                { tipo: "reforcarComCartas", carta, territorio: t, numericas: etapa.numericas },
+                cancelar,
+              )
+            }
+          >
+            Reforçar {nomeT(t)} com +{etapa.valor}
+          </Botao>
+        )}
+        <Cancelar />
+      </Linha>
+    </>
+  );
+}
+
+function QuantoTransportar({
+  ctx,
+  cartas,
+  origem,
+  destino,
+  maximo,
+}: {
+  ctx: Contexto;
+  cartas: [CartaId, CartaId];
+  origem: TerritorioId;
+  destino: TerritorioId;
+  maximo: number;
+}) {
+  const cancelar = useJogo((s) => s.cancelar);
+  const [quantidade, setQuantidade] = useQuantidade(maximo);
+  return (
+    <>
+      <p className="mt-espaco-3">
+        <b>{nomeT(origem)}</b> → <b>{nomeT(destino)}</b>
+      </p>
+      <Quantidade rotulo="Exércitos" valor={quantidade} maximo={maximo} onMudar={setQuantidade} />
+      <Linha>
+        <Botao
+          disabled={ctx.ocupado}
+          onClick={() =>
+            ctx.mandar(
+              { tipo: "transportarComCartas", cartas, origem, destino, quantidade },
+              cancelar,
+            )
+          }
+        >
+          Transportar {quantidade} para {nomeT(destino)}
+        </Botao>
+        <Cancelar />
+      </Linha>
+    </>
+  );
+}
+
+function Transporte({
+  ctx,
+  etapa,
+}: {
+  ctx: Contexto;
+  etapa: Extract<Etapa, { tipo: "transporte" }>;
+}) {
+  const { cartas, origem, destino } = etapa;
+  const escolhido = cartas && origem && destino && etapa.maximo > 0;
+  return (
+    <>
+      <p>
+        <b>Transporte com cartas:</b> 2 cartas de territórios seus levam exércitos de um para o
+        outro.
+      </p>
+      <SeletorDeCartas ctx={ctx} />
+      {etapa.problema ? (
+        <Dica>{etapa.problema}</Dica>
+      ) : etapa.origens.size === 0 ? (
+        <Dica>Essas cartas não permitem transporte agora.</Dica>
+      ) : origem === null ? (
+        <Dica>Clique no território de onde saem os exércitos.</Dica>
+      ) : destino === null ? (
+        <Dica>De {nomeT(origem)}: clique no destino.</Dica>
+      ) : null}
+      {escolhido ? (
+        <QuantoTransportar
+          key={`${origem}:${destino}:${etapa.maximo}`}
+          ctx={ctx}
+          cartas={cartas}
+          origem={origem}
+          destino={destino}
+          maximo={etapa.maximo}
+        />
+      ) : (
+        <Linha>
+          <Cancelar />
+        </Linha>
+      )}
+    </>
+  );
+}
+
+function Descarte({ ctx, etapa }: { ctx: Contexto; etapa: Extract<Etapa, { tipo: "descarte" }> }) {
+  const cancelar = useJogo((s) => s.cancelar);
+  const n = etapa.cartas.length;
+  return (
+    <>
+      <p>
+        <b>Descarte:</b> marque as cartas que vão para o descarte.
+      </p>
+      <SeletorDeCartas ctx={ctx} />
+      <Linha>
+        <Botao
+          disabled={ctx.ocupado || n === 0}
+          onClick={() => ctx.mandar({ tipo: "descartar", cartas: etapa.cartas }, cancelar)}
+        >
+          {n === 0 ? "Descartar" : `Descartar ${plural(n, "carta", "cartas")}`}
+        </Botao>
+        <Cancelar />
+      </Linha>
+    </>
+  );
+}
+
+function Corpo({ ctx, etapa }: { ctx: Contexto; etapa: Etapa }) {
+  switch (etapa.tipo) {
+    case "espera":
+      return null;
+    case "escolha5j":
+      return <EscolhaCincoJogadores ctx={ctx} etapa={etapa} />;
+    case "doisVagos":
+      return <DoisVagos ctx={ctx} etapa={etapa} />;
+    case "ocupar":
+      return (
+        <Dica>
+          Clique num território vago (os destacados) para ocupá-lo com 1 exército. Restam{" "}
+          {etapa.opcoes.size}.
+        </Dica>
+      );
+    case "receber":
+      return <Receber ctx={ctx} etapa={etapa} />;
+    case "conquista":
+      return <Conquista ctx={ctx} etapa={etapa} />;
+    case "aereoEmCurso":
+      return <AereoEmCurso ctx={ctx} etapa={etapa} />;
+    case "maoCheia":
+      return <MaoCheia ctx={ctx} etapa={etapa} />;
+    case "terrestre":
+      return <Terrestre ctx={ctx} etapa={etapa} />;
+    case "aereo":
+      return <Aereo ctx={ctx} etapa={etapa} />;
+    case "deslocar":
+      return <Deslocar ctx={ctx} etapa={etapa} />;
+    case "reforco":
+      return <Reforco ctx={ctx} etapa={etapa} />;
+    case "transporte":
+      return <Transporte ctx={ctx} etapa={etapa} />;
+    case "descarte":
+      return <Descarte ctx={ctx} etapa={etapa} />;
+    default: {
+      // Toda etapa tem controles: uma etapa nova quebra a compilação aqui.
+      const nova: never = etapa;
+      return nova;
+    }
+  }
+}
+
+interface Props {
+  visao: VisaoPartida;
+  mesa: Mesa;
+  geografia: Geografia;
+  etapa: Etapa;
+  envio: Envio;
+}
+
+export function PainelAcao({ visao, mesa, geografia, etapa, envio }: Props) {
+  const { ocupado, erro, enviar } = envio;
+  const ctx: Contexto = {
+    visao,
+    mesa,
+    geografia,
+    ocupado,
+    mandar: (acao, depois) => {
+      if (ocupado) return;
+      void enviar(acao).then((ok) => {
+        if (ok) depois?.();
+      });
+    },
+  };
+  const daVez = mesa.jogadorDaVez;
+  return (
+    <Bloco titulo="Ação">
+      {etapa.tipo === "espera" ? (
+        <p className="dica">
+          Aguardando {mesa.nome(daVez?.id ?? null)} ({NOMES_FASES[visao.fase].toLowerCase()}).
+        </p>
+      ) : (
+        <p className="mb-espaco-2">
+          Sua vez: <b>{NOMES_FASES[visao.fase]}</b>.
+        </p>
+      )}
+      <Corpo ctx={ctx} etapa={etapa} />
+      {erro && (
+        <div className="mt-espaco-3">
+          <Aviso>{erro}</Aviso>
+        </div>
+      )}
+    </Bloco>
+  );
+}

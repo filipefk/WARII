@@ -11,8 +11,8 @@ Plano detalhado da etapa 9 de `PLANO-WARII-ONLINE.md`, com o andamento. **Pronto
 | 9.3 Componentes do tabuleiro | ✅ concluída (conferida no navegador pela vitrine `/dev/vitrine`) |
 | 9.4 Envio de ações e pré-visualização | ✅ concluída (prévia conferida contra o engine numa partida simulada) |
 | 9.5 Tela da partida e HUD | ✅ concluída (conferida no navegador com a partida "Teste do lobby") |
-| 9.6 Interações por fase | ⏳ próxima |
-| 9.7 Galeria e guia de regras em React | ⏳ pendente |
+| 9.6 Interações por fase | ✅ concluída (fluxo conferido contra o engine numa simulação e no navegador, com robôs nos outros assentos) |
+| 9.7 Galeria e guia de regras em React | ⏳ próxima |
 | 9.8 Documentação | ⏳ pendente |
 
 **Nada foi commitado ainda.** Tudo o que está abaixo como "feito" está na árvore de trabalho. `pnpm typecheck`, `pnpm lint` (sem avisos), `pnpm format:check` e `pnpm test` passam.
@@ -78,12 +78,19 @@ Decisões do usuário:
 
 - **Tela da partida (9.5).**
   - `web/src/paginas/TelaDoJogo.tsx`, aberta por `Partida.tsx` quando a partida está em andamento ou encerrada. Carrega a geografia, monta `DefsDoJogo`, chama `abrirPartida`/`sincronizarVez` do `useJogo` e põe o mapa (clique seleciona e desseleciona) ao lado do painel de 340px. No desktop ocupa a altura da janela (`h-[calc(100vh-84px)]`, painel com rolagem própria); abaixo de 861px o mapa fica com 62vh e o painel desce.
-  - O bloco **Ação** do painel ainda só diz de quem é a vez: é ali que entram os controles da 9.6.
+  - O bloco **Ação** do painel recebe os controles da 9.6 (`PainelAcao`).
   - `web/src/componentes/jogo/`: `Paineis.tsx` (`Bloco`, `PainelVez`, `PainelRecebimento`, `PainelMesa`, `MinhasCartas` com `onAlternar` opcional, `MeuObjetivo`, `LogDaPartida`), `InfoTerritorio.tsx` e `TabelaContinentes.tsx`.
   - `web/src/jogo/mesa.ts`: `montarMesa(lobby, visao)` dá `nome(id)`, `cor(id)` e `jogadorDaVez`; `totaisPorJogador(visao)`.
   - `web/src/ui/textosEventos.ts`: `NOMES_FASES` e `textoDoEvento(evento, nome)`, com `switch` exaustivo (um evento novo no engine quebra a compilação ali).
   - `Layout.tsx`: `useTelaLarga()` tira o `max-w-5xl` quando a rota é `/partidas/:id` e a partida está em andamento ou encerrada.
   - `PartidaEmAndamento.tsx` e a vitrine foram apagados.
+
+- **Interações por fase (9.6).**
+  - `web/src/jogo/interacao.ts`: `derivarEtapa(visao, interacao)` junta a fase com as escolhas da store e devolve a `Etapa` (escolha5j, doisVagos, ocupar, receber, conquista, aereoEmCurso, maoCheia, terrestre, aereo, deslocar, reforco, transporte, descarte ou espera). As escolhas são reconferidas a cada visão (o que deixou de valer some). `destaquesDoMapa(etapa)` dá `opcoes`/`marcados` do `Tabuleiro`; `cliqueNoMapa(etapa, t)` diz se o clique define origem, destino ou envia (`ocupar`). Resultados das consultas de `previa.ts` ficam em cache por visão.
+  - `stores/jogo.ts`: ganhou `daBase` (bombardeiros da base no ataque aéreo) e `chaveDaFase`; a interação também zera quando a fase muda dentro da vez.
+  - `componentes/jogo/PainelAcao.tsx`: bloco "Ação" com os controles de cada etapa (quantidades, seletor de cartas, botões de encerrar). Só o jogador da vez vê controles.
+  - `componentes/jogo/Combate.tsx`: bloco "Combate" com o último ataque terrestre ou os ciclos aéreos (dados rolando por 0,9 s, "Pular animação", direto com `prefers-reduced-motion`). `stores/partidas.ts` guarda o lote em `jogo.combate`.
+  - `componentes/jogo/TelaDeVitoria.tsx`: tela cheia opaca (cobre o cabeçalho com o cromado) com o logotipo ferrugem, vencedor e objetivo; "Ver o tabuleiro" fecha e "Ver resultado" reabre.
 
 ### Cuidados descobertos no caminho
 
@@ -95,6 +102,7 @@ Decisões do usuário:
 - **Carta-objetivo.** Nas cartas de "destruir cor", o número do canto encosta no texto, como no protótipo. Ajuste pendente.
 - **Nomes dos donos.** Na visão, o dono de um território é o `JogadorId` (o id do usuário). Para o mapa, converta para a cor com `visao.jogadores`. Os nomes vêm de `lobby.participantes`.
 - **Espectadores.** O servidor só envia `estado` e `eventos` aos jogadores da partida.
+- **Robôs para testar no navegador.** Com Bia e Caio jogando por robô (o `escolherAcao` de `engine/test/apoio.ts` sobre `estadoDaVisao`), a partida "Teste do lobby" passou da rodada 80 sem vencedor: os robôs aleatórios não cumprem objetivos. A tela de vitória foi conferida injetando localmente uma visão em `FIM` na store. Ao parar o robô, conferir se o processo `node` filho do `npx` também morreu.
 - O plano aprovado original também está em `C:\Users\Filipe\.claude\plans\planeje-a-etapa-9-curried-pillow-of-fd0c0b78-e750-4dea-b54e-770e4d513a3c.md`.
 
 ## Subetapas
@@ -141,7 +149,7 @@ São os componentes do sistema de design; ler o README de cada um no artifact an
   - **Log da partida:** um texto por tipo de evento, em `ui/textosEventos.ts` com `satisfies Record<TipoEvento, …>`; o último no topo.
 - Botões "Ver cartas e dados" e "Regras do jogo" abrem os modais da 9.7.
 
-### 9.6 Interações por fase ⏳
+### 9.6 Interações por fase ✅
 Os controles só aparecem para o jogador da vez (`euSouDaVez`). Os outros veem "Aguardando {nome}". Os destaques no mapa vêm das consultas de `previa.ts`.
 - **`PREP_ESCOLHA_5J`:** escolher entre pegar um CE extra (`preparacao.centrosExtras`) ou ocupar dois vagos (`inicioDoisVagos`/`parceirosDoisVagos`).
 - **`PREP_OCUPACAO`:** clique num território de `territoriosOcupaveis` e envio de `ocupar`.
