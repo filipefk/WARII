@@ -48,10 +48,14 @@ function contarTempo(ms: number): void {
   else t.acima += 1;
 }
 
-const atrasoDoLoop = monitorEventLoopDelay({ resolution: 20 });
+// O histograma mede o intervalo entre disparos do timer, que já inclui a resolução: o atraso de
+// verdade é o que passa dela.
+const RESOLUCAO_LOOP_MS = 20;
+const atrasoDoLoop = monitorEventLoopDelay({ resolution: RESOLUCAO_LOOP_MS });
 
 const MB = 1024 * 1024;
-const emMs = (nanos: number): number => Math.round(nanos / 1e5) / 10;
+const emMs = (nanos: number): number =>
+  Math.max(0, Math.round((nanos / 1e6 - RESOLUCAO_LOOP_MS) * 10) / 10);
 
 export interface Metricas {
   segundosNoAr: number;

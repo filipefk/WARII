@@ -25,7 +25,9 @@ export async function registrarSeguranca(app: FastifyInstance): Promise<void> {
     },
     // HTTPS só em produção (o Traefik termina o TLS); em dev o site é http://localhost.
     strictTransportSecurity:
-      config.NODE_ENV === "production" ? { maxAge: UM_ANO_EM_SEGUNDOS } : false,
+      config.NODE_ENV === "production"
+        ? { maxAge: UM_ANO_EM_SEGUNDOS, includeSubDomains: false }
+        : false,
     frameguard: { action: "deny" },
     crossOriginResourcePolicy: { policy: "same-origin" },
     referrerPolicy: { policy: "no-referrer" },
