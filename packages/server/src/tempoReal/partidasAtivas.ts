@@ -56,6 +56,11 @@ export async function partidaAtiva(partidaId: string): Promise<PartidaAtiva> {
   return carregada;
 }
 
+// Quantas partidas estão na memória (para as métricas).
+export function quantidadeDeAtivas(): number {
+  return ativas.size;
+}
+
 export function guardarPartida(partidaId: string, partida: PartidaAtiva): void {
   ativas.set(partidaId, partida);
 }

@@ -2,7 +2,7 @@
 
 Projeto web para jogar **War II** (jogo de tabuleiro da Grow) online entre amigos, de 3 a 6 jogadores, em turnos.
 
-> **Status:** o jogo já roda de ponta a ponta no navegador: contas, lobby com convite, servidor em tempo real e a tela da partida com o mapa, o painel de cada fase (ocupação, recebimento, ataques terrestre e aéreo com os dados animados, deslocamento, cartas), a tela de vitória, a galeria de cartas e dados e o guia de regras. O motor de regras (engine) e o servidor têm testes automatizados. Próximos passos: endurecimento de segurança, deploy e playtest.
+> **Status:** o jogo já roda de ponta a ponta no navegador: contas, lobby com convite, servidor em tempo real e a tela da partida com o mapa, o painel de cada fase (ocupação, recebimento, ataques terrestre e aéreo com os dados animados, deslocamento, cartas), a tela de vitória, a galeria de cartas e dados e o guia de regras. O motor de regras (engine) e o servidor têm testes automatizados. A segurança foi revisada (cabeçalhos, origem, limites, auditoria, imagens sem root). Próximos passos: deploy e playtest.
 
 ## Conteúdo do repositório
 
@@ -116,10 +116,19 @@ Rotas em `/api/auth`: `POST /login`, `POST /logout`, `GET /eu`, `POST /senha/def
 
 Pensado para o **Dokploy**: um projeto com duas aplicações apontando para este repositório, ambas com *build context* na raiz:
 
-- `packages/server/Dockerfile` — servidor Node
-- `packages/web/Dockerfile` — build do Vite servido pelo Nginx
+- `packages/server/Dockerfile` — servidor Node na porta 3000, só com as dependências de produção, rodando como usuário `node` e com `HEALTHCHECK` em `/api/health`
+- `packages/web/Dockerfile` — build do Vite servido pelo Nginx sem root (`nginx-unprivileged`) na porta **8080**, com CSP e demais cabeçalhos de segurança (`packages/web/nginx-cabecalhos.conf`)
 
-Domínio único com roteamento por caminho: `/` → web; `/api` e `/socket.io` → server. O PostgreSQL roda em container separado, e a conexão é feita pela variável `DATABASE_URL`. No servidor, defina também `URL_PUBLICA` (o endereço https do site) e `TRUST_PROXY=true` (atrás do Traefik).
+Domínio único com roteamento por caminho: `/` → web; `/api` e `/socket.io` → server. O PostgreSQL roda em container separado, e a conexão é feita pela variável `DATABASE_URL`. No servidor, defina também `URL_PUBLICA` (o endereço https do site) e `TRUST_PROXY=1` (um proxy na frente, o Traefik; `true` confiaria em `X-Forwarded-For` forjado). Opcional: `METRICAS_TOKEN` libera `GET /api/metricas` com `Authorization: Bearer <token>`.
+
+## Segurança e observabilidade
+
+- **Cabeçalhos:** a API responde com `@fastify/helmet` (CSP que bloqueia tudo, `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, HSTS em produção); o site, com a CSP do Nginx (só a própria origem, sem scripts inline nem `eval`).
+- **Origem e CSRF:** não há CORS. Requisições que alteram dados e o handshake do Socket.IO só passam com `Origin` igual a `URL_PUBLICA` ou, sem `Origin`, com `Sec-Fetch-Site` `same-origin`/`none` (`packages/server/src/origem.ts`); além disso, o cookie é `SameSite=Lax` e a API só aceita corpo JSON (`text/plain` recebe 415).
+- **Limites:** corpo de até 16 KB em qualquer rota (menos nas de auth e lobby), 30 s para o cliente enviar a requisição, rate limit por rota e balde de mensagens por socket.
+- **Auditoria:** login (e falhas, com o e-mail mascarado), logout, senhas, origem recusada, socket recusado ou derrubado por excesso, as operações do lobby e o fim das partidas saem no log como uma linha com o campo `auditoria` (`packages/server/src/auditoria.ts`).
+- **Métricas:** a cada 15 min o servidor registra no log requisições por status e faixa de tempo, ações aceitas/recusadas, erros internos, sockets, partidas na memória, memória e atraso do event loop (`packages/server/src/metricas.ts`); as mesmas em `GET /api/metricas` se `METRICAS_TOKEN` estiver definido.
+- **Dependências:** `pnpm audit` limpo (um `esbuild` antigo do `drizzle-kit` é forçado para a versão corrigida em `pnpm-workspace.yaml`).
 
 ## Propriedade intelectual
 

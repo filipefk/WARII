@@ -1,10 +1,12 @@
-// Infraestrutura de autenticação do Fastify: cookie, rate limit, checagem de Origin e
+// Infraestrutura de autenticação do Fastify: cookie, rate limit, checagem de origem e
 // `exigirSessao` (preHandler das rotas que pedem login, que preenche `requisicao.sessao`).
 import cookie from "@fastify/cookie";
 import rateLimit from "@fastify/rate-limit";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { auditar } from "../auditoria.js";
 import { config } from "../config.js";
 import { responderErro } from "../erros.js";
+import { origemPermitida } from "../origem.js";
 import { type OrigemDaSessao, type SessaoValida, sessaoPorToken } from "./sessoes.js";
 
 declare module "fastify" {
@@ -67,13 +69,18 @@ export async function registrarAutenticacao(app: FastifyInstance): Promise<void>
   await app.register(rateLimit, { global: false });
   app.decorateRequest("sessao", null);
 
-  // Proteção mínima contra CSRF (além do SameSite=Lax): requisições que alteram dados vindas
-  // de outra origem são recusadas. Clientes sem Origin (curl, a CLI) passam; a etapa 10 endurece.
+  // CSRF: além do SameSite=Lax, requisições que alteram dados precisam vir do próprio site
+  // (regra em origem.ts, a mesma do handshake do socket).
   app.addHook("onRequest", async (requisicao, resposta) => {
     if (METODOS_SEGUROS.has(requisicao.method) || !requisicao.url.startsWith("/api/")) return;
-    const origem = requisicao.headers.origin;
-    if (origem !== undefined && origem !== config.URL_PUBLICA) {
-      await responderErro(resposta, 403, "ORIGEM_RECUSADA", "origem da requisição não permitida");
-    }
+    if (origemPermitida(requisicao.headers)) return;
+    auditar(requisicao.log, "origem_recusada", {
+      ip: requisicao.ip,
+      metodo: requisicao.method,
+      url: requisicao.url,
+      origem: requisicao.headers.origin,
+      site: requisicao.headers["sec-fetch-site"],
+    });
+    await responderErro(resposta, 403, "ORIGEM_RECUSADA", "origem da requisição não permitida");
   });
 }

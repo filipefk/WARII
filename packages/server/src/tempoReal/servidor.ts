@@ -10,8 +10,10 @@ import {
 } from "@warii/shared";
 import type { FastifyBaseLogger, FastifyInstance } from "fastify";
 import { Server } from "socket.io";
+import { auditar } from "../auditoria.js";
 import { sessaoAtiva } from "../auth/sessoes.js";
 import { mensagemDaEntradaInvalida } from "../erros.js";
+import { contarErroInterno } from "../metricas.js";
 import { ErroDeLobby, obterLobby } from "../partidas/lobby.js";
 import { processarAcao } from "./acoes.js";
 import { emitirEstado, emitirLobby, emitirPresenca } from "./emissao.js";
@@ -58,10 +60,15 @@ function falha(codigo: string, mensagem: string): Confirmacao {
 
 function converterErro(log: FastifyBaseLogger, erro: unknown): Confirmacao {
   if (erro instanceof ErroDeTempoReal) {
-    if (erro.grave) log.error({ err: erro.cause ?? erro }, erro.message);
+    if (erro.grave) {
+      contarErroInterno();
+      if (erro.codigo === "PARTIDA_CORROMPIDA") auditar(log, "partida_corrompida");
+      log.error({ err: erro.cause ?? erro }, erro.message);
+    }
     return falha(erro.codigo, erro.message);
   }
   if (erro instanceof ErroDeLobby) return falha(erro.codigo, erro.message);
+  contarErroInterno();
   log.error({ err: erro }, "erro não tratado no socket");
   return falha("ERRO_INTERNO", "erro interno do servidor");
 }
@@ -144,7 +151,7 @@ export function registrarTempoReal(app: FastifyInstance): void {
       throw new ErroDeTempoReal("FORA_DA_PARTIDA", "entre na partida antes de jogar");
     }
     await exigirSessaoAtiva(socket);
-    return processarAcao(io, partidaId, usuarioId, acao.data);
+    return processarAcao(io, log, partidaId, usuarioId, acao.data);
   }
 
   function aoDeixar(partidaId: string): void {
@@ -168,7 +175,7 @@ export function registrarTempoReal(app: FastifyInstance): void {
       if (ehAck(confirmar))
         confirmar(falha("LIMITE_EXCEDIDO", "muitas mensagens; aguarde um pouco"));
       if (veredito === "desconectar") {
-        log.warn({ usuarioId }, "socket desconectado por excesso de mensagens");
+        auditar(log, "socket_excesso_de_mensagens", { usuarioId });
         socket.disconnect(true);
       }
     });

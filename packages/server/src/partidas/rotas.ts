@@ -9,6 +9,7 @@ import {
   esquemaIdPartida,
 } from "@warii/shared";
 import { z } from "zod";
+import { auditar } from "../auditoria.js";
 import { exigirSessao, sessaoDa } from "../auth/plugin.js";
 import { responderEntradaInvalida, responderErro } from "../erros.js";
 import {
@@ -74,7 +75,15 @@ export async function rotasDePartidas(app: FastifyInstance): Promise<void> {
     const entrada = CriarPartidaEntrada.safeParse(requisicao.body);
     if (!entrada.success) return responderEntradaInvalida(resposta, entrada.error);
     const usuarioId = sessaoDa(requisicao).usuario.id;
-    return responder(resposta, () => criarPartidaNoLobby(usuarioId, entrada.data.nome), 201);
+    return responder(
+      resposta,
+      async () => {
+        const lobby = await criarPartidaNoLobby(usuarioId, entrada.data.nome);
+        auditar(requisicao.log, "partida_criada", { partidaId: lobby.id, usuarioId });
+        return lobby;
+      },
+      201,
+    );
   });
 
   app.post(
@@ -86,6 +95,7 @@ export async function rotasDePartidas(app: FastifyInstance): Promise<void> {
       const usuarioId = sessaoDa(requisicao).usuario.id;
       return responder(resposta, async () => {
         const lobby = await entrarComConvite(usuarioId, entrada.data.token);
+        auditar(requisicao.log, "partida_entrou", { partidaId: lobby.id, usuarioId });
         app.tempoReal.lobbyAlterado(lobby.id);
         return lobby;
       });
@@ -131,6 +141,7 @@ export async function rotasDePartidas(app: FastifyInstance): Promise<void> {
     const usuarioId = sessaoDa(requisicao).usuario.id;
     return responder(resposta, async () => {
       const lobby = await renovarConvite(params.data.id, usuarioId);
+      auditar(requisicao.log, "convite_renovado", { partidaId: lobby.id, usuarioId });
       app.tempoReal.lobbyAlterado(lobby.id);
       return lobby;
     });
@@ -142,6 +153,7 @@ export async function rotasDePartidas(app: FastifyInstance): Promise<void> {
     const usuarioId = sessaoDa(requisicao).usuario.id;
     return responder(resposta, async () => {
       await sairDaPartida(params.data.id, usuarioId);
+      auditar(requisicao.log, "partida_saiu", { partidaId: params.data.id, usuarioId });
       app.tempoReal.saiuDoLobby(params.data.id, usuarioId);
     });
   });
@@ -152,6 +164,11 @@ export async function rotasDePartidas(app: FastifyInstance): Promise<void> {
     const usuarioId = sessaoDa(requisicao).usuario.id;
     return responder(resposta, async () => {
       const lobby = await removerDaPartida(params.data.id, usuarioId, params.data.usuarioId);
+      auditar(requisicao.log, "participante_removido", {
+        partidaId: lobby.id,
+        usuarioId,
+        removidoId: params.data.usuarioId,
+      });
       app.tempoReal.saiuDoLobby(lobby.id, params.data.usuarioId);
       return lobby;
     });
@@ -163,6 +180,7 @@ export async function rotasDePartidas(app: FastifyInstance): Promise<void> {
     const usuarioId = sessaoDa(requisicao).usuario.id;
     return responder(resposta, async () => {
       await cancelarPartida(params.data.id, usuarioId);
+      auditar(requisicao.log, "partida_cancelada", { partidaId: params.data.id, usuarioId });
       app.tempoReal.lobbyAlterado(params.data.id);
     });
   });
@@ -173,6 +191,11 @@ export async function rotasDePartidas(app: FastifyInstance): Promise<void> {
     const usuarioId = sessaoDa(requisicao).usuario.id;
     return responder(resposta, async () => {
       const lobby = await iniciarPartida(params.data.id, usuarioId);
+      auditar(requisicao.log, "partida_iniciada", {
+        partidaId: lobby.id,
+        usuarioId,
+        jogadores: lobby.participantes.length,
+      });
       app.tempoReal.partidaIniciada(lobby.id);
       return lobby;
     });

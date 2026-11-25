@@ -26,11 +26,26 @@ const esquema = z.object({
     .url({ protocol: /^https?$/, error: "deve ser uma URL http:// ou https://" })
     .transform((valor) => new URL(valor).origin)
     .default("http://localhost:5173"),
-  // "true" atrás de proxy reverso (Traefik do Dokploy), para o servidor ver o IP real do cliente.
+  // Atrás de proxy reverso (Traefik do Dokploy), para o servidor ver o IP real do cliente:
+  // o número de proxies na frente (recomendado: 1), ou endereços/faixas confiáveis separados por
+  // vírgula. "true" confia em qualquer X-Forwarded-For, que o cliente pode forjar (o IP do rate
+  // limit e do bloqueio de login viraria o que ele quisesse): aceito, mas evite.
   TRUST_PROXY: z
-    .enum(["true", "false"], { error: 'deve ser "true" ou "false"' })
+    .string()
+    .trim()
+    .min(1)
     .default("false")
-    .transform((valor) => valor === "true"),
+    .transform((valor): boolean | number | string => {
+      if (valor === "true") return true;
+      if (valor === "false") return false;
+      if (/^\d+$/.test(valor)) return Number(valor);
+      return valor;
+    })
+    .refine((valor) => typeof valor !== "string" || /^[0-9a-fA-F.:/,\s]+$/.test(valor), {
+      error: 'deve ser "false", o número de proxies (ex.: 1) ou IPs/faixas separados por vírgula',
+    }),
+  // Token (Bearer) que libera GET /api/metricas. Sem ele, a rota não existe (404).
+  METRICAS_TOKEN: z.string().min(32, "deve ter pelo menos 32 caracteres").optional(),
 });
 
 export type Config = Readonly<z.infer<typeof esquema>>;

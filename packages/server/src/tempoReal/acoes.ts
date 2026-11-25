@@ -10,8 +10,11 @@ import {
 } from "@warii/engine";
 import type { Confirmacao, StatusPartida } from "@warii/shared";
 import { eq } from "drizzle-orm";
+import type { FastifyBaseLogger } from "fastify";
+import { auditar } from "../auditoria.js";
 import { db } from "../db/index.js";
 import { acoesPartida, partidas, snapshots } from "../db/schema.js";
+import { contarAcao } from "../metricas.js";
 import { rngCrypto } from "../partidas/rng.js";
 import { emitirEstado } from "./emissao.js";
 import { descartarPartida, guardarPartida, naFila, partidaAtiva } from "./partidasAtivas.js";
@@ -31,6 +34,7 @@ export function precisaDeSnapshot(
 
 export function processarAcao(
   io: ServidorIo,
+  log: FastifyBaseLogger,
   partidaId: string,
   usuarioId: string,
   acao: Acao,
@@ -39,6 +43,7 @@ export function processarAcao(
     const atual = await partidaAtiva(partidaId);
     const { rng, sorteios } = gravarRng(rngCrypto());
     const resultado = aplicarAcao(atual.estado, usuarioId, acao, rng);
+    contarAcao(resultado.ok);
     if (!resultado.ok) return { ok: false, erro: resultado.erro };
 
     const seq = atual.seq + 1;
@@ -86,6 +91,7 @@ export function processarAcao(
       };
     }
 
+    if (terminou) auditar(log, "partida_encerrada", { partidaId, vencedorId: novo.vencedor, seq });
     guardarPartida(partidaId, {
       estado: novo,
       seq,

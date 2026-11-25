@@ -6,6 +6,7 @@ import {
   TrocarSenhaEntrada,
   type UsuarioDto,
 } from "@warii/shared";
+import { auditar, mascararEmail } from "../auditoria.js";
 import { responderEntradaInvalida, responderErro } from "../erros.js";
 import { autenticar, definirSenhaComToken, ErroDeConta, trocarSenha } from "./contas.js";
 import {
@@ -50,6 +51,7 @@ export async function rotasDeAutenticacao(app: FastifyInstance): Promise<void> {
 
       const bloqueio = bloqueioRestante(email, ip);
       if (bloqueio > 0) {
+        auditar(requisicao.log, "login_bloqueado", { email: mascararEmail(email), ip });
         resposta.header("retry-after", String(Math.ceil(bloqueio / 1000)));
         return responderErro(
           resposta,
@@ -63,6 +65,7 @@ export async function rotasDeAutenticacao(app: FastifyInstance): Promise<void> {
       const conta = await autenticar(email, senha);
       if (!conta) {
         registrarFalha(email, ip);
+        auditar(requisicao.log, "login_falhou", { email: mascararEmail(email), ip });
         return responderErro(resposta, 401, "CREDENCIAIS_INVALIDAS", CREDENCIAIS_INVALIDAS);
       }
       registrarSucesso(email, ip);
@@ -78,6 +81,7 @@ export async function rotasDeAutenticacao(app: FastifyInstance): Promise<void> {
       }
 
       const { token, expiraEm } = await criarSessao(conta.id, origemDaRequisicao(requisicao));
+      auditar(requisicao.log, "login", { usuarioId: conta.id, ip });
       gravarCookieSessao(resposta, token, expiraEm);
       return paraDto(conta);
     },
@@ -90,6 +94,7 @@ export async function rotasDeAutenticacao(app: FastifyInstance): Promise<void> {
       if (sessao) {
         await revogarSessao(sessao.sessaoId);
         app.tempoReal.sessaoEncerrada(sessao.sessaoId);
+        auditar(requisicao.log, "logout", { usuarioId: sessao.usuario.id, ip: requisicao.ip });
       }
     }
     apagarCookieSessao(resposta);
@@ -117,10 +122,15 @@ export async function rotasDeAutenticacao(app: FastifyInstance): Promise<void> {
         );
         // As sessões anteriores foram revogadas; a nova ainda não tem socket.
         app.tempoReal.sessoesDoUsuarioEncerradas(conta.id);
+        auditar(requisicao.log, "senha_definida", { usuarioId: conta.id, ip: requisicao.ip });
         gravarCookieSessao(resposta, token, expiraEm);
         return paraDto(conta);
       } catch (erro) {
         if (erro instanceof ErroDeConta) {
+          auditar(requisicao.log, "senha_definir_falhou", {
+            codigo: erro.codigo,
+            ip: requisicao.ip,
+          });
           return responderErro(resposta, 400, erro.codigo, erro.message);
         }
         throw erro;
@@ -142,8 +152,12 @@ export async function rotasDeAutenticacao(app: FastifyInstance): Promise<void> {
         entrada.data.senhaAtual,
         entrada.data.novaSenha,
       );
-      if (!trocou)
+      const dados = { usuarioId: sessao.usuario.id, ip: requisicao.ip };
+      if (!trocou) {
+        auditar(requisicao.log, "senha_trocar_falhou", dados);
         return responderErro(resposta, 400, "SENHA_ATUAL_INCORRETA", "senha atual incorreta");
+      }
+      auditar(requisicao.log, "senha_trocada", dados);
       app.tempoReal.sessoesDoUsuarioEncerradas(sessao.usuario.id, sessao.sessaoId);
       return resposta.code(204).send();
     },
@@ -157,6 +171,7 @@ export async function rotasDeAutenticacao(app: FastifyInstance): Promise<void> {
       const usuarioId = sessaoDa(requisicao).usuario.id;
       await revogarSessoesDoUsuario(usuarioId);
       app.tempoReal.sessoesDoUsuarioEncerradas(usuarioId);
+      auditar(requisicao.log, "sair_de_todas", { usuarioId, ip: requisicao.ip });
       apagarCookieSessao(resposta);
       return resposta.code(204).send();
     },

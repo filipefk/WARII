@@ -2,3 +2,7 @@ packages:
   - packages/*
 allowBuilds:
   esbuild: true
+overrides:
+  # O drizzle-kit (só dev, para `db:generate`) traz pelo @esbuild-kit um esbuild 0.18 com a falha
+  # GHSA-67mh-4wv8-2f99 (servidor de dev do esbuild). Força a mesma versão corrigida do drizzle-kit.
+  "@esbuild-kit/core-utils>esbuild": 0.25.12

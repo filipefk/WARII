@@ -1,11 +1,12 @@
-// Autenticação da conexão do Socket.IO: mesma origem do site e o mesmo cookie de sessão do REST,
-// validado por sessaoPorToken. Recusas chegam ao cliente no `connect_error` (err.data = ErroApi).
+// Autenticação da conexão do Socket.IO: a mesma regra de origem do REST (origem.ts) e o mesmo
+// cookie de sessão, validado por sessaoPorToken. Recusas chegam ao cliente no `connect_error` (err.data = ErroApi).
 import fastifyCookie from "@fastify/cookie";
 import type { ErroApi } from "@warii/shared";
 import type { FastifyBaseLogger } from "fastify";
 import { NOME_COOKIE_SESSAO } from "../auth/plugin.js";
 import { sessaoPorToken } from "../auth/sessoes.js";
-import { config } from "../config.js";
+import { auditar } from "../auditoria.js";
+import { origemPermitida } from "../origem.js";
 import type { SocketDoJogo } from "./tipos.js";
 
 function erroDeConexao(codigo: string, mensagem: string): Error & { data: ErroApi } {
@@ -18,12 +19,19 @@ export async function autenticarSocket(
   log: FastifyBaseLogger,
 ): Promise<Error | undefined> {
   try {
-    const origem = socket.handshake.headers.origin;
-    // Sem Origin (clientes fora do navegador) passa, como no REST; a etapa 10 endurece.
-    if (origem !== undefined && origem !== config.URL_PUBLICA) {
+    const cabecalhos = socket.handshake.headers;
+    if (!origemPermitida(cabecalhos)) {
+      auditar(log, "socket_recusado", {
+        motivo: "origem",
+        // Endereço da conexão (atrás do proxy, o do Traefik) e a cadeia que ele repassou.
+        ip: socket.handshake.address,
+        encaminhadoPor: cabecalhos["x-forwarded-for"],
+        origem: cabecalhos.origin,
+        site: cabecalhos["sec-fetch-site"],
+      });
       return erroDeConexao("ORIGEM_RECUSADA", "origem da conexão não permitida");
     }
-    const cabecalho = socket.handshake.headers.cookie;
+    const cabecalho = cabecalhos.cookie;
     const token = cabecalho ? fastifyCookie.parse(cabecalho)[NOME_COOKIE_SESSAO] : undefined;
     const sessao = token ? await sessaoPorToken(token) : undefined;
     if (!sessao) return erroDeConexao("NAO_AUTENTICADO", "faça login para continuar");

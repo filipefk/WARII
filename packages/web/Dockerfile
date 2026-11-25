@@ -15,7 +15,9 @@ COPY packages/shared packages/shared
 COPY packages/web packages/web
 RUN pnpm --filter @warii/web build
 
-FROM nginx:alpine
+# Imagem oficial do nginx que roda sem root (usuário nginx, uid 101) e escuta na 8080.
+FROM nginxinc/nginx-unprivileged:alpine
 COPY packages/web/nginx.conf /etc/nginx/conf.d/default.conf
+COPY packages/web/nginx-cabecalhos.conf /etc/nginx/snippets/cabecalhos.conf
 COPY --from=build /app/packages/web/dist /usr/share/nginx/html
-EXPOSE 80
+EXPOSE 8080

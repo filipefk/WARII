@@ -43,10 +43,14 @@ interface OpcoesConexao {
   sessao?: string | undefined;
   // undefined = a origem do site; null = sem cabeçalho Origin.
   origem?: string | null | undefined;
+  cabecalhos?: Record<string, string> | undefined;
 }
 
-export function novoCliente(url: string, { sessao, origem }: OpcoesConexao = {}): Cliente {
-  const cabecalhos: Record<string, string> = {};
+export function novoCliente(
+  url: string,
+  { sessao, origem, cabecalhos: extras = {} }: OpcoesConexao = {},
+): Cliente {
+  const cabecalhos: Record<string, string> = { ...extras };
   if (sessao !== undefined) cabecalhos.cookie = `${NOME_COOKIE_SESSAO}=${sessao}`;
   const origemUsada = origem === undefined ? config.URL_PUBLICA : origem;
   if (origemUsada !== null) cabecalhos.origin = origemUsada;

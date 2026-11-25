@@ -6,6 +6,7 @@ import { config } from "./config.js";
 import { pool } from "./db/index.js";
 import { prepararBanco } from "./db/preparar.js";
 import { opcoesDoLogger } from "./logger.js";
+import { INTERVALO_LOG_METRICAS_MS, lerMetricas } from "./metricas.js";
 
 // Pasta gerada pelo `drizzle-kit generate`. Resolvida a partir deste arquivo de propósito:
 // em dev ele é src/index.ts e em produção o tsup gera um único dist/index.js — ambos um nível
@@ -19,6 +20,22 @@ const PRAZO_ENCERRAMENTO_MS = 10_000;
 const INTERVALO_LIMPEZA_MS = 6 * 60 * 60 * 1000;
 
 const app = await criarApp(opcoesDoLogger);
+
+// Erros que escaparam de todo tratamento: a promessa rejeitada só vai para o log; a exceção
+// deixa o processo num estado desconhecido, então ele sai (o Dokploy o reinicia).
+process.on("unhandledRejection", (motivo) => {
+  app.log.error({ err: motivo }, "promessa rejeitada sem tratamento");
+});
+process.on("uncaughtException", (erro) => {
+  app.log.fatal({ err: erro }, "exceção não capturada; encerrando");
+  process.exit(1);
+});
+
+if (config.NODE_ENV === "production" && config.TRUST_PROXY === true) {
+  app.log.warn(
+    "TRUST_PROXY=true confia em qualquer X-Forwarded-For; use o número de proxies (ex.: 1)",
+  );
+}
 
 // Conexões ociosas que caem (ex.: Postgres reiniciou) não podem derrubar o processo.
 pool.on("error", (erro) => {
@@ -71,6 +88,9 @@ try {
   await app.listen({ port: config.PORT, host: config.HOST });
   await limparSessoes();
   setInterval(() => void limparSessoes(), INTERVALO_LIMPEZA_MS).unref();
+  setInterval(() => {
+    app.log.info({ metricas: lerMetricas(app) }, "métricas");
+  }, INTERVALO_LOG_METRICAS_MS).unref();
 } catch (erro) {
   app.log.fatal({ err: erro }, "falha ao iniciar o servidor");
   process.exitCode = 1;

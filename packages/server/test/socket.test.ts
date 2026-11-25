@@ -132,8 +132,12 @@ describe("servidor de partida (Socket.IO)", { skip: motivoSemBanco, concurrency:
     Object.assign(LIMITES_DO_SOCKET, LIMITES_PADRAO);
   });
 
-  function cliente(sessao?: string, origem?: string | null): Cliente {
-    const c = novoCliente(url, { sessao, origem });
+  function cliente(
+    sessao?: string,
+    origem?: string | null,
+    cabecalhos?: Record<string, string>,
+  ): Cliente {
+    const c = novoCliente(url, { sessao, origem, cabecalhos });
     clientes.push(c);
     return c;
   }
@@ -162,6 +166,11 @@ describe("servidor de partida (Socket.IO)", { skip: motivoSemBanco, concurrency:
     assert.equal(await conectar(cliente("A".repeat(43))), "NAO_AUTENTICADO");
     assert.equal(await conectar(cliente(sessao, "https://outro.example")), "ORIGEM_RECUSADA");
     assert.equal(await conectar(cliente(sessao, null)), null);
+    // Sem Origin, o Sec-Fetch-Site do navegador decide (como no polling da mesma origem).
+    const doOutroSite = { "sec-fetch-site": "cross-site" };
+    assert.equal(await conectar(cliente(sessao, null, doOutroSite)), "ORIGEM_RECUSADA");
+    const doSite = { "sec-fetch-site": "same-origin" };
+    assert.equal(await conectar(cliente(sessao, null, doSite)), null);
     assert.equal(await conectar(cliente(sessao)), null);
 
     await requisitar(app, { metodo: "POST", url: "/api/auth/logout", sessao, ip: ipNovo() });
