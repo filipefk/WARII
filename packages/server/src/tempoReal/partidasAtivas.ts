@@ -11,7 +11,7 @@ import {
 } from "@warii/engine";
 import { and, asc, desc, eq, gt, lte } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { acoesPartida, partidas, snapshots } from "../db/schema.js";
+import { acoesPartida, partidas, participantes, snapshots, usuarios } from "../db/schema.js";
 import { type AcaoCriacao, montarPartida, TIPO_ACAO_CRIACAO } from "../partidas/inicio.js";
 import { ErroDeTempoReal, partidaInexistente } from "./erros.js";
 
@@ -21,6 +21,8 @@ export interface PartidaAtiva {
   readonly seq: number;
   // Seq do snapshot mais recente gravado (-1 se nenhum).
   readonly seqSnapshot: number;
+  // Jogadores controlados pelo servidor (tempoReal/robos.ts).
+  readonly robos: ReadonlySet<string>;
 }
 
 type LinhaAcao = typeof acoesPartida.$inferSelect;
@@ -98,9 +100,20 @@ export async function carregarDoBanco(partidaId: string): Promise<PartidaAtiva> 
     )
     .orderBy(asc(acoesPartida.seq));
 
+  const robos = await db
+    .select({ id: participantes.usuarioId })
+    .from(participantes)
+    .innerJoin(usuarios, eq(usuarios.id, participantes.usuarioId))
+    .where(and(eq(participantes.partidaId, partidaId), eq(usuarios.robo, true)));
+
   try {
     const estado = repetirLog(snapshot?.estado ?? null, desde, acoes, partida.seq);
-    return { estado, seq: partida.seq, seqSnapshot: desde };
+    return {
+      estado,
+      seq: partida.seq,
+      seqSnapshot: desde,
+      robos: new Set(robos.map((r) => r.id)),
+    };
   } catch (erro) {
     throw new ErroDeTempoReal(
       "PARTIDA_CORROMPIDA",

@@ -383,4 +383,64 @@ describe("rotas /api/partidas", { skip: motivoSemBanco, concurrency: false }, ()
       "LIMITE_DE_PARTIDAS",
     );
   });
+
+  test("robôs: só o anfitrião adiciona, escolhe a cor e remove; robô não faz login", async () => {
+    const [a, b] = await criarContasAtivas(app, 2);
+    assert.ok(a && b);
+    const lobby = await criar(a);
+    assert.equal(
+      (await pedir(b, "POST", "/entrar", { token: tokenDoConvite(lobby) })).statusCode,
+      200,
+    );
+
+    assert.equal(
+      await codigoDoErro(pedir(b, "POST", `/${lobby.id}/robos`), 403),
+      "SOMENTE_ANFITRIAO",
+    );
+    const comRobo = await pedir(a, "POST", `/${lobby.id}/robos`);
+    assert.equal(comRobo.statusCode, 201, comRobo.body);
+    const robo = comRobo.json<PartidaLobbyDto>().participantes.find((p) => p.robo);
+    assert.ok(robo, "robô não entrou");
+    assert.equal(robo.nome, "Robô Alfa");
+    assert.ok(robo.cor !== null, "robô sem cor");
+
+    // Cor do robô: só o anfitrião, e só de robô.
+    const corDoRobo = `/${lobby.id}/participantes/${robo.usuarioId}/cor`;
+    assert.equal(
+      await codigoDoErro(pedir(b, "PUT", corDoRobo, { cor: "amarelo" }), 403),
+      "SOMENTE_ANFITRIAO",
+    );
+    const amarelo = await pedir(a, "PUT", corDoRobo, { cor: "amarelo" });
+    assert.equal(amarelo.statusCode, 200, amarelo.body);
+    assert.equal(amarelo.json<PartidaLobbyDto>().participantes.find((p) => p.robo)?.cor, "amarelo");
+    assert.equal(
+      await codigoDoErro(
+        pedir(a, "PUT", `/${lobby.id}/participantes/${b.id}/cor`, { cor: "verde" }),
+        403,
+      ),
+      "SOMENTE_ROBO",
+    );
+    assert.equal(
+      await codigoDoErro(pedir(b, "PUT", `/${lobby.id}/cor`, { cor: "amarelo" }), 409),
+      "COR_OCUPADA",
+    );
+
+    // Até completar 6 jogadores; depois disso, partida cheia.
+    for (let i = 0; i < 3; i++) {
+      assert.equal((await pedir(a, "POST", `/${lobby.id}/robos`)).statusCode, 201);
+    }
+    assert.equal(await codigoDoErro(pedir(a, "POST", `/${lobby.id}/robos`), 409), "PARTIDA_CHEIA");
+
+    const semRobo = await pedir(a, "DELETE", `/${lobby.id}/participantes/${robo.usuarioId}`);
+    assert.equal(semRobo.statusCode, 200);
+    assert.equal(semRobo.json<PartidaLobbyDto>().participantes.filter((p) => p.robo).length, 3);
+
+    const login = await requisitar(app, {
+      metodo: "POST",
+      url: "/api/auth/login",
+      corpo: { email: "robo1@robos.invalid", senha: "qualquer-senha-123" },
+      ip: ipNovo(),
+    });
+    assert.equal(login.statusCode, 401);
+  });
 });

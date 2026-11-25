@@ -34,7 +34,13 @@ export interface Conta {
   nome: string;
 }
 
+// Domínio dos e-mails das contas-robô (partidas/robos.ts).
+export const DOMINIO_ROBOS = "@robos.invalid";
+
 export async function criarConta(email: string, nome: string): Promise<Conta> {
+  if (email.toLowerCase().endsWith(DOMINIO_ROBOS)) {
+    throw new ErroDeConta("EMAIL_RESERVADO", `e-mails ${DOMINIO_ROBOS} são reservados aos robôs`);
+  }
   const [criada] = await db
     .insert(usuarios)
     .values({ email, nome })
@@ -49,12 +55,14 @@ export async function gerarLinkSenha(
   email: string,
   finalidade: FinalidadeTokenSenha,
 ): Promise<{ link: string; expiraEm: Date; conta: Conta }> {
-  const [conta] = await db
-    .select({ id: usuarios.id, email: usuarios.email, nome: usuarios.nome })
+  const [linha] = await db
+    .select({ id: usuarios.id, email: usuarios.email, nome: usuarios.nome, robo: usuarios.robo })
     .from(usuarios)
     .where(eq(usuarios.email, email))
     .limit(1);
-  if (!conta) throw new ErroDeConta("CONTA_INEXISTENTE", `nenhuma conta com o e-mail ${email}`);
+  if (!linha) throw new ErroDeConta("CONTA_INEXISTENTE", `nenhuma conta com o e-mail ${email}`);
+  const { robo, ...conta } = linha;
+  if (robo) throw new ErroDeConta("CONTA_ROBO", "contas-robô não têm senha");
 
   const token = gerarToken();
   const agora = new Date();
@@ -155,13 +163,14 @@ export async function trocarSenha(
 }
 
 export async function listarContas(): Promise<
-  { email: string; nome: string; ativa: boolean; criadoEm: Date }[]
+  { email: string; nome: string; ativa: boolean; robo: boolean; criadoEm: Date }[]
 > {
   const linhas = await db
     .select({
       email: usuarios.email,
       nome: usuarios.nome,
       senhaHash: usuarios.senhaHash,
+      robo: usuarios.robo,
       criadoEm: usuarios.criadoEm,
     })
     .from(usuarios)

@@ -6,6 +6,7 @@ import type { StatusPartida } from "@warii/shared";
 import { sql } from "drizzle-orm";
 import type { AcaoCriacao } from "../partidas/inicio.js";
 import {
+  boolean,
   check,
   customType,
   index,
@@ -39,6 +40,9 @@ export const usuarios = pgTable("usuarios", {
   nome: text("nome").notNull(),
   // Nulo até o usuário ativar a conta pelo link gerado pelo administrador.
   senhaHash: text("senha_hash"),
+  // Jogador controlado pelo servidor (tempoReal/robos.ts). Nunca tem senha nem sessão; o grupo
+  // fixo de robôs é criado sob demanda (partidas/robos.ts).
+  robo: boolean("robo").notNull().default(false),
   criadoEm: instante("criado_em").notNull().defaultNow(),
   atualizadoEm: instante("atualizado_em").notNull().defaultNow(),
 });

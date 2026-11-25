@@ -1,7 +1,7 @@
 // Projeção da partida para um jogador (WARII.md §13.3): remove objetivos e cartas alheios e a
 // ordem do monte. É o único formato de estado que deve sair do servidor para os clientes.
 
-import type { CartaId } from "../data/cartas.js";
+import { CARTAS_DE_TROCA, type CartaId } from "../data/cartas.js";
 import type { CorId } from "../data/cores.js";
 import type { EstadoPartida, JogadorId } from "./estado.js";
 import type { Evento } from "./eventos.js";
@@ -53,6 +53,33 @@ export function visaoDoJogador(estado: EstadoPartida, jogadorId: JogadorId | nul
         objetivoOriginalId: revelaObjetivo ? j.objetivoOriginalId : null,
       };
     }),
+  };
+}
+
+// Estado equivalente à visão para as regras de quem vê (pré-visualização no front, decisão do
+// robô). O monte vira cartas quaisquer que não estão à vista (só a quantidade importa) e as mãos
+// e objetivos alheios ficam vazios. Devolve uma cópia: pode ser alterada à vontade.
+export function estadoDaVisao(visao: VisaoPartida): EstadoPartida {
+  const { voce: _voce, quantidadeMonte, jogadores, ...resto } = copiaJson(visao);
+  const minhas = new Set(jogadores.find((j) => j.id === visao.voce)?.cartas ?? []);
+  const vistas = new Set<CartaId>([...minhas, ...resto.descarte]);
+  const monte = CARTAS_DE_TROCA.map((c) => c.id)
+    .filter((id) => !vistas.has(id))
+    .slice(0, quantidadeMonte);
+  return {
+    ...resto,
+    monte,
+    jogadores: jogadores.map((j) => ({
+      id: j.id,
+      cor: j.cor,
+      objetivoId: j.objetivoId,
+      objetivoOriginalId: j.objetivoOriginalId,
+      cartas: [...(j.cartas ?? [])],
+      bombardeirosBase: j.bombardeirosBase,
+      bombardeirosCaixa: j.bombardeirosCaixa,
+      eliminado: j.eliminado,
+      eliminadoPor: j.eliminadoPor,
+    })),
   };
 }
 

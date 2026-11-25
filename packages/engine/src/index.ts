@@ -4,3 +4,4 @@
 
 export * from "./data/index.js";
 export * from "./regras/index.js";
+export { decidirAcao } from "./robo/index.js";

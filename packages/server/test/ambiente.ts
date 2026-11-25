@@ -24,3 +24,4 @@ process.env.LOG_LEVEL = "silent";
 process.env.SESSION_SECRET = "segredo-usado-somente-nos-testes-automatizados";
 process.env.URL_PUBLICA = "http://localhost:5173";
 process.env.TRUST_PROXY = "false";
+process.env.ROBO_ATRASO_MS = "0";

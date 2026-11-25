@@ -44,6 +44,8 @@ const esquema = z.object({
     .refine((valor) => typeof valor !== "string" || /^[0-9a-fA-F.:/,\s]+$/.test(valor), {
       error: 'deve ser "false", o número de proxies (ex.: 1) ou IPs/faixas separados por vírgula',
     }),
+  // Espera antes de cada jogada de um robô (ms), para quem acompanha ver a jogada.
+  ROBO_ATRASO_MS: z.coerce.number().int().min(0).max(10_000).default(900),
   // Token (Bearer) que libera GET /api/metricas. Sem ele, a rota não existe (404).
   METRICAS_TOKEN: z.string().min(32, "deve ter pelo menos 32 caracteres").optional(),
 });

@@ -13,6 +13,13 @@ export const apiPartidas = {
   obter: (id: string) => requisitar<PartidaLobbyDto>("GET", caminho(id)),
   escolherCor: (id: string, cor: CorId) =>
     requisitar<PartidaLobbyDto>("PUT", caminho(id, "/cor"), { cor }),
+  escolherCorDoRobo: (id: string, roboId: string, cor: CorId) =>
+    requisitar<PartidaLobbyDto>(
+      "PUT",
+      caminho(id, `/participantes/${encodeURIComponent(roboId)}/cor`),
+      { cor },
+    ),
+  adicionarRobo: (id: string) => requisitar<PartidaLobbyDto>("POST", caminho(id, "/robos")),
   configurar: (id: string, parametros: ParametrosParciaisEntrada) =>
     requisitar<PartidaLobbyDto>("PUT", caminho(id, "/parametros"), { parametros }),
   renovarConvite: (id: string) => requisitar<PartidaLobbyDto>("POST", caminho(id, "/convite")),

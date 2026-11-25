@@ -126,17 +126,29 @@ Funções puras `(estado, ação, rng) → { estado, eventos }`, seguindo a máq
   - **Testes:** `server/test/seguranca.test.ts` (regra de origem, máscara de e-mail, cabeçalhos, `Sec-Fetch-Site` de outro site, `text/plain` → 415, limite global de corpo, métricas desligadas) e o handshake do socket com `Sec-Fetch-Site`. `pnpm typecheck`, `pnpm lint` (sem avisos), `pnpm format:check` e `pnpm test` (36 do engine, 86 do servidor) passam. Conferido no navegador em dev: sessão, lista, partida conectada pelo socket e uma ação aceita.
   - **Revisão de segurança:** o `/security-review` não roda neste repositório (compara com `origin/HEAD` e não há remoto); a revisão do diff foi feita à mão, sem achados relevantes.
   - **Imagens Docker conferidas:** as duas construídas e rodadas numa rede local, com um Nginx de teste no papel do Traefik (`/api` e `/socket.io` → servidor), `NODE_ENV=production` e `TRUST_PROXY=1`. Servidor `healthy`, rodando como `node` (uid 1000), migrations em dia; web como `nginx` (uid 101). Cabeçalhos e CSP no `/`, no `/assets/` (com cache imutável) e nas rotas do SPA; arquivo oculto → 404; `/api/metricas` → 401 sem token e as métricas com ele; POST de outra origem → 403 com a linha de auditoria (IP real pelo `X-Forwarded-For`). No navegador: login com o cookie `__Host-`, partida conectada pelo socket, galeria e guia, **sem nenhuma violação de CSP** no console. Ajustes que saíram daí: o atraso do event loop passou a descontar a resolução de 20 ms do histograma (aparecia sempre ~20 ms) e o HSTS da API ficou sem `includeSubDomains`, igual ao do Nginx.
-- **Para a etapa 11:** a aplicação web escuta na **8080**; no servidor, `TRUST_PROXY=1`, `URL_PUBLICA` com https e, se quiser as métricas, `METRICAS_TOKEN`.
+- **Para a etapa 12 (deploy):** a aplicação web escuta na **8080**; no servidor, `TRUST_PROXY=1`, `URL_PUBLICA` com https e, se quiser as métricas, `METRICAS_TOKEN`.
 
-### Etapa 11 — Deploy no Dokploy
+### Etapa 11 — Jogadores robôs ✅ CONCLUÍDA (2026-11-25)
+- Permitir jogar sozinho (ou com poucos amigos) contra robôs controlados pelo servidor, ex.: 1 humano + 2 robôs.
+- **Pronto quando:** o anfitrião adiciona robôs no lobby, inicia e os robôs jogam sozinhos a vez deles, pelo mesmo log das ações humanas.
+- **Decidido:** robô **heurístico simples** (não o aleatório dos testes) que decide **só pela própria visão**; robôs são contas comuns de `usuarios` com `robo = true` (FKs, log, vencedor e replay sem mudança), num grupo fixo de 5 criado sob demanda; quem os faz jogar é o servidor, pelo mesmo caminho das ações humanas (`aplicarEGravar` na fila da partida); uma instância só, como o resto do tempo real.
+- **Entregue:**
+  - **Engine:** `src/robo/index.ts` (`decidirAcao(visao, rng)`): monta o estado com `estadoDaVisao` (que saiu de `web/src/jogo/previa.ts` para `regras/visao.ts`), gera candidatas em ordem de preferência e fica com a primeira que `aplicarAcao` aceitaria (RNG que interrompe no primeiro sorteio); se nada servir, a ação que encerra a fase. Heurísticas: ocupação perto dos seus e de CEs; reforço na fronteira com peso para o objetivo e a ameaça; ataque só com vantagem (ou uma conquista barata pela carta); entra o máximo após conquistar quando a origem fica protegida; ataque aéreo quando um território forte trava o caminho; deslocamento do interior para a fronteira (e aerotransporte de CE interior); cartas usadas no recebimento com a mão quase cheia; descarte das que menos servem. `test/robo.test.ts`: partidas de 3 a 6 robôs terminam sem ação recusada, o heurístico vence o aleatório (12 de 12) e a decisão não muda ao trocar cartas e objetivos alheios.
+  - **Banco e contas:** coluna `usuarios.robo` (migration 0004); contas `roboN@robos.invalid` ("Robô Alfa" … "Robô Eco") criadas por `garantirRobos()` (`server/src/partidas/robos.ts`); sem senha (login sempre falha), a CLI recusa link de senha e criação com esse domínio e marca "robô" em `contas:listar`.
+  - **Lobby:** `POST /api/partidas/:id/robos` (anfitrião; primeiro robô livre, já com a primeira cor livre) e `PUT /api/partidas/:id/participantes/:usuarioId/cor` (cor de robô, só o anfitrião; humano → 403 `SOMENTE_ROBO`); remover robô pela rota de remover que já existia. `ParticipanteDto.robo`. Auditoria `robo_adicionado`.
+  - **Servidor:** `tempoReal/robos.ts` (`agendarRobo`): depois de toda ação aceita, ao iniciar e ao entrar numa partida (cobre o servidor reiniciado no meio da vez de um robô), se a vez é de um robô espera `ROBO_ATRASO_MS` (padrão 900 ms), decide com `visaoDoJogador` e aplica com `aplicarEGravar`; um agendamento por partida, no máximo 400 ações por vez, recusa ou erro → auditoria `robo_travado` (alerta) e a partida fica parada; parado no `preClose`. `PartidaAtiva.robos` vem do banco ao carregar.
+  - **Front:** na sala de espera, "Adicionar robô" para o anfitrião, robô com `tag` "robô" e seletor de cor (só o anfitrião); no jogo, painel "Vez" com "robô · jogando…" e a `tag` na mesa.
+  - **Testes:** `lobby.test.ts` (adicionar, cor, remover, limite, login de robô recusado) e `socket.test.ts` (1 humano + 2 robôs: os robôs jogam sozinhos até a vez do humano, as ações deles vão para o log com o id do robô e o replay bate). `pnpm typecheck`, `pnpm lint` e `pnpm test` (46 do engine, servidor sem falhas) passam. Conferido no navegador: lobby com 2 robôs e troca de cor, preparação, recarga no meio da vez de um robô e robôs atacando, conquistando e deslocando, sem erros no console nem no servidor.
+
+### Etapa 12 — Deploy no Dokploy
 - Duas aplicações (server e web) com context na raiz; variáveis de ambiente e segredos no Dokploy; domínio com roteamento `/`, `/api`, `/socket.io`; HTTPS.
 - Backup do Postgres.
 - **Pronto quando:** amigos jogam no domínio publicado.
 
-### Etapa 12 — Variante Centro de Informações (opcional)
+### Etapa 13 — Variante Centro de Informações (opcional)
 - Regras §12 no engine (já atrás de parâmetro), exceção de visibilidade para o captor, UI de espionagem.
 
-### Etapa 13 — Playtest e ajustes
+### Etapa 14 — Playtest e ajustes
 - Partidas reais entre amigos, ajuste de parâmetros ⚠ A CONFIRMAR, correções de UX.
 - Pendências da etapa 9: histórico persistente do log da partida e o número do canto das cartas-objetivo de "destruir cor".
 - Roteiro herdado da etapa 9 para a primeira partida completa (contas de `USUARIOS-TESTE.md`, cada jogador num contexto de navegador separado): ocupação; 1ª rodada só de recebimento; ataque terrestre com conquista; ataque aéreo com ciclos; deslocamento e aerotransporte; cartas (compra, reforço, transporte e descarte); recusa mostrada no painel; recarga da página (reconexão); eliminação e vitória. Conferir que ninguém vê objetivo nem cartas alheios (nem no painel nem nas mensagens do socket), a galeria, o guia, o zoom, o layout abaixo de 860px e `prefers-reduced-motion`.
@@ -146,7 +158,7 @@ Funções puras `(estado, ação, rng) → { estado, eventos }`, seguindo a máq
 ## Dependências e paralelismo
 
 ```
-1 → 2 ──────────→ 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12/13
+1 → 2 ──────────→ 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13/14
 1 → 3 → 4 ───────────────↗ (7 e 9 dependem do engine)
 ```
 - Etapas 3–4 (engine) e 2/5 (banco e contas) podem andar em paralelo após a etapa 1.

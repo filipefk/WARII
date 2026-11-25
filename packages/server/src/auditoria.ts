@@ -24,7 +24,9 @@ export type EventoDeAuditoria =
   | "partida_iniciada"
   | "partida_cancelada"
   | "partida_encerrada"
-  | "partida_corrompida";
+  | "partida_corrompida"
+  | "robo_adicionado"
+  | "robo_travado";
 
 // Eventos que indicam ataque ou falha vão como `warn`; o resto como `info`.
 const ALERTAS = new Set<EventoDeAuditoria>([
@@ -36,6 +38,7 @@ const ALERTAS = new Set<EventoDeAuditoria>([
   "socket_recusado",
   "socket_excesso_de_mensagens",
   "partida_corrompida",
+  "robo_travado",
 ]);
 
 export function auditar(

@@ -37,6 +37,15 @@ function Participantes({ lobby, presenca, usuarioId }: Props) {
   const { ocupado, erro, executar } = useOperacao();
   const souAnfitriao = lobby.anfitriao.id === usuarioId;
 
+  const adicionarRobo = () =>
+    executar("robo", async () => gravarLobby(await apiPartidas.adicionarRobo(lobby.id)));
+  const corDoRobo = (roboId: string, cor: CorId) =>
+    executar(`cor:${roboId}`, async () =>
+      gravarLobby(await apiPartidas.escolherCorDoRobo(lobby.id, roboId, cor)),
+    );
+  const livres = (atual: CorId | null) =>
+    IDS_CORES.filter((c) => c === atual || !lobby.participantes.some((p) => p.cor === c));
+
   const remover = (alvoId: string, nome: string) => {
     if (!window.confirm(`Remover ${nome} da partida?`)) return;
     executar(`remover:${alvoId}`, async () =>
@@ -57,10 +66,33 @@ function Participantes({ lobby, presenca, usuarioId }: Props) {
                 {p.usuarioId === usuarioId && " (você)"}
               </span>
               {p.anfitriao && <span className="tag">anfitrião</span>}
-              {p.cor === null && <span className="dica">escolhendo cor…</span>}
-              <span className="ml-auto">
-                <Presenca online={online} textos={["na sala", "fora da sala"]} />
-              </span>
+              {p.robo && <span className="tag">robô</span>}
+              {p.cor === null && !p.robo && <span className="dica">escolhendo cor…</span>}
+              {p.robo && souAnfitriao ? (
+                <select
+                  className="campo ml-auto"
+                  aria-label={`Cor de ${p.nome}`}
+                  value={p.cor ?? ""}
+                  disabled={ocupado !== null}
+                  onChange={(e) => {
+                    const cor = IDS_CORES.find((c) => c === e.target.value);
+                    if (cor) corDoRobo(p.usuarioId, cor);
+                  }}
+                >
+                  {p.cor === null && <option value="">sem cor</option>}
+                  {livres(p.cor).map((c) => (
+                    <option key={c} value={c}>
+                      {CORES[c].nome}
+                    </option>
+                  ))}
+                </select>
+              ) : p.robo ? (
+                <span className="dica ml-auto">{p.cor ? CORES[p.cor].nome : "sem cor"}</span>
+              ) : (
+                <span className="ml-auto">
+                  <Presenca online={online} textos={["na sala", "fora da sala"]} />
+                </span>
+              )}
               {souAnfitriao && !p.anfitriao && (
                 <button
                   type="button"
@@ -75,6 +107,14 @@ function Participantes({ lobby, presenca, usuarioId }: Props) {
           );
         })}
       </ul>
+      {souAnfitriao && lobby.participantes.length < MAXIMO_JOGADORES && (
+        <div className="mt-espaco-5 flex flex-wrap items-center gap-espaco-5">
+          <Botao ocupado={ocupado === "robo"} disabled={ocupado !== null} onClick={adicionarRobo}>
+            Adicionar robô
+          </Botao>
+          <span className="dica">O servidor joga por ele.</span>
+        </div>
+      )}
       {erro && (
         <div className="mt-espaco-5">
           <Aviso>{erro}</Aviso>

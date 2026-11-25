@@ -7,6 +7,7 @@ import {
   CENTROS_ESTRATEGICOS,
   CONTINENTES,
   type ContinenteId,
+  estadoDaVisao,
   IDS_CONTINENTES,
   IDS_TERRITORIOS,
   type TerritorioId,
@@ -14,7 +15,6 @@ import {
   territoriosDoContinente,
   type VisaoPartida,
 } from "@warii/engine";
-import { estadoDaVisao } from "./previa";
 
 export type Dominio = "maioria" | "totalidade";
 

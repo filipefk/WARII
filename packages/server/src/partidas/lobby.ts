@@ -5,6 +5,7 @@
 import {
   type CorId,
   gravarRng,
+  IDS_CORES,
   MAXIMO_JOGADORES,
   MINIMO_JOGADORES,
   PARAMETROS_PADRAO,
@@ -24,6 +25,7 @@ import { config } from "../config.js";
 import { db, type Executor, type Transacao } from "../db/index.js";
 import { acoesPartida, partidas, participantes, snapshots, usuarios } from "../db/schema.js";
 import { type AcaoCriacao, montarPartida, TIPO_ACAO_CRIACAO } from "./inicio.js";
+import { ehRobo, garantirRobos } from "./robos.js";
 import { rngCrypto } from "./rng.js";
 
 // Partidas aguardando jogadores que um mesmo anfitrião pode ter ao mesmo tempo.
@@ -132,6 +134,7 @@ async function montarLobby(
     .select({
       usuarioId: participantes.usuarioId,
       nome: usuarios.nome,
+      robo: usuarios.robo,
       cor: participantes.cor,
       assento: participantes.assento,
     })
@@ -152,6 +155,7 @@ async function montarLobby(
         cor: p.cor,
         assento: p.assento,
         anfitriao: p.usuarioId === partida.anfitriaoId,
+        robo: p.robo,
       }))
       // Depois de iniciar, na ordem da mesa; antes, na ordem de entrada.
       .toSorted((a, b) => (a.assento ?? 0) - (b.assento ?? 0)),
@@ -267,23 +271,63 @@ export async function entrarComConvite(usuarioId: string, token: string): Promis
   });
 }
 
+// A cor é escolhida pelo próprio jogador; a de um robô, pelo anfitrião (`alvoId`).
 export async function escolherCor(
   partidaId: string,
   usuarioId: string,
   cor: CorId,
+  alvoId = usuarioId,
 ): Promise<PartidaLobbyDto> {
   return db.transaction(async (tx) => {
     const travada = await travarComoParticipante(tx, partidaId, usuarioId);
     exigirAguardando(travada);
-    if (travada.participantes.some((p) => p.cor === cor && p.usuarioId !== usuarioId)) {
+    if (alvoId !== usuarioId) {
+      exigirAnfitriao(travada, usuarioId);
+      if (!travada.participantes.some((p) => p.usuarioId === alvoId)) {
+        throw new ErroDeLobby(404, "PARTICIPANTE_INEXISTENTE", "esse jogador não está na partida");
+      }
+      if (!(await ehRobo(tx, alvoId))) {
+        throw new ErroDeLobby(
+          403,
+          "SOMENTE_ROBO",
+          "só a cor de um robô é escolhida pelo anfitrião",
+        );
+      }
+    }
+    if (travada.participantes.some((p) => p.cor === cor && p.usuarioId !== alvoId)) {
       throw new ErroDeLobby(409, "COR_OCUPADA", "outro jogador já escolheu essa cor");
     }
     await tx
       .update(participantes)
       .set({ cor })
-      .where(and(eq(participantes.partidaId, partidaId), eq(participantes.usuarioId, usuarioId)));
+      .where(and(eq(participantes.partidaId, partidaId), eq(participantes.usuarioId, alvoId)));
     await tocar(tx, partidaId);
     return montarLobby(tx, partidaId, usuarioId);
+  });
+}
+
+// Põe na partida o primeiro robô do grupo que ainda não está nela, já com a primeira cor livre.
+export async function adicionarRobo(
+  partidaId: string,
+  anfitriaoId: string,
+): Promise<{ lobby: PartidaLobbyDto; roboId: string }> {
+  return db.transaction(async (tx) => {
+    const travada = await travarComoParticipante(tx, partidaId, anfitriaoId);
+    exigirAnfitriao(travada, anfitriaoId);
+    exigirAguardando(travada);
+    if (travada.participantes.length >= MAXIMO_JOGADORES) {
+      throw new ErroDeLobby(409, "PARTIDA_CHEIA", `a partida já tem ${MAXIMO_JOGADORES} jogadores`);
+    }
+    const presentes = new Set(travada.participantes.map((p) => p.usuarioId));
+    const roboId = (await garantirRobos(tx)).find((id) => !presentes.has(id));
+    if (roboId === undefined) {
+      throw new ErroDeLobby(409, "SEM_ROBOS", "não há mais robôs disponíveis");
+    }
+    const ocupadas = new Set(travada.participantes.map((p) => p.cor));
+    const cor = IDS_CORES.find((c) => !ocupadas.has(c)) ?? null;
+    await tx.insert(participantes).values({ partidaId, usuarioId: roboId, cor });
+    await tocar(tx, partidaId);
+    return { lobby: await montarLobby(tx, partidaId, anfitriaoId), roboId };
   });
 }
 

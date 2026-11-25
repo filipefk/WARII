@@ -1,0 +1,1 @@
+ALTER TABLE "usuarios" ADD COLUMN "robo" boolean DEFAULT false NOT NULL;

@@ -360,6 +360,58 @@ describe("servidor de partida (Socket.IO)", { skip: motivoSemBanco, concurrency:
     }
   });
 
+  test("robôs jogam sozinhos até a vez do humano, pelo mesmo log", async () => {
+    Object.assign(LIMITES_DO_SOCKET, { capacidade: 1e6, porSegundo: 1e6 });
+    const [conta] = await criarContasAtivas(app, 1);
+    const humano = obter(conta, "conta");
+    const lobby = await criarSala(app, humano);
+    assert.equal(
+      (await pedir(app, humano, "PUT", `/${lobby.id}/cor`, { cor: "branco" })).statusCode,
+      200,
+    );
+    for (let i = 0; i < 2; i++) {
+      assert.equal((await pedir(app, humano, "POST", `/${lobby.id}/robos`)).statusCode, 201);
+    }
+    const partidaId = lobby.id;
+    await iniciar(app, humano, partidaId);
+    const jogador = await conectarJogador(humano, partidaId);
+    const { robos } = await verPartida(partidaId);
+    assert.equal(robos.size, 2);
+
+    // O humano joga com o robô aleatório quando é a vez dele; os robôs jogam sozinhos.
+    const aleatorio = rngComSemente(3);
+    const prazo = Date.now() + 20_000;
+    let vezesDoHumano = 0;
+    for (;;) {
+      const { estado } = await verPartida(partidaId);
+      if (estado.fase === "FIM" || (estado.rodada >= 3 && vezesDoHumano >= 3)) break;
+      assert.ok(
+        Date.now() < prazo,
+        `robôs parados na fase ${estado.fase}, rodada ${estado.rodada}`,
+      );
+      const daVezId = obter(estado.jogadores[estado.vez], "jogador da vez").id;
+      if (daVezId !== humano.id) {
+        await new Promise((r) => setTimeout(r, 5));
+        continue;
+      }
+      const resposta = await agir(jogador.cliente, partidaId, escolherAcao(estado, aleatorio));
+      assert.ok(resposta.ok, JSON.stringify(resposta));
+      if (estado.fase === "RECEBER") vezesDoHumano++;
+    }
+
+    const linhas = await db
+      .select()
+      .from(acoesPartida)
+      .where(eq(acoesPartida.partidaId, partidaId))
+      .orderBy(asc(acoesPartida.seq));
+    const dosRobos = linhas.filter((l) => l.usuarioId !== null && robos.has(l.usuarioId));
+    assert.ok(dosRobos.length > 0, "nenhuma ação de robô no log");
+    const memoria = await verPartida(partidaId);
+    const repetido = repetirLog(null, -1, linhas.slice(0, memoria.seq + 1), memoria.seq);
+    assert.deepEqual(repetido, memoria.estado);
+    conferirSemSegredosAlheios(jogador.escuta.mensagens, humano.id);
+  });
+
   test("lobby em tempo real: entrada, cor, remoção e início", async () => {
     const [anfitriaoConta, segundaConta, terceiraConta] = await criarContasAtivas(app, 3);
     const anfConta = obter(anfitriaoConta, "anfitrião");

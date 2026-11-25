@@ -8,11 +8,11 @@
 import {
   type Acao,
   aplicarAcao,
-  CARTAS_DE_TROCA,
   cartaDeTroca,
   CENTROS_ESTRATEGICOS,
   type CartaId,
   type ErroRegra,
+  estadoDaVisao,
   type EstadoPartida,
   type Evento,
   IDS_TERRITORIOS,
@@ -43,32 +43,6 @@ const SEM_VISAO: ErroRegra = {
   codigo: "JOGADOR_INEXISTENTE",
   mensagem: "Você não joga esta partida",
 };
-
-// Estado equivalente à visão para as regras do jogador que vê. O monte vira cartas quaisquer que
-// não estão à vista (só a quantidade importa) e as mãos e objetivos alheios ficam vazios.
-export function estadoDaVisao(visao: VisaoPartida): EstadoPartida {
-  const { voce: _voce, quantidadeMonte, jogadores, ...resto } = visao;
-  const minhas = new Set(jogadores.find((j) => j.id === visao.voce)?.cartas ?? []);
-  const vistas = new Set<CartaId>([...minhas, ...visao.descarte]);
-  const monte = CARTAS_DE_TROCA.map((c) => c.id)
-    .filter((id) => !vistas.has(id))
-    .slice(0, quantidadeMonte);
-  return {
-    ...structuredClone(resto),
-    monte,
-    jogadores: jogadores.map((j: VisaoJogador) => ({
-      id: j.id,
-      cor: j.cor,
-      objetivoId: j.objetivoId,
-      objetivoOriginalId: j.objetivoOriginalId,
-      cartas: [...(j.cartas ?? [])],
-      bombardeirosBase: j.bombardeirosBase,
-      bombardeirosCaixa: j.bombardeirosCaixa,
-      eliminado: j.eliminado,
-      eliminadoPor: j.eliminadoPor,
-    })),
-  };
-}
 
 // Cache do estado montado por visão (a visão é trocada inteira a cada lote, nunca alterada).
 const estados = new WeakMap<VisaoPartida, EstadoPartida>();

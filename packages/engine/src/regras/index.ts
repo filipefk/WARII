@@ -40,6 +40,7 @@ export {
   type Sorteio,
 } from "./rng.js";
 export {
+  estadoDaVisao,
   eventosParaJogador,
   type VisaoJogador,
   type VisaoPartida,

@@ -45,6 +45,8 @@ export interface ParticipanteDto {
   // Posição na mesa (0 = primeiro); sorteada ao iniciar, nula antes disso.
   assento: number | null;
   anfitriao: boolean;
+  // Jogador controlado pelo servidor; o anfitrião escolhe a cor dele e pode removê-lo.
+  robo: boolean;
 }
 
 export interface PartidaResumoDto {

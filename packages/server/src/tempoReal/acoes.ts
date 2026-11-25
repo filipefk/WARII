@@ -18,6 +18,7 @@ import { contarAcao } from "../metricas.js";
 import { rngCrypto } from "../partidas/rng.js";
 import { emitirEstado } from "./emissao.js";
 import { descartarPartida, guardarPartida, naFila, partidaAtiva } from "./partidasAtivas.js";
+import { agendarRobo } from "./robos.js";
 import { salaDoJogador, type ServidorIo } from "./tipos.js";
 
 // Ações no máximo entre dois snapshots (além dos gravados a cada nova vez e no fim).
@@ -32,80 +33,96 @@ export function precisaDeSnapshot(
   return depois.fase === "FIM" || comecouUmaVez || acoesDesdeOUltimo >= INTERVALO_SNAPSHOT;
 }
 
-export function processarAcao(
+// Ação de um jogador conectado: entra na fila da partida e, se aceita, chama o robô que tiver a
+// vez em seguida.
+export async function processarAcao(
   io: ServidorIo,
   log: FastifyBaseLogger,
   partidaId: string,
   usuarioId: string,
   acao: Acao,
 ): Promise<Confirmacao> {
-  return naFila(partidaId, async () => {
-    const atual = await partidaAtiva(partidaId);
-    const { rng, sorteios } = gravarRng(rngCrypto());
-    const resultado = aplicarAcao(atual.estado, usuarioId, acao, rng);
-    contarAcao(resultado.ok);
-    if (!resultado.ok) return { ok: false, erro: resultado.erro };
+  const confirmacao = await naFila(partidaId, () =>
+    aplicarEGravar(io, log, partidaId, usuarioId, acao),
+  );
+  if (confirmacao.ok) agendarRobo(partidaId);
+  return confirmacao;
+}
 
-    const seq = atual.seq + 1;
-    const novo = resultado.estado;
-    const comSnapshot = precisaDeSnapshot(atual.estado, novo, seq - atual.seqSnapshot);
-    const terminou = novo.fase === "FIM";
+// Aplica e grava a ação. Chamar sempre de dentro da fila da partida.
+export async function aplicarEGravar(
+  io: ServidorIo,
+  log: FastifyBaseLogger,
+  partidaId: string,
+  usuarioId: string,
+  acao: Acao,
+): Promise<Confirmacao> {
+  const atual = await partidaAtiva(partidaId);
+  const { rng, sorteios } = gravarRng(rngCrypto());
+  const resultado = aplicarAcao(atual.estado, usuarioId, acao, rng);
+  contarAcao(resultado.ok);
+  if (!resultado.ok) return { ok: false, erro: resultado.erro };
 
-    const gravou = await db.transaction(async (tx) => {
-      const [linha] = await tx
-        .select({ seq: partidas.seq, status: partidas.status })
-        .from(partidas)
-        .where(eq(partidas.id, partidaId))
-        .for("update");
-      // Outro processo (ou um estado antigo na memória) mexeu na partida: não grava nada.
-      if (!linha || linha.seq !== atual.seq || linha.status !== "em_andamento") return false;
-      await tx
-        .insert(acoesPartida)
-        .values({ partidaId, seq, usuarioId, tipo: acao.tipo, acao, sorteios });
-      if (comSnapshot) await tx.insert(snapshots).values({ partidaId, seq, estado: novo });
-      const agora = new Date();
-      await tx
-        .update(partidas)
-        .set({
-          seq,
-          atualizadaEm: agora,
-          ...(terminou && {
-            status: "encerrada" satisfies StatusPartida,
-            vencedorId: novo.vencedor,
-            encerradaEm: agora,
-          }),
-        })
-        .where(eq(partidas.id, partidaId));
-      return true;
-    });
+  const seq = atual.seq + 1;
+  const novo = resultado.estado;
+  const comSnapshot = precisaDeSnapshot(atual.estado, novo, seq - atual.seqSnapshot);
+  const terminou = novo.fase === "FIM";
 
-    if (!gravou) {
-      descartarPartida(partidaId);
-      emitirEstado(io, partidaId, await partidaAtiva(partidaId));
-      return {
-        ok: false,
-        erro: {
-          codigo: "ESTADO_DESATUALIZADO",
-          mensagem: "a partida mudou enquanto a ação era processada; o estado foi reenviado",
-        },
-      };
-    }
-
-    if (terminou) auditar(log, "partida_encerrada", { partidaId, vencedorId: novo.vencedor, seq });
-    guardarPartida(partidaId, {
-      estado: novo,
-      seq,
-      seqSnapshot: comSnapshot ? seq : atual.seqSnapshot,
-    });
-    for (const jogador of novo.jogadores) {
-      io.to(salaDoJogador(partidaId, jogador.id)).emit(
-        "eventos",
-        partidaId,
-        eventosParaJogador(resultado.eventos, jogador.id),
-        visaoDoJogador(novo, jogador.id),
+  const gravou = await db.transaction(async (tx) => {
+    const [linha] = await tx
+      .select({ seq: partidas.seq, status: partidas.status })
+      .from(partidas)
+      .where(eq(partidas.id, partidaId))
+      .for("update");
+    // Outro processo (ou um estado antigo na memória) mexeu na partida: não grava nada.
+    if (!linha || linha.seq !== atual.seq || linha.status !== "em_andamento") return false;
+    await tx
+      .insert(acoesPartida)
+      .values({ partidaId, seq, usuarioId, tipo: acao.tipo, acao, sorteios });
+    if (comSnapshot) await tx.insert(snapshots).values({ partidaId, seq, estado: novo });
+    const agora = new Date();
+    await tx
+      .update(partidas)
+      .set({
         seq,
-      );
-    }
-    return { ok: true };
+        atualizadaEm: agora,
+        ...(terminou && {
+          status: "encerrada" satisfies StatusPartida,
+          vencedorId: novo.vencedor,
+          encerradaEm: agora,
+        }),
+      })
+      .where(eq(partidas.id, partidaId));
+    return true;
   });
+
+  if (!gravou) {
+    descartarPartida(partidaId);
+    emitirEstado(io, partidaId, await partidaAtiva(partidaId));
+    return {
+      ok: false,
+      erro: {
+        codigo: "ESTADO_DESATUALIZADO",
+        mensagem: "a partida mudou enquanto a ação era processada; o estado foi reenviado",
+      },
+    };
+  }
+
+  if (terminou) auditar(log, "partida_encerrada", { partidaId, vencedorId: novo.vencedor, seq });
+  guardarPartida(partidaId, {
+    estado: novo,
+    seq,
+    seqSnapshot: comSnapshot ? seq : atual.seqSnapshot,
+    robos: atual.robos,
+  });
+  for (const jogador of novo.jogadores) {
+    io.to(salaDoJogador(partidaId, jogador.id)).emit(
+      "eventos",
+      partidaId,
+      eventosParaJogador(resultado.eventos, jogador.id),
+      visaoDoJogador(novo, jogador.id),
+      seq,
+    );
+  }
+  return { ok: true };
 }

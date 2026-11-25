@@ -16,6 +16,7 @@ import { mensagemDaEntradaInvalida } from "../erros.js";
 import { contarErroInterno } from "../metricas.js";
 import { ErroDeLobby, obterLobby } from "../partidas/lobby.js";
 import { processarAcao } from "./acoes.js";
+import { agendarRobo, iniciarRobos, pararRobos } from "./robos.js";
 import { emitirEstado, emitirLobby, emitirPresenca } from "./emissao.js";
 import { ErroDeTempoReal, partidaInexistente } from "./erros.js";
 import { autenticarSocket } from "./handshake.js";
@@ -109,6 +110,7 @@ export function registrarTempoReal(app: FastifyInstance): void {
     serveClient: false,
     maxHttpBufferSize: TAMANHO_MAXIMO_MENSAGEM,
   });
+  iniciarRobos(io, log);
 
   const estaVazia = (partidaId: string) =>
     (io.sockets.adapter.rooms.get(salaDaPartida(partidaId))?.size ?? 0) === 0;
@@ -132,6 +134,8 @@ export function registrarTempoReal(app: FastifyInstance): void {
         socket.emit("estado", partidaId, visaoDoJogador(partida.estado, usuarioId), partida.seq);
       }
       await emitirPresenca(io, partidaId);
+      // Retoma a vez de um robô parada (ex.: o servidor reiniciou no meio dela).
+      if (partida !== null) agendarRobo(partidaId);
       return { ok: true };
     });
   }
@@ -228,6 +232,7 @@ export function registrarTempoReal(app: FastifyInstance): void {
         naFila(partidaId, async () => {
           await emitirLobby(io, partidaId);
           emitirEstado(io, partidaId, await partidaAtiva(partidaId));
+          agendarRobo(partidaId);
         }),
       );
     },
@@ -245,6 +250,7 @@ export function registrarTempoReal(app: FastifyInstance): void {
 
   // Sockets saem primeiro (senão o fechamento do HTTP esperaria as conexões abertas).
   app.addHook("preClose", async () => {
+    pararRobos();
     await io.close();
     esquecerTodas();
   });

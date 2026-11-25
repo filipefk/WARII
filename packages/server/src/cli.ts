@@ -72,7 +72,7 @@ async function executar(argumentos: string[]): Promise<void> {
         contas.map((conta) => ({
           email: conta.email,
           nome: conta.nome,
-          situacao: conta.ativa ? "ativa" : "aguardando ativação",
+          situacao: conta.robo ? "robô" : conta.ativa ? "ativa" : "aguardando ativação",
           criada: formatarData(conta.criadoEm),
         })),
       );

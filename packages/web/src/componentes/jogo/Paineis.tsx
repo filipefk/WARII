@@ -54,7 +54,13 @@ export function PainelVez({
         <CorJogador cor={daVez?.cor ?? null} />
         <b>{daVez ? mesa.nome(daVez.id) : "—"}</b>
         {daVez?.id === visao.voce && <span className="tag">você</span>}
-        {daVez && (
+        {daVez && mesa.robo(daVez.id) && (
+          <>
+            <span className="tag">robô</span>
+            <span className="dica ml-auto">jogando…</span>
+          </>
+        )}
+        {daVez && !mesa.robo(daVez.id) && (
           <span className="ml-auto">
             <Presenca online={presenca.includes(daVez.id)} textos={["acompanhando", "fora"]} />
           </span>
@@ -142,9 +148,14 @@ export function PainelMesa({
                 <td className="border-b border-border px-1.5 py-1">
                   <span className="flex flex-wrap items-center gap-espaco-2">
                     <CorJogador cor={j.cor} tamanho="w-3 h-3" />
-                    <span title={presenca.includes(j.id) ? "acompanhando" : "fora"}>
+                    <span
+                      title={
+                        mesa.robo(j.id) ? "robô" : presenca.includes(j.id) ? "acompanhando" : "fora"
+                      }
+                    >
                       {mesa.nome(j.id)}
                     </span>
+                    {mesa.robo(j.id) && <span className="tag">robô</span>}
                     {j.id === daVez && visao.fase !== "FIM" && <span className="tag">na vez</span>}
                     {j.id === visao.vencedor && <span className="tag">vencedor</span>}
                     {j.eliminado && <span className="dica">eliminado</span>}

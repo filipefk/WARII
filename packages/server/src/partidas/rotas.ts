@@ -13,6 +13,7 @@ import { auditar } from "../auditoria.js";
 import { exigirSessao, sessaoDa } from "../auth/plugin.js";
 import { responderEntradaInvalida, responderErro } from "../erros.js";
 import {
+  adicionarRobo,
   cancelarPartida,
   configurarParametros,
   criarPartidaNoLobby,
@@ -120,6 +121,41 @@ export async function rotasDePartidas(app: FastifyInstance): Promise<void> {
       app.tempoReal.lobbyAlterado(lobby.id);
       return lobby;
     });
+  });
+
+  // Cor de um robô (só o anfitrião).
+  app.put("/:id/participantes/:usuarioId/cor", escrita, async (requisicao, resposta) => {
+    const params = ParametroParticipante.safeParse(requisicao.params);
+    if (!params.success) return partidaInexistente(resposta);
+    const entrada = EscolherCorEntrada.safeParse(requisicao.body);
+    if (!entrada.success) return responderEntradaInvalida(resposta, entrada.error);
+    const usuarioId = sessaoDa(requisicao).usuario.id;
+    return responder(resposta, async () => {
+      const lobby = await escolherCor(
+        params.data.id,
+        usuarioId,
+        entrada.data.cor,
+        params.data.usuarioId,
+      );
+      app.tempoReal.lobbyAlterado(lobby.id);
+      return lobby;
+    });
+  });
+
+  app.post("/:id/robos", escrita, async (requisicao, resposta) => {
+    const params = ParametroPartida.safeParse(requisicao.params);
+    if (!params.success) return partidaInexistente(resposta);
+    const usuarioId = sessaoDa(requisicao).usuario.id;
+    return responder(
+      resposta,
+      async () => {
+        const { lobby, roboId } = await adicionarRobo(params.data.id, usuarioId);
+        auditar(requisicao.log, "robo_adicionado", { partidaId: lobby.id, usuarioId, roboId });
+        app.tempoReal.lobbyAlterado(lobby.id);
+        return lobby;
+      },
+      201,
+    );
   });
 
   app.put("/:id/parametros", escrita, async (requisicao, resposta) => {
