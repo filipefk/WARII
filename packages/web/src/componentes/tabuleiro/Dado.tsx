@@ -1,5 +1,8 @@
 // Face de dado em SVG (componente Dado do sistema). Desenha o valor recebido; as faces possíveis dos
-// dados aéreos vêm dos parâmetros da partida, nunca de valores fixos aqui.
+// dados aéreos vêm dos parâmetros da partida, nunca de valores fixos aqui. Tem volume de peça física
+// (luz no alto à esquerda, quinas sombreadas, pontos cavados) e, ao rolar, quica e troca de face
+// algumas vezes antes de parar no valor sorteado.
+import { useEffect, useId, useState } from "react";
 import { CACA_DELTA, RASTRO_CACA } from "./pecas";
 
 export type TipoDado = "ataque" | "defesa" | "aereo" | "antiaereo";
@@ -81,11 +84,20 @@ export function rotuloDaFace(tipo: TipoDado, valor: number): string {
   return valor > 1 ? `${valor} aviões` : "1 avião";
 }
 
-function Simbolos({ tipo, valor }: { tipo: TipoDado; valor: number }) {
+// Faces dos dados terrestres; as dos aéreos vêm de quem usa (parâmetros da partida).
+const FACES_TERRESTRES = [1, 2, 3, 4, 5, 6] as const;
+// Tempo (ms) em que a face fica trocando durante a rolagem, e o intervalo entre as trocas.
+const TROCA_MS = 560;
+const INTERVALO_TROCA_MS = 70;
+
+function Simbolos({ tipo, valor, cova }: { tipo: TipoDado; valor: number; cova: string }) {
   if (tipo === "ataque" || tipo === "defesa") {
     const tinta = tipo === "ataque" ? BRANCO : "var(--color-dado-defesa-tinta)";
     return (PONTOS[valor] ?? []).map(([x, y], i) => (
-      <circle key={i} cx={x} cy={y} r={9} fill={tinta} />
+      <g key={i}>
+        <circle cx={x} cy={y} r={9} fill={tinta} />
+        <circle cx={x} cy={y} r={9} fill={`url(#${cova})`} />
+      </g>
     ));
   }
   if (valor <= 0) return null;
@@ -93,6 +105,7 @@ function Simbolos({ tipo, valor }: { tipo: TipoDado; valor: number }) {
   if (tipo === "aereo") {
     return (FICHAS[n] ?? []).map(([x, y], i) => (
       <g key={i}>
+        <circle cx={x + 1.5} cy={y + 2} r={14} fill="#000" opacity={0.3} />
         <circle cx={x} cy={y} r={14} fill={BRANCO} />
         <circle cx={x} cy={y} r={9} fill="none" stroke={COR.aereo} strokeWidth={2.5} />
       </g>
@@ -114,10 +127,52 @@ interface Props {
   tamanho?: number;
   // Animação de rolagem (CSS; desligada com prefers-reduced-motion).
   rolando?: boolean;
+  // Faces mostradas enquanto rola (dados aéreos: as dos parâmetros). Sem elas, o aéreo não troca.
+  faces?: readonly number[];
   className?: string;
 }
 
-export function Dado({ tipo, valor, tamanho = 38, rolando = false, className = "" }: Props) {
+function reduzMovimento(): boolean {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+// Face mostrada durante a rolagem: sorteia entre as faces possíveis por um instante e depois
+// devolve null (vale o valor recebido). Só visual; o valor do combate vem do servidor.
+function useFaceRolando(rolando: boolean, faces: readonly number[]): number | null {
+  const [face, setFace] = useState<number | null>(null);
+  const chave = faces.join(",");
+  useEffect(() => {
+    const opcoes = chave ? chave.split(",").map(Number) : [];
+    if (!rolando || opcoes.length < 2 || reduzMovimento()) return () => {};
+    const sortear = () => setFace(opcoes[Math.floor(Math.random() * opcoes.length)] ?? null);
+    sortear();
+    const troca = window.setInterval(sortear, INTERVALO_TROCA_MS);
+    const fim = window.setTimeout(() => {
+      window.clearInterval(troca);
+      setFace(null);
+    }, TROCA_MS);
+    return () => {
+      window.clearInterval(troca);
+      window.clearTimeout(fim);
+      setFace(null);
+    };
+  }, [rolando, chave]);
+  return face;
+}
+
+export function Dado({
+  tipo,
+  valor,
+  tamanho = 38,
+  rolando = false,
+  faces,
+  className = "",
+}: Props) {
+  const terrestre = tipo === "ataque" || tipo === "defesa";
+  const girando = useFaceRolando(rolando, faces ?? (terrestre ? FACES_TERRESTRES : []));
+  const id = useId().replace(/\W/g, "");
+  const volume = `dado-volume-${id}`;
+  const cova = `dado-cova-${id}`;
   return (
     <svg
       viewBox="0 0 100 100"
@@ -127,6 +182,21 @@ export function Dado({ tipo, valor, tamanho = 38, rolando = false, className = "
       role="img"
       aria-label={rotuloDaFace(tipo, valor)}
     >
+      <defs>
+        {/* Luz vinda do alto à esquerda: face clara de um lado, quina escura do outro. */}
+        <linearGradient id={volume} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#fff" stopOpacity={0.34} />
+          <stop offset=".45" stopColor="#fff" stopOpacity={0} />
+          <stop offset=".6" stopColor="#000" stopOpacity={0} />
+          <stop offset="1" stopColor="#000" stopOpacity={0.34} />
+        </linearGradient>
+        {/* Ponto cavado: a borda de cima fica na sombra e a de baixo pega luz. */}
+        <radialGradient id={cova} cx="62%" cy="64%" r="62%">
+          <stop offset="0" stopColor="#fff" stopOpacity={0.2} />
+          <stop offset=".55" stopColor="#fff" stopOpacity={0} />
+          <stop offset="1" stopColor="#000" stopOpacity={0.5} />
+        </radialGradient>
+      </defs>
       <rect
         x={3}
         y={3}
@@ -137,6 +207,7 @@ export function Dado({ tipo, valor, tamanho = 38, rolando = false, className = "
         stroke="rgba(0,0,0,.35)"
         strokeWidth={2}
       />
+      <rect x={3} y={3} width={94} height={94} rx={17} fill={`url(#${volume})`} />
       <rect
         x={9}
         y={9}
@@ -147,7 +218,16 @@ export function Dado({ tipo, valor, tamanho = 38, rolando = false, className = "
         stroke="rgba(255,255,255,.35)"
         strokeWidth={1.5}
       />
-      <Simbolos tipo={tipo} valor={valor} />
+      <ellipse
+        cx={30}
+        cy={20}
+        rx={20}
+        ry={7}
+        transform="rotate(-18 30 20)"
+        fill="#fff"
+        opacity={0.2}
+      />
+      <Simbolos tipo={tipo} valor={girando ?? valor} cova={cova} />
     </svg>
   );
 }

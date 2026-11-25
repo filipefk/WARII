@@ -18,6 +18,7 @@ import { TONS } from "../../ui/cores";
 import { corClareadaDoContinente, corDoTerritorio } from "../../ui/tokens";
 import { BaseAerea } from "./BaseAerea";
 import { idContornoPais, idRecorteFronteira, UsoDaParte } from "./DefsDoJogo";
+import { ID_RELEVO_BASE } from "./BaseAerea";
 import { MarcadorTerritorio } from "./MarcadorTerritorio";
 import { Caca3D, ID_VOLUME_CACA } from "./pecas";
 
@@ -216,6 +217,21 @@ export function Tabuleiro({
           <stop offset=".7" stopColor="var(--color-bad)" stopOpacity={0.85} />
           <stop offset="1" stopColor="var(--color-bad)" stopOpacity={0} />
         </radialGradient>
+        {/* Grão de papelão impresso: ruído em tons de cinza, aplicado por cima do mapa. */}
+        <filter id="tabuleiro-ruido" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves={2} stitchTiles="stitch" />
+          <feColorMatrix type="saturate" values="0" />
+        </filter>
+        <pattern id={ID_GRAO} width={240} height={240} patternUnits="userSpaceOnUse">
+          <rect width={240} height={240} filter="url(#tabuleiro-ruido)" />
+        </pattern>
+        {/* Relevo da bandeja da base aérea: luz na borda de cima e sombra embaixo. */}
+        <linearGradient id={ID_RELEVO_BASE} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff" stopOpacity={0.14} />
+          <stop offset=".18" stopColor="#fff" stopOpacity={0} />
+          <stop offset=".8" stopColor="#000" stopOpacity={0} />
+          <stop offset="1" stopColor="#000" stopOpacity={0.4} />
+        </linearGradient>
         <clipPath id="tabuleiro-moldura">
           <rect x={10} y={10} width={largura - 20} height={altura - 20} rx={14} />
         </clipPath>
@@ -230,6 +246,19 @@ export function Tabuleiro({
           fill="url(#tabuleiro-fundo)"
           stroke="var(--color-board-frame)"
           strokeWidth={4}
+        />
+        {/* Chanfro da moldura: filete claro por dentro da borda escura. */}
+        <rect
+          x={13}
+          y={13}
+          width={largura - 26}
+          height={altura - 26}
+          rx={12}
+          fill="none"
+          stroke="#fff"
+          strokeOpacity={0.09}
+          strokeWidth={1.2}
+          pointerEvents="none"
         />
         <Radar largura={largura} altura={altura} />
 
@@ -281,6 +310,36 @@ export function Tabuleiro({
               <g key={i}>{caminho}</g>
             );
           })}
+        </g>
+
+        {/* Acabamento de tabuleiro físico: grão do papelão e o vinco da dobra no meio. */}
+        <g className="mapa-acabamento" aria-hidden="true" clipPath="url(#tabuleiro-moldura)">
+          <rect
+            className="mapa-grao"
+            x={10}
+            y={10}
+            width={largura - 20}
+            height={altura - 20}
+            fill={`url(#${ID_GRAO})`}
+          />
+          <line
+            x1={largura / 2}
+            y1={10}
+            x2={largura / 2}
+            y2={altura - 10}
+            stroke="#000"
+            strokeOpacity={0.35}
+            strokeWidth={1.6}
+          />
+          <line
+            x1={largura / 2 + 1.6}
+            y1={10}
+            x2={largura / 2 + 1.6}
+            y2={altura - 10}
+            stroke="#fff"
+            strokeOpacity={0.1}
+            strokeWidth={1.2}
+          />
         </g>
 
         <g className="mapa-rotas">
@@ -476,6 +535,7 @@ function Esquadrilha({
 }
 
 const ID_FOGO = "explosao-fogo";
+const ID_GRAO = "tabuleiro-grao";
 
 // Uma explosão: clarão, bola de fogo, faíscas e fumaça, que tocam uma vez e somem.
 function Explosao({

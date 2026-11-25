@@ -230,9 +230,18 @@
   .mapa:active {
     cursor: grabbing;
   }
+  /* A terra projeta sombra no tabuleiro: os continentes parecem impressos em relevo. */
   .mapa-terra {
     fill: var(--color-map-land);
     pointer-events: none;
+    filter: drop-shadow(0 2px 2.5px rgba(0, 0, 0, 0.6));
+  }
+  .mapa-acabamento {
+    pointer-events: none;
+  }
+  .mapa-grao {
+    mix-blend-mode: overlay;
+    opacity: 0.22;
   }
   .mapa-territorio {
     cursor: pointer;
@@ -316,6 +325,12 @@
     fill: #ffffff;
     opacity: 0.5;
   }
+  .mapa-selo-sulco {
+    fill: none;
+    stroke: #ffffff;
+    stroke-opacity: 0.28;
+    stroke-width: 0.8;
+  }
   .mapa-rotulo .mapa-exercitos {
     font-size: 12px;
     font-weight: 800;
@@ -347,6 +362,19 @@
   .mapa-base .mapa-base-dono {
     font-size: 10px;
     letter-spacing: 0.04em;
+  }
+  .mapa-base-pista {
+    fill: #000000;
+    fill-opacity: 0.22;
+    stroke: var(--color-text);
+    stroke-opacity: 0.12;
+    stroke-width: 1;
+  }
+  .mapa-base-faixa {
+    stroke: var(--color-text);
+    stroke-opacity: 0.18;
+    stroke-width: 1.2;
+    stroke-dasharray: 7 6;
   }
   .mapa-vaga .corpo {
     fill: none;
@@ -421,7 +449,8 @@
     filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.55));
   }
   .dado.rolando {
-    animation: dado-rolando 0.6s ease-out;
+    transform-origin: 50% 50%;
+    animation: dado-rolando 0.85s cubic-bezier(0.25, 0.7, 0.3, 1);
   }
 
   /* Galeria de cartas e dados: a peça amplia no hover (componentes CartaTroca e Dado). */
@@ -781,17 +810,34 @@
   }
 }
 
+/* O dado é jogado da esquerda, quica duas vezes girando e assenta; a sombra encolhe ao tocar a mesa. */
 @keyframes dado-rolando {
   0% {
-    transform: rotate(-200deg) scale(0.6);
+    transform: translate(-46px, -22px) rotate(-300deg) scale(0.75);
+    filter: drop-shadow(0 14px 8px rgba(0, 0, 0, 0.35));
     opacity: 0;
   }
-  70% {
-    transform: rotate(12deg) scale(1.08);
+  12% {
     opacity: 1;
   }
+  35% {
+    transform: translate(-18px, 2px) rotate(-120deg) scale(1);
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+  }
+  52% {
+    transform: translate(-8px, -9px) rotate(-40deg) scale(1.06);
+    filter: drop-shadow(0 9px 6px rgba(0, 0, 0, 0.4));
+  }
+  70% {
+    transform: translate(-2px, 1px) rotate(10deg) scale(1);
+    filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.55));
+  }
+  84% {
+    transform: translate(0, -2px) rotate(-4deg);
+  }
   100% {
-    transform: rotate(0) scale(1);
+    transform: none;
+    filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.55));
   }
 }
 

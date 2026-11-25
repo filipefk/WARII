@@ -5,6 +5,8 @@ import { TONS } from "../../ui/cores";
 import { CACA_DELTA, Caca3D, RASTRO_CACA } from "./pecas";
 
 export const VAGAS_DA_BASE = 10;
+// Gradiente de relevo da bandeja, definido no <defs> do Tabuleiro.
+export const ID_RELEVO_BASE = "base-relevo";
 
 interface Props {
   x: number;
@@ -29,6 +31,24 @@ export function BaseAerea({ x, y, dono, bombardeiros }: Props) {
         stroke={cor ?? "var(--color-base-frame)"}
         strokeWidth={cor ? 3 : 1.5}
       />
+      {/* Bandeja em baixo-relevo, com a pista pintada sob as vagas. */}
+      <rect
+        x={x - 163}
+        y={y - 21}
+        width={326}
+        height={42}
+        rx={5}
+        fill={`url(#${ID_RELEVO_BASE})`}
+      />
+      <rect
+        className="mapa-base-pista"
+        x={x - 92}
+        y={y - 15}
+        width={244}
+        height={30}
+        rx={3}
+      />
+      <line className="mapa-base-faixa" x1={x - 88} y1={y} x2={x + 148} y2={y} />
       <text className="mapa-base-rotulo" x={x - 124} y={y - 6}>
         BASE AÉREA
       </text>

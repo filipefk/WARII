@@ -17,6 +17,7 @@ export const ID_CARTA_MIOLO = "carta-miolo";
 export const ID_CARTA_AVIAO = "carta-aviao";
 export const ID_CARTA_SOLDADO = "carta-soldado";
 export const ID_SELO_BRILHO = "selo-brilho";
+export const ID_SELO_LATERAL = "selo-lateral";
 
 // Uma parte desenhada: caminho próprio ou país dividido recortado pela região.
 export function UsoDaParte({
@@ -78,6 +79,14 @@ export function DefsDoJogo({ geografia }: { geografia: Geografia }) {
           <stop offset=".7" stopColor="#000000" stopOpacity={0} />
           <stop offset="1" stopColor="#000000" stopOpacity={0.45} />
         </radialGradient>
+
+        {/* Lateral da ficha cilíndrica: escura nas pontas, com o brilho um pouco à esquerda. */}
+        <linearGradient id={ID_SELO_LATERAL} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#000000" stopOpacity={0.55} />
+          <stop offset=".32" stopColor="#ffffff" stopOpacity={0.18} />
+          <stop offset=".55" stopColor="#000000" stopOpacity={0.12} />
+          <stop offset="1" stopColor="#000000" stopOpacity={0.6} />
+        </linearGradient>
 
         {/* Peças da carta de troca (componente CartaTroca). */}
         <radialGradient id={ID_CARTA_VERMELHO} cx="50%" cy="50%" r="65%">

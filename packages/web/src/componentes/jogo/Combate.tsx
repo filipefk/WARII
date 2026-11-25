@@ -91,10 +91,12 @@ function Aereo({
   eventos,
   rolando,
   mesa,
+  parametros,
 }: {
   eventos: readonly Evento[];
   rolando: boolean;
   mesa: Mesa;
+  parametros: VisaoPartida["parametros"];
 }) {
   const inicio = eventos.find(
     (e): e is De<"ataqueAereoIniciado"> => e.tipo === "ataqueAereoIniciado",
@@ -116,10 +118,20 @@ function Aereo({
       <ul className="mt-espaco-3 space-y-espaco-2">
         {ciclos.map((c, k) => (
           <li key={k} className="flex items-center gap-espaco-3">
-            <Dado tipo="antiaereo" valor={c.dadoAntiaereo} rolando={rolando} />
+            <Dado
+              tipo="antiaereo"
+              valor={c.dadoAntiaereo}
+              rolando={rolando}
+              faces={parametros.facesAntiaereo}
+            />
             <span className="inline-block w-[38px]">
               {c.dadoAtaque !== null && (
-                <Dado tipo="aereo" valor={c.dadoAtaque} rolando={rolando} />
+                <Dado
+                  tipo="aereo"
+                  valor={c.dadoAtaque}
+                  rolando={rolando}
+                  faces={parametros.facesAtaqueAereo}
+                />
               )}
             </span>
             {!rolando && (
@@ -189,7 +201,12 @@ export function PainelCombate({
         {terrestre ? (
           <Terrestre ataque={terrestre} conquista={conquista} rolando={rolando} mesa={mesa} />
         ) : (
-          <Aereo eventos={combate.eventos} rolando={rolando} mesa={mesa} />
+          <Aereo
+            eventos={combate.eventos}
+            rolando={rolando}
+            mesa={mesa}
+            parametros={visao.parametros}
+          />
         )}
         {rolando && (
           <button

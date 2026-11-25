@@ -56,6 +56,8 @@ export const RASTRO_CACA = "M-6,36V43M0,36V45M6,36V43";
 export function AlfineteCE({ x, y, escala = 1 }: { x: number; y: number; escala?: number }) {
   return (
     <g transform={`translate(${x} ${y})${escala === 1 ? "" : ` scale(${escala})`}`}>
+      {/* Sombra da ponta fincada no tabuleiro. */}
+      <ellipse cx={2.5} cy={0.5} rx={3.5} ry={1.3} fill="#000" opacity={0.4} />
       <path
         d="M0,0 c-6,-7 -8,-10 -8,-14 a8,8 0 1,1 16,0 c0,4 -2,7 -8,14z"
         fill="var(--color-route)"
@@ -63,6 +65,13 @@ export function AlfineteCE({ x, y, escala = 1 }: { x: number; y: number; escala?
         strokeWidth={1.2}
       />
       <circle cy={-14} r={3.2} fill="var(--color-ce-dot)" />
+      {/* Volume da cabeça: sombra à direita e reflexo no alto à esquerda. */}
+      <path
+        d="M4.5,-20.5 a8,8 0 0,1 -1.5,12.5 c-1.4,1.8 -2.2,3 -3,4 c2.5,-3.6 5.6,-6.6 6.6,-10 z"
+        fill="#000"
+        opacity={0.18}
+      />
+      <ellipse cx={-3.4} cy={-18.6} rx={2.4} ry={1.4} fill="#fff" opacity={0.75} />
     </g>
   );
 }
