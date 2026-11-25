@@ -90,13 +90,29 @@ Funções puras `(estado, ação, rng) → { estado, eventos }`, seguindo a máq
 - **Decidido:** React Router 7 (modo biblioteca); configuração de todos os parâmetros na sala de espera; sem cadastro público (conta pela CLI + página `/definir-senha`); partida iniciada mostra um painel provisório até a etapa 9.
 - **Entregue:** `packages/web/src/` com `rotas.tsx` (`/entrar`, `/definir-senha`, `/convite`, `/partidas`, `/partidas/:id`, `/conta`), `api/` (`requisitar` → `ErroDaApi`; uma função por rota), `stores/` (`sessao`, `conexao`, `partidas`), `socket.ts` (`iniciarTempoReal`: liga/desliga conforme a sessão, ouvintes únicos, reconexão após recusa ou desconexão pelo servidor, ressincroniza se faltar `seq`), `hooks/useAcompanharPartida.ts` e `hooks/useTokenDoFragmento.ts` (tira o token da barra), `componentes/` (`Layout`, `ExigirLogin`, básicos), `paginas/` (inclui `SalaDeEspera`, `ParametrosPartida` e o provisório `PartidaEmAndamento`) e `ui/` (`cores.ts`, `parametros.ts`). Dependência nova: `react-router`; `resolve.dedupe` de React no `vite.config.ts` (o pré-empacotamento embutia outra cópia no react-router e a tela ficava em branco). Parâmetros comparados sem depender da ordem das chaves (o `jsonb` as reordena). Contas de teste em `USUARIOS-TESTE.md`. `pnpm typecheck` e `pnpm lint` (sem avisos) passam; fluxo do lobby testado no navegador (definir senha, login, convite com redirecionamento, cores, parâmetros, remover, sair, renovar convite, iniciar) e verificado pelo usuário.
 
-### Etapa 9 — Front: tabuleiro e jogo
+### Etapa 9 — Front: tabuleiro e jogo ✅ CONCLUÍDA (2026-11-25)
 - Portar o mapa de `Tabuleiro.html` (D3 + TopoJSON) para componentes React, lendo os dados do engine.
 - HUD: jogador da vez, fase, exércitos a distribuir, mão de cartas, objetivo, bases aéreas, log da partida.
 - Interações por fase: distribuir, atacar (terrestre/aéreo, com animação dos dados), deslocar, usar cartas.
 - Pré-visualização local com o engine (validação imediata, mas a resposta oficial é sempre a do servidor).
 - Reutilizar a galeria de cartas/dados e o guia de regras de `Tabuleiro.html`.
 - **Pronto quando:** uma partida completa é jogada entre navegadores.
+- **Decidido:** o servidor manda a visão nova junto com os eventos (o evento passa a ser `eventos(partidaId, eventos, visao, seq)`; não há redutor de eventos no front); a geometria do mapa é pré-calculada por script e versionada; a galeria e o guia de regras são portados para React (o `Tabuleiro.html` continua como protótipo publicado).
+- **Entregue** (subetapas 9.1–9.7):
+  - **Contrato e servidor:** `server/src/tempoReal/acoes.ts` emite a cada jogador `eventosParaJogador` junto com `visaoDoJogador`; testes do socket conferem que a última visão recebida é igual à do engine e que a visão dos eventos não leva segredos alheios.
+  - **Geometria:** `web/scripts/gerar-geografia.mjs` (`node scripts/gerar-geografia.mjs` em `packages/web`; baixa o world-atlas 50m, projeção Miller com `rotate([-11,0])` e o `fitExtent` do protótipo, `d3.geoContains` no lugar de `isPointInFill`) gera `web/src/mapa/geografia.json` (981 KB, 214 KB com gzip; fora do Prettier), tipado e carregado sob demanda por `mapa/geografia.ts` (`carregarGeografia()`, chunk próprio; `chaveDaRota(a, b)`). Ids, continentes, CEs e fronteiras vêm do engine e o script falha se o mapa não bater; só avisa que três ligações marítimas (Argélia–França, Vladivostok–Japão, Bornéu–Nova Guiné) encostam no mapa a menos de 1 px.
+  - **Componentes do tabuleiro** (`web/src/componentes/tabuleiro/`): `DefsDoJogo` (caminhos grandes, `<clipPath>` e peças das cartas, usados por `<use href>`; montado uma vez na tela), `Tabuleiro` (zoom `d3.zoom` 1–8; estados selecionado, marcado, opção e esmaecido), `MarcadorTerritorio`, `BaseAerea`, `Dado`, `CartaTroca`, `CartaObjetivo` e `pecas.tsx`; `componentes/Modal.tsx` (`Modal`, `Abas`); `ui/tokens.ts` (cores de continente e território).
+  - **Ações e prévia** (`web/src/jogo/`): `enviarAcao.ts` (`enviarAcao` com ack de até 10 s, `useEnviarAcao`), `previa.ts` (pseudo-estado a partir da visão e RNG que interrompe no primeiro sorteio: `validar` → `recusada`/`sorteio`/`prevista`, mais as consultas de destaques; nenhuma regra reescrita no front), `interacao.ts` (`derivarEtapa`, `destaquesDoMapa`, `cliqueNoMapa`), `mesa.ts` e `calculadora.ts`; store `stores/jogo.ts` (`useJogo`, só de interface, zerada a cada vez e a cada fase).
+  - **Tela da partida** (`paginas/TelaDoJogo.tsx`, aberta por `Partida.tsx` em andamento ou encerrada): mapa ao lado do painel de 340px (abaixo de 861px o mapa fica com 62vh e o painel desce); `componentes/jogo/` com os blocos Vez, Ação (`PainelAcao`, controles de cada fase), Combate (dados animados por 0,9 s, puláveis, direto com `prefers-reduced-motion`), Território (`InfoTerritorio`), Recebimento, Mesa, Minhas cartas, Meu objetivo, Continentes e Log; `TelaDeVitoria` com o logotipo ferrugem. Textos dos eventos em `ui/textosEventos.ts` (`switch` exaustivo). `Layout` largo nessa tela. O painel provisório `PartidaEmAndamento` e a vitrine `/dev/vitrine` foram apagados.
+  - **Galeria e guia** (`componentes/guia/`): `Galeria` (cartas de troca com filtros, objetivos e dados com as faces dos parâmetros), `GuiaDeRegras` (as 12 seções do guia do `Tabuleiro.html` em JSX, com os números que são parâmetros vindos da partida e "ver no mapa"), `Simuladores` (calculadora pelo `calcularRecebimento` do engine; simuladores com sorteio local só ilustrativo). Abertos pelos botões "Regras do jogo" e "Ver cartas e dados".
+  - `pnpm typecheck`, `pnpm lint` (sem avisos), `pnpm format:check` e `pnpm test` passam. Conferido no navegador com a partida "Teste do lobby" e robôs nos outros assentos (fluxo de todas as fases, galeria, guia, 375px); a tela de vitória foi conferida injetando uma visão em `FIM`, porque os robôs aleatórios não cumprem objetivos.
+- **Cuidados descobertos:**
+  - **Tailwind 4 só emite as variáveis de tema citadas por extenso** no código: montar `--color-cont-${x}` em tempo de execução devolve vazio (os territórios saíram pretos). Usar nomes literais, como em `ui/tokens.ts`.
+  - **React duplicado no Vite** ao passar a importar o d3 (tela em branco, "Invalid hook call"): apagar `packages/web/node_modules/.vite` antes de subir.
+  - Na visão, o dono de um território é o `JogadorId` (id do usuário); para o mapa, converter para a cor com `visao.jogadores`; os nomes vêm de `lobby.participantes`.
+  - O servidor só envia `estado` e `eventos` aos jogadores da partida (sem espectadores).
+  - Robôs para testar no navegador: o `escolherAcao` de `engine/test/apoio.ts` sobre `estadoDaVisao`; ao parar, conferir se o `node` filho do `npx` também morreu.
+- **Pendências levadas adiante** (etapa 13): o log da partida só mostra os eventos recebidos desde o último `estado` (recarregar a página o esvazia; um histórico persistente exige rota nova no servidor); nas cartas-objetivo de "destruir cor", o número do canto encosta no texto, como no protótipo; a partida completa entre navegadores com 3 pessoas (até a vitória) fica para o playtest.
 
 ### Etapa 10 — Endurecimento de segurança e observabilidade
 - Revisão geral: headers (`@fastify/helmet`, CSP no Nginx), CORS restrito à origem, checagem de `Origin` no socket, CSRF (SameSite + verificação de origem), limites de payload, logs de auditoria.
@@ -114,6 +130,8 @@ Funções puras `(estado, ação, rng) → { estado, eventos }`, seguindo a máq
 
 ### Etapa 13 — Playtest e ajustes
 - Partidas reais entre amigos, ajuste de parâmetros ⚠ A CONFIRMAR, correções de UX.
+- Pendências da etapa 9: histórico persistente do log da partida e o número do canto das cartas-objetivo de "destruir cor".
+- Roteiro herdado da etapa 9 para a primeira partida completa (contas de `USUARIOS-TESTE.md`, cada jogador num contexto de navegador separado): ocupação; 1ª rodada só de recebimento; ataque terrestre com conquista; ataque aéreo com ciclos; deslocamento e aerotransporte; cartas (compra, reforço, transporte e descarte); recusa mostrada no painel; recarga da página (reconexão); eliminação e vitória. Conferir que ninguém vê objetivo nem cartas alheios (nem no painel nem nas mensagens do socket), a galeria, o guia, o zoom, o layout abaixo de 860px e `prefers-reduced-motion`.
 
 ---
 
@@ -131,7 +149,7 @@ Funções puras `(estado, ação, rng) → { estado, eventos }`, seguindo a máq
 - **Validação de entrada** em toda fronteira (REST e socket) com `zod`; nunca confiar no cliente.
 - **Informação oculta** garantida pela projeção da visão.
 - SQL sempre parametrizado (Drizzle); segredos só por variável de ambiente; nada sensível em log ou URL.
-- Textos, comentários e docs em PT-BR; ao mexer em regra, sincronizar `WARII.md` ↔ `Tabuleiro.html` (e a cópia no site).
+- Textos, comentários e docs em PT-BR; ao mexer em regra, sincronizar `WARII.md` ↔ `Tabuleiro.html` (e a cópia no site) e o guia de regras do front (`packages/web/src/componentes/guia/`).
 - Atualizar `CLAUDE.md`/`README.md` ao fim de cada etapa.
 
 ## Verificação

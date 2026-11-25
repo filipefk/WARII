@@ -2,7 +2,7 @@
 
 Projeto web para jogar **War II** (jogo de tabuleiro da Grow) online entre amigos, de 3 a 6 jogadores, em turnos.
 
-> **Status:** regras levantadas, protótipo do mapa pronto e monorepo montado. O motor de regras (engine) está completo, com testes: preparação, recebimento, ataques terrestre e aéreo, deslocamento, cartas, objetivos e visão por jogador.
+> **Status:** o jogo já roda de ponta a ponta no navegador: contas, lobby com convite, servidor em tempo real e a tela da partida com o mapa, o painel de cada fase (ocupação, recebimento, ataques terrestre e aéreo com os dados animados, deslocamento, cartas), a tela de vitória, a galeria de cartas e dados e o guia de regras. O motor de regras (engine) e o servidor têm testes automatizados. Próximos passos: endurecimento de segurança, deploy e playtest.
 
 ## Conteúdo do repositório
 
