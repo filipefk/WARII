@@ -43,10 +43,20 @@ interface Props {
   filtros?: ReactNode;
   // Painel estreito, para decisões curtas (até 520px) em vez de 1180px.
   estreito?: boolean;
+  // O consumidor monta o corpo (com a própria rolagem), como o guia com o índice ao lado.
+  corpoLivre?: boolean;
   children: ReactNode;
 }
 
-export function Modal({ titulo, onFechar, cabecalho, filtros, estreito = false, children }: Props) {
+export function Modal({
+  titulo,
+  onFechar,
+  cabecalho,
+  filtros,
+  estreito = false,
+  corpoLivre = false,
+  children,
+}: Props) {
   useEffect(() => {
     const aoTeclar = (e: KeyboardEvent) => {
       if (e.key === "Escape") onFechar();
@@ -78,9 +88,13 @@ export function Modal({ titulo, onFechar, cabecalho, filtros, estreito = false, 
           </button>
         </div>
         {filtros && <div className="px-espaco-7 py-espaco-4">{filtros}</div>}
-        <div className="min-h-0 flex-1 overflow-y-auto px-espaco-7 pt-espaco-1 pb-5">
-          {children}
-        </div>
+        {corpoLivre ? (
+          children
+        ) : (
+          <div className="min-h-0 flex-1 overflow-y-auto px-espaco-7 pt-espaco-1 pb-5">
+            {children}
+          </div>
+        )}
       </div>
     </div>
   );

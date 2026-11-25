@@ -18,6 +18,8 @@ import { TabelaContinentes } from "../componentes/jogo/TabelaContinentes";
 import { PainelCombate } from "../componentes/jogo/Combate";
 import { PainelAcao } from "../componentes/jogo/PainelAcao";
 import { TelaDeVitoria } from "../componentes/jogo/TelaDeVitoria";
+import { Galeria } from "../componentes/guia/Galeria";
+import { GuiaDeRegras } from "../componentes/guia/GuiaDeRegras";
 import { DefsDoJogo } from "../componentes/tabuleiro/DefsDoJogo";
 import { Tabuleiro } from "../componentes/tabuleiro/Tabuleiro";
 import { useEnviarAcao } from "../jogo/enviarAcao";
@@ -64,6 +66,7 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
   const daBase = useJogo((s) => s.daBase);
   const { ocupado, erro: erroAcao, enviar, limparErro } = useEnviarAcao(partidaId);
   const [vitoriaFechada, setVitoriaFechada] = useState(false);
+  const [janela, setJanela] = useState<"galeria" | "guia" | null>(null);
 
   const visao = jogo?.visao;
   const seq = jogo?.seq;
@@ -137,6 +140,10 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
       <aside className="w-full shrink-0 overflow-y-auto border-t border-border bg-panel p-espaco-7 min-[861px]:w-[340px] min-[861px]:border-t-0 min-[861px]:border-l">
         <h1 className="text-titulo">{lobby.nome}</h1>
         <p className="dica">Use a roda do mouse para dar zoom e arraste para mover.</p>
+        <div className="mt-espaco-4 flex flex-wrap gap-espaco-2">
+          <Botao onClick={() => setJanela("guia")}>📖 Regras do jogo</Botao>
+          <Botao onClick={() => setJanela("galeria")}>🃏 Ver cartas e dados</Botao>
+        </div>
 
         <PainelVez visao={visao} mesa={mesa} presenca={presenca} />
 
@@ -172,6 +179,24 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
 
         <LogDaPartida eventos={jogo.eventos} mesa={mesa} />
       </aside>
+      {janela === "galeria" && (
+        <Galeria
+          geografia={geografia}
+          parametros={visao.parametros}
+          onFechar={() => setJanela(null)}
+        />
+      )}
+      {janela === "guia" && (
+        <GuiaDeRegras
+          visao={visao}
+          geografia={geografia}
+          onFechar={() => setJanela(null)}
+          onVerNoMapa={(t) => {
+            setJanela(null);
+            selecionar(t);
+          }}
+        />
+      )}
       {fim && !vitoriaFechada && (
         <TelaDeVitoria visao={visao} mesa={mesa} onFechar={() => setVitoriaFechada(true)} />
       )}

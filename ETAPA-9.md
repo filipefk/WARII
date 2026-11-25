@@ -12,8 +12,8 @@ Plano detalhado da etapa 9 de `PLANO-WARII-ONLINE.md`, com o andamento. **Pronto
 | 9.4 Envio de ações e pré-visualização | ✅ concluída (prévia conferida contra o engine numa partida simulada) |
 | 9.5 Tela da partida e HUD | ✅ concluída (conferida no navegador com a partida "Teste do lobby") |
 | 9.6 Interações por fase | ✅ concluída (fluxo conferido contra o engine numa simulação e no navegador, com robôs nos outros assentos) |
-| 9.7 Galeria e guia de regras em React | ⏳ próxima |
-| 9.8 Documentação | ⏳ pendente |
+| 9.7 Galeria e guia de regras em React | ✅ concluída (galeria, guia, calculadora, simuladores e "ver no mapa" conferidos no navegador, também a 375px) |
+| 9.8 Documentação | ⏳ próxima |
 
 **Nada foi commitado ainda.** Tudo o que está abaixo como "feito" está na árvore de trabalho. `pnpm typecheck`, `pnpm lint` (sem avisos), `pnpm format:check` e `pnpm test` passam.
 
@@ -91,6 +91,14 @@ Decisões do usuário:
   - `componentes/jogo/PainelAcao.tsx`: bloco "Ação" com os controles de cada etapa (quantidades, seletor de cartas, botões de encerrar). Só o jogador da vez vê controles.
   - `componentes/jogo/Combate.tsx`: bloco "Combate" com o último ataque terrestre ou os ciclos aéreos (dados rolando por 0,9 s, "Pular animação", direto com `prefers-reduced-motion`). `stores/partidas.ts` guarda o lote em `jogo.combate`.
   - `componentes/jogo/TelaDeVitoria.tsx`: tela cheia opaca (cobre o cabeçalho com o cromado) com o logotipo ferrugem, vencedor e objetivo; "Ver o tabuleiro" fecha e "Ver resultado" reabre.
+
+- **Galeria e guia (9.7)**, em `web/src/componentes/guia/`:
+  - `Galeria.tsx`: `Modal` com as abas de cartas de troca (filtros por grupo na linha `filtros`; numéricas uma vez por valor, com `qty`), objetivos e dados (`descricaoDosDados(parametros)`, faces aéreas dos parâmetros).
+  - `GuiaDeRegras.tsx`: as 12 seções do `RULES()` do `Tabuleiro.html` em JSX, com os números que são parâmetros vindos de `visao.parametros` (mínimo de recebimento, bombardeiros, cartas por conquista, limite da mão, descarte, faces, destino dos sobreviventes, soma base + caixa, interrupção, objetivo substituto). O `Modal` ganhou `corpoLivre` para o índice ficar fixo ao lado do corpo rolável. "Ver no mapa" fecha o guia e chama `selecionar`.
+  - `pecasDoGuia.tsx`: `Caixa`, `Fluxo`, `Cadeia`, `NavegacaoGuia`, `Ficha`, `PecaBombardeiro`, `Batalha`/`resolverBatalha` (só ilustração) e `textoDasFaces`. `Simuladores.tsx`: calculadora e simuladores terrestre e aéreo (sorteio local).
+  - `jogo/calculadora.ts`: `calcularReforcos(visao, pedido)` monta um estado de exemplo (a partir de `estadoDaVisao`) em que um jogador fictício tem os territórios, CEs e domínios pedidos e chama `calcularRecebimento`; recusa combinações impossíveis com a explicação.
+  - CSS em `index.css`: `.galeria-carta`, `.galeria-dado`, `.guia`, `.guia-nav`, `.caixa`, `.fluxo`, `.cadeia`, `.ilustracao`, `.simulador`, `.batalha-vazio`.
+  - Botões "Regras do jogo" e "Ver cartas e dados" no topo do painel da `TelaDoJogo`.
 
 ### Cuidados descobertos no caminho
 
@@ -173,7 +181,7 @@ Os controles só aparecem para o jogador da vez (`euSouDaVez`). Os outros veem "
 - **`FIM`:** tela de vitória com o logotipo ferrugem (sem o cromado na mesma tela), o vencedor, o objetivo revelado e o link para a lista de partidas.
 - **Animações:** curtas e puláveis. Respeitam `prefers-reduced-motion`. Usam `ultimos`/`seqEventos` contra `seqAnimado` e não bloqueiam ações depois que a visão nova chega.
 
-### 9.7 Galeria e guia de regras em React ⏳
+### 9.7 Galeria e guia de regras em React ✅
 - **Galeria:** `Modal` com as `Abas` "Cartas de troca (61)", "Objetivos (20)" e "Dados".
   - Cartas a partir de `CARTAS_DE_TROCA`, com filtros e legenda "No mapa: …" ou `qty`.
   - Objetivos a partir do engine.

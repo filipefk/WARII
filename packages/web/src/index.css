@@ -409,6 +409,125 @@
     animation: dado-rolando 0.6s ease-out;
   }
 
+  /* Galeria de cartas e dados: a peça amplia no hover (componentes CartaTroca e Dado). */
+  .galeria-carta .carta-troca {
+    transition: transform 0.15s;
+    position: relative;
+  }
+  .galeria-carta:hover .carta-troca {
+    transform: scale(1.45);
+    z-index: 2;
+  }
+  .galeria-dado .dado {
+    transition: transform 0.15s;
+  }
+  .galeria-dado:hover .dado {
+    transform: scale(1.5) rotate(-4deg);
+  }
+
+  /* Guia de regras (componentes NavegacaoGuia, Caixa, Fluxo e Simulador). */
+  .guia-nav a {
+    @apply block rounded-raio-sm px-espaco-4 py-[5px] text-tabela text-muted no-underline;
+  }
+  .guia-nav a:hover,
+  .guia-nav a.ativo {
+    @apply bg-panel-2 text-text;
+  }
+  .guia-nav a.ativo {
+    @apply shadow-marca-ativo;
+  }
+  .guia section {
+    @apply max-w-[860px] border-b border-border pb-espaco-3;
+  }
+  .guia h3 {
+    @apply mt-espaco-8 mb-espaco-3 text-regra-titulo text-accent;
+  }
+  .guia h4 {
+    @apply mt-[18px] mb-espaco-2 text-regra-subtitulo;
+  }
+  .guia p,
+  .guia li {
+    @apply text-regra-corpo;
+  }
+  .guia p {
+    @apply my-espaco-2;
+  }
+  .guia ul {
+    @apply my-espaco-2 list-disc pl-[22px];
+  }
+  .guia ol {
+    @apply my-espaco-2 list-decimal pl-[22px];
+  }
+  .guia table {
+    @apply my-espaco-3 w-full max-w-[640px] border-collapse text-tabela;
+  }
+  .guia th,
+  .guia td {
+    @apply border-b border-border px-1.5 py-1 text-left;
+  }
+  .guia th {
+    @apply font-medium text-muted;
+  }
+  .guia .n {
+    @apply text-right tabular-nums;
+  }
+  .caixa {
+    @apply my-espaco-5 rounded-raio-md border border-l-4 border-border bg-panel-2 px-espaco-6 py-espaco-4;
+  }
+  .caixa.ex {
+    @apply border-l-accent;
+  }
+  .caixa.note {
+    @apply border-l-note text-tabela;
+  }
+  .caixa.warn {
+    @apply border-l-warn text-tabela;
+  }
+  .caixa > b:first-child {
+    @apply mb-espaco-1 block;
+  }
+  .fluxo {
+    @apply my-espaco-4 flex flex-wrap items-stretch gap-espaco-2;
+  }
+  .fluxo .passo {
+    @apply min-w-[112px] flex-1 rounded-raio-md border border-border bg-panel-2 px-espaco-4 py-espaco-3 text-center text-tabela;
+  }
+  .fluxo .passo > b:first-child {
+    @apply block text-[18px] font-bold;
+  }
+  .fluxo .seta {
+    @apply self-center text-[18px] text-muted;
+  }
+  .cadeia {
+    @apply my-espaco-3 flex flex-wrap items-center gap-espaco-2 text-tabela;
+  }
+  .cadeia .elo {
+    @apply rounded-raio-sm border border-border bg-panel-2 px-espaco-4 py-espaco-1;
+  }
+  .ilustracao {
+    @apply my-espaco-4 flex flex-wrap items-center gap-espaco-5;
+  }
+  .ilustracao .operador {
+    @apply text-[22px] font-extrabold text-accent;
+  }
+  .ilustracao .resultado {
+    @apply text-destaque;
+  }
+  .simulador {
+    @apply my-espaco-5 rounded-raio-lg border border-border bg-tool-bg px-espaco-6 py-espaco-5;
+  }
+  .simulador input,
+  .simulador select {
+    @apply rounded-raio-sm border border-border bg-panel-2 px-1.5 py-1 text-text;
+    font: inherit;
+  }
+  .simulador input[type="number"] {
+    @apply w-16;
+  }
+  .batalha-vazio {
+    @apply inline-block h-[38px] w-[38px] rounded-[7px] border border-dashed border-border;
+  }
+
   /* Caças do fundo ilustrado (FundoDeGuerra): sobem e descem devagar. */
   .fundo-caca {
     animation: fundo-caca-voo 14s ease-in-out infinite alternate;
