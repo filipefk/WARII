@@ -348,8 +348,12 @@ export function escolherAcao(e: EstadoPartida, r: Rng): Acao {
               .map((a) => [o, a] as const)
           : [],
       );
+      const conflito = t.conflitoTerrestre ?? null;
+      if (conflito !== null && chance(r, 0.15)) return { tipo: "encerrarAtaqueTerrestre" };
       if (opcoes.length > 0 && chance(r, 0.9)) {
         const [o, a] = sortear(r, opcoes);
+        // Às vezes declara o ataque antes de rolar (sem declarar, atacar já o declara).
+        if (chance(r, 0.3)) return { tipo: "iniciarAtaqueTerrestre", origem: o, alvo: a };
         return {
           tipo: "atacar",
           origem: o,

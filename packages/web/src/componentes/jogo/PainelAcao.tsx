@@ -1,6 +1,8 @@
 // Bloco "Ação" do painel da partida: os controles da etapa atual (ver jogo/interacao.ts). Só o
 // jogador da vez vê controles; os demais veem quem está jogando. Os cliques no mapa são tratados
-// pela tela (TelaDoJogo); aqui ficam quantidades, cartas e os botões de envio.
+// pela tela (TelaDoJogo); aqui ficam quantidades, cartas e os botões de envio. Os controles do
+// combate (rolar ataque, defesa e antiaérea, mover após a conquista) ficam na janela de combate,
+// que os importa daqui.
 import {
   type Acao,
   cartaDeTroca,
@@ -31,7 +33,7 @@ export interface Envio {
   enviar: (acao: Acao) => Promise<boolean>;
 }
 
-interface Contexto {
+export interface Contexto {
   visao: VisaoPartida;
   mesa: Mesa;
   geografia: Geografia;
@@ -42,15 +44,15 @@ interface Contexto {
 
 // ---- Peças ----
 
-function Linha({ children }: { children: ReactNode }) {
+export function Linha({ children }: { children: ReactNode }) {
   return <div className="mt-espaco-3 flex flex-wrap items-center gap-espaco-2">{children}</div>;
 }
 
-function Dica({ children }: { children: ReactNode }) {
+export function Dica({ children }: { children: ReactNode }) {
   return <p className="dica mt-espaco-2">{children}</p>;
 }
 
-function Quantidade({
+export function Quantidade({
   rotulo,
   valor,
   minimo = 1,
@@ -91,7 +93,7 @@ function Quantidade({
 }
 
 // Quantidade com estado local que começa no máximo (a chave de quem usa a reinicia).
-function useQuantidade(maximo: number): [number, (n: number) => void] {
+export function useQuantidade(maximo: number): [number, (n: number) => void] {
   const [valor, setValor] = useState(maximo);
   return [Math.min(valor, maximo), setValor];
 }
@@ -382,7 +384,7 @@ function Receber({ ctx, etapa }: { ctx: Contexto; etapa: Extract<Etapa, { tipo: 
   );
 }
 
-function Conquista({
+export function Conquista({
   ctx,
   etapa,
 }: {
@@ -392,7 +394,7 @@ function Conquista({
   const { origem, alvo, maximo } = etapa.conquista;
   const [quantidade, setQuantidade] = useQuantidade(maximo);
   return (
-    <div className="rounded-raio-md border border-accent bg-panel-2 p-espaco-4">
+    <div>
       <p>
         Você conquistou <b>{nomeT(alvo)}</b>. Quantos exércitos entram, vindos de {nomeT(origem)}?
       </p>
@@ -410,20 +412,19 @@ function Conquista({
   );
 }
 
-function AereoEmCurso({
+export function AereoEmCurso({
   ctx,
   etapa,
 }: {
   ctx: Contexto;
   etapa: Extract<Etapa, { tipo: "aereoEmCurso" }>;
 }) {
-  const { alvo, defensor, emCombate, ciclos, etapa: momento } = etapa.ataque;
+  const { alvo, emCombate, ciclos, etapa: momento } = etapa.ataque;
   return (
-    <div className="rounded-raio-md border border-accent bg-panel-2 p-espaco-4">
+    <div>
       <p>
-        Ataque aéreo sobre <b>{nomeT(alvo)}</b> ({ctx.mesa.nome(defensor)}):{" "}
-        {plural(emCombate, "bombardeiro", "bombardeiros")} em combate depois de{" "}
-        {plural(ciclos, "ciclo", "ciclos")}.
+        {plural(emCombate, "bombardeiro", "bombardeiros")} sobre <b>{nomeT(alvo)}</b>,{" "}
+        {plural(ciclos, "ciclo concluído", "ciclos concluídos")}.
       </p>
       <Dica>O ataque aéreo nunca conquista: o alvo fica com pelo menos 1 exército.</Dica>
       {momento === "ataque" ? (
@@ -452,13 +453,17 @@ function AereoEmCurso({
   );
 }
 
-function Defesa({ ctx, etapa }: { ctx: Contexto; etapa: Extract<Etapa, { tipo: "defesa" }> }) {
-  const { origem, alvo, dadosAtaque } = etapa.ataque;
+export function Defesa({
+  ctx,
+  etapa,
+}: {
+  ctx: Contexto;
+  etapa: Extract<Etapa, { tipo: "defesa" }>;
+}) {
   return (
-    <div className="rounded-raio-md border border-accent bg-panel-2 p-espaco-4">
+    <div>
       <p>
-        <b>{ctx.mesa.nome(ctx.visao.jogadores[ctx.visao.vez]?.id ?? null)}</b> ataca{" "}
-        <b>{nomeT(alvo)}</b> a partir de {nomeT(origem)} e tirou {dadosAtaque.join("-")}.
+        Defenda <b>{nomeT(etapa.ataque.alvo)}</b>: o ataque já rolou.
       </p>
       <Dica>Empate favorece a defesa.</Dica>
       <Linha>
@@ -470,7 +475,7 @@ function Defesa({ ctx, etapa }: { ctx: Contexto; etapa: Extract<Etapa, { tipo: "
   );
 }
 
-function Antiaereo({
+export function Antiaereo({
   ctx,
   etapa,
 }: {
@@ -479,10 +484,9 @@ function Antiaereo({
 }) {
   const { alvo, emCombate } = etapa.ataque;
   return (
-    <div className="rounded-raio-md border border-accent bg-panel-2 p-espaco-4">
+    <div>
       <p>
-        <b>{ctx.mesa.nome(ctx.visao.jogadores[ctx.visao.vez]?.id ?? null)}</b> bombardeia{" "}
-        <b>{nomeT(alvo)}</b> com {plural(emCombate, "bombardeiro", "bombardeiros")}.
+        Defenda <b>{nomeT(alvo)}</b> de {plural(emCombate, "bombardeiro", "bombardeiros")}.
       </p>
       <Dica>A antiaérea rola primeiro; o atacante só rola com os bombardeiros que sobrarem.</Dica>
       <Linha>
@@ -533,17 +537,14 @@ function Terrestre({
             <b>{nomeT(origem)}</b> → <b>{nomeT(alvo)}</b>
           </p>
           <Linha>
-            {Array.from({ length: maximoDados }, (_, k) => maximoDados - k).map((dados) => (
-              <Botao
-                key={dados}
-                disabled={ctx.ocupado}
-                onClick={() => ctx.mandar({ tipo: "atacar", origem, alvo, dados })}
-              >
-                Atacar com {plural(dados, "dado", "dados")}
-              </Botao>
-            ))}
+            <Botao
+              disabled={ctx.ocupado || maximoDados === 0}
+              onClick={() => ctx.mandar({ tipo: "iniciarAtaqueTerrestre", origem, alvo })}
+            >
+              Iniciar ataque
+            </Botao>
           </Linha>
-          <Dica>Cada dado é um exército que ataca; a origem fica sempre com pelo menos 1.</Dica>
+          <Dica>O combate abre numa janela para toda a mesa; lá você escolhe os dados e rola.</Dica>
         </>
       )}
       <EncerrarAtaques ctx={ctx} />
@@ -588,21 +589,26 @@ function Aereo({ ctx, etapa }: { ctx: Contexto; etapa: Extract<Etapa, { tipo: "a
       ) : alvo === null ? (
         <Dica>Clique no alvo: território de um adversário com 2 ou mais exércitos.</Dica>
       ) : (
-        <Linha>
-          <Botao
-            disabled={ctx.ocupado}
-            onClick={() =>
-              ctx.mandar({
-                tipo: "iniciarAtaqueAereo",
-                alvo,
-                daBase: etapa.daBase,
-                ...(cartas && { cartas }),
-              })
-            }
-          >
-            Bombardear {nomeT(alvo)} com {total}
-          </Botao>
-        </Linha>
+        <>
+          <p className="mt-espaco-3">
+            Alvo: <b>{nomeT(alvo)}</b>, com {plural(total, "bombardeiro", "bombardeiros")}.
+          </p>
+          <Linha>
+            <Botao
+              disabled={ctx.ocupado}
+              onClick={() =>
+                ctx.mandar({
+                  tipo: "iniciarAtaqueAereo",
+                  alvo,
+                  daBase: etapa.daBase,
+                  ...(cartas && { cartas }),
+                })
+              }
+            >
+              Iniciar ataque
+            </Botao>
+          </Linha>
+        </>
       )}
       <EncerrarAtaques ctx={ctx} />
       <BotoesDeCartas ctx={ctx} />
@@ -828,6 +834,63 @@ function Descarte({ ctx, etapa }: { ctx: Contexto; etapa: Extract<Etapa, { tipo:
   );
 }
 
+// Ataque terrestre aberto, na janela de combate: o atacante escolhe quantos dados rola, rola de
+// novo ou encerra o ataque.
+export function ConflitoTerrestre({
+  ctx,
+  etapa,
+}: {
+  ctx: Contexto;
+  etapa: Extract<Etapa, { tipo: "conflito" }>;
+}) {
+  const { origem, alvo } = etapa.conflito;
+  const maximo = etapa.maximoDados;
+  const [escolha, setEscolha] = useState(3);
+  const dados = Math.max(1, Math.min(escolha, maximo));
+  const conquistado = ctx.visao.territorios[alvo].dono === ctx.visao.voce;
+  const encerrar = () => ctx.mandar({ tipo: "encerrarAtaqueTerrestre" });
+  if (maximo === 0) {
+    return (
+      <div>
+        <p>
+          {conquistado
+            ? `${nomeT(alvo)} agora é seu.`
+            : `${nomeT(origem)} não tem exércitos para atacar de novo.`}
+        </p>
+        <Linha>
+          <Botao disabled={ctx.ocupado} onClick={encerrar}>
+            Fechar o combate
+          </Botao>
+        </Linha>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <p>Quantos dados de ataque?</p>
+      <Linha>
+        {[1, 2, 3].map((n) => (
+          <Botao key={n} ativo={n === dados} disabled={n > maximo} onClick={() => setEscolha(n)}>
+            {n}
+          </Botao>
+        ))}
+      </Linha>
+      <Dica>Cada dado é um exército que ataca; a origem fica sempre com pelo menos 1.</Dica>
+      <Linha>
+        <Botao
+          disabled={ctx.ocupado}
+          onClick={() => ctx.mandar({ tipo: "atacar", origem, alvo, dados })}
+        >
+          🎲 Rolar ataque ({plural(dados, "dado", "dados")})
+        </Botao>
+        <Botao disabled={ctx.ocupado} onClick={encerrar}>
+          Encerrar ataque
+        </Botao>
+      </Linha>
+    </div>
+  );
+}
+
 function Corpo({ ctx, etapa }: { ctx: Contexto; etapa: Etapa }) {
   switch (etapa.tipo) {
     case "espera":
@@ -845,14 +908,13 @@ function Corpo({ ctx, etapa }: { ctx: Contexto; etapa: Etapa }) {
       );
     case "receber":
       return <Receber ctx={ctx} etapa={etapa} />;
+    // Os controles do combate ficam na janela de combate.
     case "conquista":
-      return <Conquista ctx={ctx} etapa={etapa} />;
+    case "conflito":
     case "aereoEmCurso":
-      return <AereoEmCurso ctx={ctx} etapa={etapa} />;
     case "defesa":
-      return <Defesa ctx={ctx} etapa={etapa} />;
     case "antiaereo":
-      return <Antiaereo ctx={ctx} etapa={etapa} />;
+      return <Dica>O combate está na janela de combate, no meio da tela.</Dica>;
     case "maoCheia":
       return <MaoCheia ctx={ctx} etapa={etapa} />;
     case "terrestre":
@@ -892,9 +954,13 @@ function rolagemEsperada(visao: VisaoPartida): string | null {
   return null;
 }
 
-export function PainelAcao({ visao, mesa, geografia, etapa, envio }: Props) {
-  const { ocupado, erro, enviar } = envio;
-  const ctx: Contexto = {
+export function criarContexto(
+  visao: VisaoPartida,
+  mesa: Mesa,
+  geografia: Geografia,
+  { ocupado, enviar }: Envio,
+): Contexto {
+  return {
     visao,
     mesa,
     geografia,
@@ -906,6 +972,11 @@ export function PainelAcao({ visao, mesa, geografia, etapa, envio }: Props) {
       });
     },
   };
+}
+
+export function PainelAcao({ visao, mesa, geografia, etapa, envio }: Props) {
+  const { erro } = envio;
+  const ctx = criarContexto(visao, mesa, geografia, envio);
   const daVez = mesa.jogadorDaVez;
   const rolagem = rolagemEsperada(visao);
   return (

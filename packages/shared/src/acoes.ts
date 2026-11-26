@@ -34,6 +34,12 @@ export const esquemaAcao = z.discriminatedUnion("tipo", [
   }),
   z.strictObject({ tipo: z.literal("encerrarRecebimento") }),
   z.strictObject({
+    tipo: z.literal("iniciarAtaqueTerrestre"),
+    origem: esquemaTerritorio,
+    alvo: esquemaTerritorio,
+  }),
+  z.strictObject({ tipo: z.literal("encerrarAtaqueTerrestre") }),
+  z.strictObject({
     tipo: z.literal("atacar"),
     origem: esquemaTerritorio,
     alvo: esquemaTerritorio,

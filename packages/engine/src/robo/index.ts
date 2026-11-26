@@ -285,7 +285,7 @@ function notaDeAtaque(c: Contexto, o: TerritorioId, a: TerritorioId): number | n
   return c.interesse[a] * 3 + (atk - def) / 2 + (def === 1 ? 2 : 0) + ruido(c);
 }
 
-function ataquesTerrestres(c: Contexto): Acao[] {
+function ataquesTerrestres(c: Contexto) {
   const pares: { o: TerritorioId; a: TerritorioId; n: number }[] = [];
   for (const o of territoriosDe(c.estado, c.eu.id)) {
     if (exercitos(c, o) < 2) continue;
@@ -297,7 +297,7 @@ function ataquesTerrestres(c: Contexto): Acao[] {
   return pares
     .toSorted((x, y) => y.n - x.n)
     .map(({ o, a }) => ({
-      tipo: "atacar",
+      tipo: "atacar" as const,
       origem: o,
       alvo: a,
       dados: Math.min(3, exercitos(c, o) - 1),
@@ -358,8 +358,26 @@ function acoesDeAtaque(c: Contexto): Acao[] {
       ? [{ tipo: "continuarAtaqueAereo" }, { tipo: "encerrarAtaqueAereo" }]
       : [{ tipo: "encerrarAtaqueAereo" }, { tipo: "continuarAtaqueAereo" }];
   }
+  // Como um jogador: declara o ataque (a mesa vê o combate abrir), ataca enquanto o par vale a
+  // pena e encerra o combate antes de partir para outro.
   const terrestres = ataquesTerrestres(c);
-  if (terrestres.length > 0) return [...terrestres, { tipo: "encerrarAtaques" }];
+  const conflito = t.conflitoTerrestre ?? null;
+  if (conflito !== null) {
+    const mesmoPar = terrestres.filter(
+      (a) => a.origem === conflito.origem && a.alvo === conflito.alvo,
+    );
+    return [...mesmoPar, { tipo: "encerrarAtaqueTerrestre" }];
+  }
+  if (terrestres.length > 0) {
+    return [
+      ...terrestres.map(({ origem, alvo }): Acao => ({
+        tipo: "iniciarAtaqueTerrestre",
+        origem,
+        alvo,
+      })),
+      { tipo: "encerrarAtaques" },
+    ];
+  }
   // Sem ataque bom por terra: às vezes abre caminho pelo ar.
   const aereos = c.rng.inteiro(2) === 0 ? ataquesAereos(c) : [];
   return [...aereos, { tipo: "encerrarAtaques" }, { tipo: "encerrarJogada" }];
@@ -408,6 +426,7 @@ function acoesDeDeslocamento(c: Contexto): Acao[] {
 
 const SAIDAS: readonly Acao[] = [
   { tipo: "moverAposConquista", quantidade: 1 },
+  { tipo: "encerrarAtaqueTerrestre" },
   { tipo: "rolarDefesa" },
   { tipo: "rolarAntiaereo" },
   { tipo: "rolarAtaqueAereo" },

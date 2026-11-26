@@ -1,14 +1,14 @@
-// Último combate da vez (ataque terrestre ou ciclo do ataque aéreo), visto por todos na mesa. Cada
-// jogador rola os seus dados numa ação própria; os que acabaram de ser lançados "rolam" uma vez,
-// curto, quando o lote chega; dá para pular, e com prefers-reduced-motion o resultado aparece
-// direto. A animação nunca segura a visão nova: o mapa já está atualizado.
-import { type Evento, territorio, type VisaoPartida } from "@warii/engine";
+// Dados do combate em curso (ataque terrestre ou ciclo do ataque aéreo), na janela de combate, vista
+// por todos na mesa. Cada jogador rola os seus dados numa ação própria; os que acabaram de ser
+// lançados "rolam" uma vez, curto, quando o lote chega; dá para pular, e com
+// prefers-reduced-motion o resultado aparece direto. A animação nunca segura a visão nova: o mapa
+// já está atualizado.
+import { type Evento, territorio, type TerritorioId, type VisaoPartida } from "@warii/engine";
 import { useEffect } from "react";
 import type { Mesa } from "../../jogo/mesa";
 import { useJogo } from "../../stores/jogo";
 import type { JogoRecebido } from "../../stores/partidas";
 import { Dado } from "../tabuleiro/Dado";
-import { Bloco } from "./Paineis";
 
 const DURACAO_MS = 900;
 
@@ -28,13 +28,11 @@ function Terrestre({
   ataque,
   conquista,
   rolando,
-  mesa,
 }: {
   declarado: De<"dadosDeAtaqueRolados"> | undefined;
   ataque: De<"ataqueTerrestre"> | undefined;
   conquista: De<"territorioConquistado"> | undefined;
   rolando: boolean;
-  mesa: Mesa;
 }) {
   const base = ataque ?? declarado;
   if (!base) return null;
@@ -44,11 +42,7 @@ function Terrestre({
   const rolandoDefesa = rolando && !!ataque;
   return (
     <div>
-      <p>
-        <b>{mesa.nome(base.jogador)}</b> atacou {nomeT(base.alvo)} ({mesa.nome(base.defensor)}) a
-        partir de {nomeT(base.origem)}.
-      </p>
-      <ul className="mt-espaco-3 space-y-espaco-2">
+      <ul className="space-y-espaco-2">
         {Array.from({ length: pares }, (_, k) => {
           const a = base.dadosAtaque[k];
           const d = dadosDefesa[k];
@@ -85,9 +79,6 @@ function Terrestre({
           );
         })}
       </ul>
-      {!ataque && (
-        <p className="dica mt-espaco-3">Aguardando {mesa.nome(base.defensor)} rolar a defesa.</p>
-      )}
       {ataque && !rolando && (
         <p className="mt-espaco-3">
           Ataque perdeu <b>{ataque.perdasAtaque}</b> · defesa perdeu <b>{ataque.perdasDefesa}</b>.
@@ -105,19 +96,14 @@ function Terrestre({
 function Aereo({
   eventos,
   rolando,
-  mesa,
   parametros,
 }: {
   eventos: readonly Evento[];
   rolando: boolean;
-  mesa: Mesa;
   parametros: VisaoPartida["parametros"];
 }) {
   const ciclo = eventos.find((e): e is De<"cicloAereo"> => e.tipo === "cicloAereo");
   const antiaereo = eventos.find((e): e is De<"antiaereoRolado"> => e.tipo === "antiaereoRolado");
-  const fim = eventos.find(
-    (e): e is De<"ataqueAereoEncerrado"> => e.tipo === "ataqueAereoEncerrado",
-  );
   const base = ciclo ?? antiaereo;
   if (!base) return null;
   const dadoAtaque = ciclo?.dadoAtaque ?? null;
@@ -125,11 +111,7 @@ function Aereo({
   const rolandoAntiaereo = rolando && dadoAtaque === null;
   return (
     <div>
-      <p>
-        <b>{mesa.nome(base.jogador)}</b> bombardeia {nomeT(base.alvo)} ({mesa.nome(base.defensor)}
-        ).
-      </p>
-      <div className="mt-espaco-3 flex items-center gap-espaco-3">
+      <div className="flex items-center gap-espaco-3">
         <Dado
           tipo="antiaereo"
           valor={base.dadoAntiaereo}
@@ -157,28 +139,27 @@ function Aereo({
           </span>
         )}
       </div>
-      {!ciclo && (
-        <p className="dica mt-espaco-3">Aguardando {mesa.nome(base.jogador)} rolar o ataque.</p>
-      )}
-      {!rolando && fim && (
-        <p className="mt-espaco-3">
-          Ataque aéreo encerrado:{" "}
-          {plural(fim.sobreviventes, "sobrevivente volta", "sobreviventes voltam")} para a{" "}
-          {fim.destino === "base" ? "base aérea" : "caixa"}.
-        </p>
-      )}
     </div>
   );
 }
 
-export function PainelCombate({
+// Combate mostrado na janela: o par do ataque terrestre ou o alvo do ataque aéreo.
+export type ParDoCombate =
+  | { tipo: "terrestre"; origem: TerritorioId; alvo: TerritorioId }
+  | { tipo: "aereo"; alvo: TerritorioId };
+
+// Dados do último lote do combate, se o lote é deste combate (o início de um combate novo zera o
+// lote). Depois de uma reconexão não há lote: os dados do ataque à espera da defesa vêm da visão.
+export function DadosDoCombate({
   jogo,
   visao,
   mesa,
+  par,
 }: {
   jogo: JogoRecebido;
   visao: VisaoPartida;
   mesa: Mesa;
+  par: ParDoCombate;
 }) {
   const seqAnimado = useJogo((s) => s.seqAnimado);
   const marcarAnimado = useJogo((s) => s.marcarAnimado);
@@ -196,56 +177,62 @@ export function PainelCombate({
     return () => window.clearTimeout(espera);
   }, [combate, seqAnimado, marcarAnimado]);
 
-  if (!combate) return null;
-  // Só o combate da vez em curso: o da vez anterior sai do painel (fica no log).
-  const atacante = combate.eventos.find(
-    (e) =>
-      e.tipo === "dadosDeAtaqueRolados" ||
-      e.tipo === "ataqueTerrestre" ||
-      e.tipo === "antiaereoRolado" ||
-      e.tipo === "cicloAereo",
-  );
-  if (!atacante || !("jogador" in atacante)) return null;
-  if (visao.fase === "FIM" || visao.jogadores[visao.vez]?.id !== atacante.jogador) return null;
-
-  const terrestre = combate.eventos.find(
-    (e): e is De<"ataqueTerrestre"> => e.tipo === "ataqueTerrestre",
-  );
-  const declarado = combate.eventos.find(
-    (e): e is De<"dadosDeAtaqueRolados"> => e.tipo === "dadosDeAtaqueRolados",
-  );
-  const conquista = combate.eventos.find(
-    (e): e is De<"territorioConquistado"> => e.tipo === "territorioConquistado",
-  );
+  const eventos = combate?.eventos ?? [];
+  let conteudo = null;
+  if (par.tipo === "terrestre") {
+    const doPar = (e: { origem: TerritorioId; alvo: TerritorioId }) =>
+      e.origem === par.origem && e.alvo === par.alvo;
+    const terrestre = eventos.find(
+      (e): e is De<"ataqueTerrestre"> => e.tipo === "ataqueTerrestre" && doPar(e),
+    );
+    const pendenteNaVisao = visao.turno.ataqueTerrestre;
+    const declaradoNoLote = eventos.find(
+      (e): e is De<"dadosDeAtaqueRolados"> => e.tipo === "dadosDeAtaqueRolados" && doPar(e),
+    );
+    const declarado =
+      declaradoNoLote ??
+      (pendenteNaVisao && doPar(pendenteNaVisao) && mesa.jogadorDaVez
+        ? {
+            tipo: "dadosDeAtaqueRolados" as const,
+            jogador: mesa.jogadorDaVez.id,
+            ...pendenteNaVisao,
+          }
+        : undefined);
+    const conquista = eventos.find(
+      (e): e is De<"territorioConquistado"> =>
+        e.tipo === "territorioConquistado" && e.territorio === par.alvo,
+    );
+    if (terrestre || declarado) {
+      conteudo = (
+        <Terrestre
+          declarado={declarado}
+          ataque={terrestre}
+          conquista={conquista}
+          rolando={rolando && (terrestre !== undefined || declaradoNoLote !== undefined)}
+        />
+      );
+    }
+  } else {
+    const doAlvo = eventos.filter(
+      (e) => (e.tipo === "antiaereoRolado" || e.tipo === "cicloAereo") && e.alvo === par.alvo,
+    );
+    if (doAlvo.length > 0) {
+      conteudo = <Aereo eventos={eventos} rolando={rolando} parametros={visao.parametros} />;
+    }
+  }
+  if (!conteudo) return <p className="dica">Nenhum dado rolado ainda.</p>;
   return (
-    <Bloco titulo="Combate">
-      <div key={combate.seq} aria-live="polite">
-        {terrestre || declarado ? (
-          <Terrestre
-            declarado={declarado}
-            ataque={terrestre}
-            conquista={conquista}
-            rolando={rolando}
-            mesa={mesa}
-          />
-        ) : (
-          <Aereo
-            eventos={combate.eventos}
-            rolando={rolando}
-            mesa={mesa}
-            parametros={visao.parametros}
-          />
-        )}
-        {rolando && (
-          <button
-            type="button"
-            className="link dica mt-espaco-2"
-            onClick={() => marcarAnimado(combate.seq)}
-          >
-            Pular animação
-          </button>
-        )}
-      </div>
-    </Bloco>
+    <div key={combate?.seq ?? 0} aria-live="polite">
+      {conteudo}
+      {rolando && combate && (
+        <button
+          type="button"
+          className="link dica mt-espaco-2"
+          onClick={() => marcarAnimado(combate.seq)}
+        >
+          Pular animação
+        </button>
+      )}
+    </div>
   );
 }

@@ -3,13 +3,86 @@
 import { FACES_D6 } from "../data/dados.js";
 import { saoVizinhos } from "../data/fronteiras.js";
 import type { TerritorioId } from "../data/territorios.js";
+import type { Acao } from "./acoes.js";
 import { type Contexto, daVez, emitir, exigirProprio, exigirTerritorio } from "./contexto.js";
 import { verificarEliminacao } from "./eliminacao.js";
+import type { JogadorId } from "./estado.js";
 import { exigir, exigirQuantidade } from "./resultado.js";
 import { rolar } from "./rng.js";
 
 const rolarOrdenado = (ctx: Contexto, quantidade: number): number[] =>
   Array.from({ length: quantidade }, () => rolar(ctx.rng, FACES_D6)).toSorted((a, b) => b - a);
+
+// Origem própria com 2 ou mais exércitos e alvo adversário vizinho.
+function exigirPar(ctx: Contexto, valorOrigem: unknown, valorAlvo: unknown) {
+  const estado = ctx.estado;
+  const j = daVez(ctx);
+  const origem = exigirProprio(ctx, valorOrigem, "Origem");
+  const alvo = exigirTerritorio(valorAlvo, "Alvo");
+  const o = estado.territorios[origem];
+  const defensor = estado.territorios[alvo].dono;
+  exigir(
+    defensor !== null && defensor !== j.id,
+    "ALVO_INVALIDO",
+    "O alvo deve ser de um adversário",
+  );
+  exigir(saoVizinhos(origem, alvo), "NAO_VIZINHO", "O alvo não faz fronteira com a origem");
+  exigir(o.exercitos >= 2, "EXERCITOS_INSUFICIENTES", "A origem precisa de pelo menos 2 exércitos");
+  return { j, origem, alvo, defensor };
+}
+
+function abrirConflito(
+  ctx: Contexto,
+  origem: TerritorioId,
+  alvo: TerritorioId,
+  defensor: JogadorId,
+): void {
+  ctx.estado.turno.conflitoTerrestre = { origem, alvo, defensor };
+  emitir(ctx, { tipo: "ataqueTerrestreIniciado", jogador: daVez(ctx).id, defensor, origem, alvo });
+}
+
+// Fecha o combate declarado, se houver (pelo atacante ou porque ele passou a fazer outra coisa).
+export function fecharConflito(ctx: Contexto): void {
+  const c = ctx.estado.turno.conflitoTerrestre ?? null;
+  if (c === null) return;
+  ctx.estado.turno.conflitoTerrestre = null;
+  emitir(ctx, {
+    tipo: "ataqueTerrestreEncerrado",
+    jogador: daVez(ctx).id,
+    origem: c.origem,
+    alvo: c.alvo,
+  });
+}
+
+// Uma ação que não continua o combate declarado o fecha antes de ser executada.
+export function fecharConflitoSeOutraAcao(ctx: Contexto, acao: Acao): void {
+  const c = ctx.estado.turno.conflitoTerrestre ?? null;
+  if (c === null) return;
+  const continua =
+    acao.tipo === "rolarDefesa" ||
+    acao.tipo === "moverAposConquista" ||
+    acao.tipo === "encerrarAtaqueTerrestre" ||
+    (acao.tipo === "atacar" && acao.origem === c.origem && acao.alvo === c.alvo);
+  if (!continua) fecharConflito(ctx);
+}
+
+export function iniciarAtaqueTerrestre(
+  ctx: Contexto,
+  valorOrigem: unknown,
+  valorAlvo: unknown,
+): void {
+  const { origem, alvo, defensor } = exigirPar(ctx, valorOrigem, valorAlvo);
+  abrirConflito(ctx, origem, alvo, defensor);
+}
+
+export function encerrarAtaqueTerrestre(ctx: Contexto): void {
+  exigir(
+    (ctx.estado.turno.conflitoTerrestre ?? null) !== null,
+    "FASE_ERRADA",
+    "Não há ataque terrestre aberto",
+  );
+  fecharConflito(ctx);
+}
 
 export function atacar(
   ctx: Contexto,
@@ -18,20 +91,14 @@ export function atacar(
   dados: unknown,
 ): void {
   const estado = ctx.estado;
-  const j = daVez(ctx);
-  const origem = exigirProprio(ctx, valorOrigem, "Origem");
-  const alvo = exigirTerritorio(valorAlvo, "Alvo");
+  const { j, origem, alvo, defensor } = exigirPar(ctx, valorOrigem, valorAlvo);
   const o = estado.territorios[origem];
-  const a = estado.territorios[alvo];
-  exigir(a.dono !== null && a.dono !== j.id, "ALVO_INVALIDO", "O alvo deve ser de um adversário");
-  exigir(saoVizinhos(origem, alvo), "NAO_VIZINHO", "O alvo não faz fronteira com a origem");
-  exigir(o.exercitos >= 2, "EXERCITOS_INSUFICIENTES", "A origem precisa de pelo menos 2 exércitos");
   exigirQuantidade(dados);
   const maximo = Math.min(3, o.exercitos - 1);
   exigir(dados <= maximo, "QUANTIDADE_INVALIDA", `Dá para atacar com no máximo ${maximo} dados`);
+  if ((estado.turno.conflitoTerrestre ?? null) === null) abrirConflito(ctx, origem, alvo, defensor);
 
   // Cada um rola os seus: primeiro o atacante, aqui; depois o defensor, em rolarDefesa().
-  const defensor = a.dono;
   const dadosAtaque = rolarOrdenado(ctx, dados);
   estado.turno.ataqueTerrestre = { origem, alvo, defensor, dadosAtaque };
   emitir(ctx, {

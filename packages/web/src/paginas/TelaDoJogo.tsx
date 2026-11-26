@@ -15,7 +15,12 @@ import {
   PainelRecebimento,
   PainelVez,
 } from "../componentes/jogo/Paineis";
-import { PainelCombate } from "../componentes/jogo/Combate";
+import {
+  type AnimacoesDoMapa,
+  combateNaTela,
+  etapaDoCombate,
+  JanelaDeCombate,
+} from "../componentes/jogo/JanelaDeCombate";
 import { Orientacao, useOrientacao } from "../componentes/jogo/Orientacao";
 import { PainelAcao } from "../componentes/jogo/PainelAcao";
 import { TelaDeVitoria } from "../componentes/jogo/TelaDeVitoria";
@@ -86,6 +91,8 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
   const { ocupado, erro: erroAcao, enviar, limparErro } = useEnviarAcao(partidaId);
   const [vitoriaFechada, setVitoriaFechada] = useState(false);
   const [janela, setJanela] = useState<"galeria" | "guia" | "cartas" | null>(null);
+  // Combate cuja janela foi ocultada (por quem não tinha nada a fazer nele).
+  const [combateOculto, setCombateOculto] = useState<string | null>(null);
 
   const visao = jogo?.visao;
   const seq = jogo?.seq;
@@ -197,6 +204,24 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
         }
       : null;
 
+  const animacoes: AnimacoesDoMapa = {
+    voo:
+      visao.turno.ataqueAereo && mesa.jogadorDaVez
+        ? {
+            base: visao.vez,
+            cor: mesa.jogadorDaVez.cor,
+            alvo: visao.turno.ataqueAereo.alvo,
+            bombardeiros: visao.turno.ataqueAereo.emCombate,
+            abatidosNaChegada: iniciado && perdas ? perdas.avioes : 0,
+          }
+        : null,
+    volta,
+    explosoes,
+  };
+  const combate = interrompida ? null : combateNaTela(visao, jogo);
+  const combateVisivel =
+    combate !== null && (combate.chave !== combateOculto || etapaDoCombate(etapa));
+
   return (
     // No desktop a tela ocupa a altura da janela (menos o cabeçalho de ~60px e o respiro do
     // main): o mapa se ajusta ao espaço e o painel rola sozinho.
@@ -215,19 +240,9 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
           selecionado={selecionado}
           marcados={destaques.marcados}
           opcoes={destaques.opcoes}
-          voo={
-            visao.turno.ataqueAereo && mesa.jogadorDaVez
-              ? {
-                  base: visao.vez,
-                  cor: mesa.jogadorDaVez.cor,
-                  alvo: visao.turno.ataqueAereo.alvo,
-                  bombardeiros: visao.turno.ataqueAereo.emCombate,
-                  abatidosNaChegada: iniciado && perdas ? perdas.avioes : 0,
-                }
-              : null
-          }
-          volta={volta}
-          explosoes={explosoes}
+          voo={animacoes.voo}
+          volta={animacoes.volta}
+          explosoes={animacoes.explosoes}
           onClicar={clicar}
           cantoInferiorEsquerdo={<PainelMesa visao={visao} mesa={mesa} presenca={presenca} />}
         />
@@ -256,7 +271,14 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
           />
         )}
 
-        <PainelCombate jogo={jogo} visao={visao} mesa={mesa} />
+        {combate && !combateVisivel && (
+          <Bloco titulo="Combate">
+            <p className="dica">Há um combate em andamento.</p>
+            <div className="mt-espaco-3">
+              <Botao onClick={() => setCombateOculto(null)}>Ver o combate</Botao>
+            </div>
+          </Bloco>
+        )}
 
         <PainelRecebimento visao={visao} />
 
@@ -304,7 +326,20 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
           }}
         />
       )}
-      {orientacao.mensagem && !fim && (
+      {combate && combateVisivel && (
+        <JanelaDeCombate
+          combate={combate}
+          visao={visao}
+          mesa={mesa}
+          geografia={geografia}
+          jogo={jogo}
+          etapa={etapa}
+          envio={{ ocupado, erro: erroAcao, enviar }}
+          animacoes={animacoes}
+          onOcultar={() => setCombateOculto(combate.chave)}
+        />
+      )}
+      {orientacao.mensagem && !fim && !combateVisivel && (
         <Orientacao mensagem={orientacao.mensagem} onFechar={orientacao.fechar} />
       )}
       {fim && !vitoriaFechada && (

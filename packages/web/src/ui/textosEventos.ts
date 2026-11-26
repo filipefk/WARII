@@ -72,6 +72,12 @@ export function textoDoEvento(e: Evento, nome: (jogadorId: string) => string): s
       return `${nome(e.jogador)} colocou ${e.quantidade} em ${nomeT(e.territorio)}.`;
     case "faseAlterada":
       return `${nome(e.jogador)} passou para: ${NOMES_FASES[e.fase]}.`;
+    case "ataqueTerrestreIniciado":
+      return `${nome(e.jogador)} iniciou um ataque terrestre a ${nomeT(e.alvo)} (${nome(
+        e.defensor,
+      )}) a partir de ${nomeT(e.origem)}.`;
+    case "ataqueTerrestreEncerrado":
+      return `${nome(e.jogador)} encerrou o ataque de ${nomeT(e.origem)} a ${nomeT(e.alvo)}.`;
     case "dadosDeAtaqueRolados":
       return `${nome(e.jogador)} ataca ${nomeT(e.alvo)} (${nome(e.defensor)}) a partir de ${nomeT(
         e.origem,

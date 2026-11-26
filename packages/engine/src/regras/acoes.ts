@@ -16,7 +16,16 @@ export type Acao =
   // Recebimento (§6).
   | { readonly tipo: "posicionar"; readonly territorio: TerritorioId; readonly quantidade: number }
   | { readonly tipo: "encerrarRecebimento" }
-  // Ataque terrestre (§7.1–7.2). `dados` = exércitos que atacam; o atacante já rola os dele.
+  // Declara o ataque terrestre entre a origem e o alvo, sem rolar nada: abre o combate para a mesa.
+  | {
+      readonly tipo: "iniciarAtaqueTerrestre";
+      readonly origem: TerritorioId;
+      readonly alvo: TerritorioId;
+    }
+  // Fecha o combate terrestre declarado.
+  | { readonly tipo: "encerrarAtaqueTerrestre" }
+  // Ataque terrestre (§7.1–7.2). `dados` = exércitos que atacam; o atacante já rola os dele. Sem
+  // combate declarado (ou com outro par), declara este antes.
   | {
       readonly tipo: "atacar";
       readonly origem: TerritorioId;

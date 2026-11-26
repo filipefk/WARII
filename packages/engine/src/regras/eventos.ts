@@ -68,6 +68,20 @@ export type Evento =
       readonly quantidade: number;
     }
   | { readonly tipo: "faseAlterada"; readonly jogador: JogadorId; readonly fase: Fase }
+  // Combate terrestre declarado e encerrado (a janela de combate da mesa).
+  | {
+      readonly tipo: "ataqueTerrestreIniciado";
+      readonly jogador: JogadorId;
+      readonly defensor: JogadorId;
+      readonly origem: TerritorioId;
+      readonly alvo: TerritorioId;
+    }
+  | {
+      readonly tipo: "ataqueTerrestreEncerrado";
+      readonly jogador: JogadorId;
+      readonly origem: TerritorioId;
+      readonly alvo: TerritorioId;
+    }
   // Ataque terrestre: o atacante rola (dadosDeAtaqueRolados) e depois o defensor (ataqueTerrestre,
   // com o resultado do combate).
   | {

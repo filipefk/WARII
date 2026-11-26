@@ -80,8 +80,9 @@
   --color-objetivo-numero: #9fb4cc;
   --color-objetivo-legenda: #c9d6e4;
 
-  /* Tipografia: uma família só, a do sistema */
+  /* Tipografia: a família do sistema; Black Ops One (public/fontes, só um peso) só nas janelas popup */
   --font-sans: "Segoe UI", system-ui, sans-serif;
+  --font-popup: "Black Ops One", "Segoe UI", system-ui, sans-serif;
 
   --text-titulo: 18px;
   --text-titulo--line-height: 1.3;
@@ -133,6 +134,15 @@
   --shadow-sombra-dado: 0 3px 5px rgba(0, 0, 0, 0.55);
   --shadow-sombra-ficha: 0 0 0 2px rgba(0, 0, 0, 0.4);
   --shadow-marca-ativo: inset 3px 0 0 #ffb347;
+}
+
+/* Black Ops One (SIL OFL 1.1, licença em public/fontes/OFL.txt): só o subconjunto latino, que cobre o português */
+@font-face {
+  font-family: "Black Ops One";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fontes/BlackOpsOne-Regular.woff2") format("woff2");
 }
 
 :root {

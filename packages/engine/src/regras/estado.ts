@@ -55,6 +55,15 @@ export interface AtaqueTerrestreEmCurso {
   readonly dadosAtaque: readonly number[];
 }
 
+// Ataque terrestre declarado (iniciarAtaqueTerrestre): o combate entre a origem e o alvo fica
+// aberto para toda a mesa (a janela de combate) e vale para os ataques seguidos com o mesmo par,
+// até o atacante encerrá-lo ou fazer outra coisa. Não muda regra nenhuma do combate.
+export interface ConflitoTerrestre {
+  readonly origem: TerritorioId;
+  readonly alvo: TerritorioId;
+  readonly defensor: JogadorId;
+}
+
 // Etapa do ciclo aéreo: o defensor rola a antiaérea, depois o atacante rola o ataque e, se a
 // partida permite interromper (vídeo), o atacante decide entre os ciclos se continua.
 export type EtapaAerea = "antiaereo" | "ataque" | "decisao";
@@ -82,6 +91,8 @@ export interface EstadoTurno {
   conquistou: boolean;
   recebimento: Recebimento | null;
   ataqueTerrestre: AtaqueTerrestreEmCurso | null;
+  // Opcional: os snapshots de antes do conflito declarado não o têm.
+  conflitoTerrestre?: ConflitoTerrestre | null;
   ataqueAereo: AtaqueAereoEmCurso | null;
   conquistaPendente: ConquistaPendente | null;
 }
@@ -121,6 +132,7 @@ export const turnoVazio = (): EstadoTurno => ({
   conquistou: false,
   recebimento: null,
   ataqueTerrestre: null,
+  conflitoTerrestre: null,
   ataqueAereo: null,
   conquistaPendente: null,
 });

@@ -11,9 +11,15 @@ const preso = (v: number, limite: number) => Math.max(-limite, Math.min(limite, 
 export function JanelaPopup({
   titulo,
   onEsc,
+  largura = "max-w-[520px]",
+  fundo = "bg-panel/80",
   children,
 }: {
   titulo: string;
+  // Classe de largura máxima (literal, para o Tailwind gerá-la).
+  largura?: string;
+  // Classe do fundo (a janela de combate, sobre o mapa, é opaca).
+  fundo?: string;
   // Chamado com o Esc (o mesmo que o botão de sair da janela).
   onEsc: () => void;
   children: ReactNode;
@@ -59,7 +65,8 @@ export function JanelaPopup({
         role="dialog"
         aria-modal="true"
         aria-label={titulo}
-        className="w-full max-w-[520px] overflow-hidden rounded-raio-xl border border-border bg-panel"
+        // Black Ops One só tem um peso: sem negrito sintético, os pesos maiores desenham como o 400.
+        className={`w-full ${largura} max-h-full overflow-y-auto rounded-raio-xl border border-border ${fundo} font-popup [font-synthesis-weight:none]`}
         style={{ transform: `translate(${deslocamento.x}px, ${deslocamento.y}px)` }}
       >
         <div

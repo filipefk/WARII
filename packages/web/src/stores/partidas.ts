@@ -17,12 +17,15 @@ export interface JogoRecebido {
   seqEventos: number;
   // Eventos do lote mais recente.
   ultimos: Evento[];
-  // Último lote com dados rolados (ataque terrestre, defesa, antiaérea ou ataque aéreo), para o
-  // painel de combate.
+  // Último lote com dados rolados (ataque terrestre, defesa, antiaérea ou ataque aéreo) ou com o
+  // início de um combate, para a janela de combate.
   combate: { seq: number; eventos: Evento[] } | null;
 }
 
+// O início de um combate também troca o lote: a janela do combate novo começa sem dados.
 const TEM_COMBATE = (e: Evento) =>
+  e.tipo === "ataqueTerrestreIniciado" ||
+  e.tipo === "ataqueAereoIniciado" ||
   e.tipo === "dadosDeAtaqueRolados" ||
   e.tipo === "ataqueTerrestre" ||
   e.tipo === "antiaereoRolado" ||

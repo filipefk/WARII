@@ -10,6 +10,7 @@ import {
   type AtaqueTerrestreEmCurso,
   cartaDeTroca,
   type CartaId,
+  type ConflitoTerrestre,
   type ConquistaPendente,
   type ContinenteId,
   IDS_CONTINENTES,
@@ -68,6 +69,9 @@ export type Etapa =
       opcoes: Conjunto;
     }
   | { tipo: "conquista"; conquista: ConquistaPendente }
+  // Ataque terrestre declarado, à espera do atacante: rolar mais um ataque ou encerrar.
+  // `maximoDados` 0 = o par não pode mais atacar (alvo conquistado ou origem com 1 exército).
+  | { tipo: "conflito"; conflito: ConflitoTerrestre; maximoDados: number }
   | { tipo: "aereoEmCurso"; ataque: AtaqueAereoEmCurso }
   // Vez de outro, mas o jogador é o defensor e tem dados a rolar.
   | { tipo: "defesa"; ataque: AtaqueTerrestreEmCurso; dados: number }
@@ -385,6 +389,14 @@ export function derivarEtapa(visao: VisaoPartida, i: Interacao): Etapa {
   const turno = visao.turno;
   if (turno.conquistaPendente) return { tipo: "conquista", conquista: turno.conquistaPendente };
   if (turno.ataqueAereo) return { tipo: "aereoEmCurso", ataque: turno.ataqueAereo };
+  if (turno.conflitoTerrestre) {
+    const { origem, alvo } = turno.conflitoTerrestre;
+    return {
+      tipo: "conflito",
+      conflito: turno.conflitoTerrestre,
+      maximoDados: maximoDados(visao, origem, alvo),
+    };
+  }
 
   if (i.modo === "reforco") return reforco(visao, i);
   if (i.modo === "transporte") return transporte(visao, i);
@@ -433,6 +445,8 @@ export function destaquesDoMapa(etapa: Etapa): DestaquesDoMapa {
       return { opcoes: etapa.opcoes, marcados: marcar(etapa.origem, etapa.destino) };
     case "conquista":
       return { opcoes: VAZIO, marcados: marcar(etapa.conquista.origem, etapa.conquista.alvo) };
+    case "conflito":
+      return { opcoes: VAZIO, marcados: marcar(etapa.conflito.origem, etapa.conflito.alvo) };
     case "aereoEmCurso":
     case "antiaereo":
       return { opcoes: VAZIO, marcados: marcar(etapa.ataque.alvo) };

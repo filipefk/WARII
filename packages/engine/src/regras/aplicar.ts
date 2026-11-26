@@ -9,7 +9,14 @@ import {
   rolarAntiaereo,
   rolarAtaqueAereo,
 } from "./ataqueAereo.js";
-import { atacar, moverAposConquista, rolarDefesa } from "./ataqueTerrestre.js";
+import {
+  atacar,
+  encerrarAtaqueTerrestre,
+  fecharConflitoSeOutraAcao,
+  iniciarAtaqueTerrestre,
+  moverAposConquista,
+  rolarDefesa,
+} from "./ataqueTerrestre.js";
 import { descartar, reforcarComCartas, transportarComCartas } from "./cartas.js";
 import { jogadorDaVez, jogadorQueAge } from "./consultas.js";
 import type { Contexto } from "./contexto.js";
@@ -31,6 +38,8 @@ const FASES: Readonly<Record<TipoAcao, readonly Fase[]>> = {
   ocupar: ["PREP_OCUPACAO"],
   posicionar: ["RECEBER"],
   encerrarRecebimento: ["RECEBER"],
+  iniciarAtaqueTerrestre: ["ATACAR"],
+  encerrarAtaqueTerrestre: ["ATACAR"],
   atacar: ["ATACAR"],
   rolarDefesa: ["ATACAR"],
   moverAposConquista: ["ATACAR"],
@@ -111,6 +120,10 @@ function executar(ctx: Contexto, acao: Acao): void {
       return posicionar(ctx, acao.territorio, acao.quantidade);
     case "encerrarRecebimento":
       return encerrarRecebimento(ctx);
+    case "iniciarAtaqueTerrestre":
+      return iniciarAtaqueTerrestre(ctx, acao.origem, acao.alvo);
+    case "encerrarAtaqueTerrestre":
+      return encerrarAtaqueTerrestre(ctx);
     case "atacar":
       return atacar(ctx, acao.origem, acao.alvo, acao.dados);
     case "rolarDefesa":
@@ -172,6 +185,7 @@ export function aplicarAcao(
       eventos: [],
       rng,
     };
+    fecharConflitoSeOutraAcao(ctx, acao);
     executar(ctx, acao);
     verificarFimDeJogo(ctx);
     return { ok: true, estado: ctx.estado, eventos: ctx.eventos };

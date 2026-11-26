@@ -395,6 +395,40 @@ describe("Ataque terrestre e conquista (§7.1–7.2)", () => {
     igual(e.turno.ataqueTerrestre, null, "sem pendência");
     recusa(e, "B", { tipo: "rolarDefesa" }, "NAO_E_SUA_VEZ");
   });
+
+  test("Combate declarado: abre sem rolar, segue nos ataques do par e fecha", () => {
+    const declarar = {
+      tipo: "iniciarAtaqueTerrestre",
+      origem: "mexico",
+      alvo: "novayork",
+    } as const;
+    const r1 = rodarSo(terrestre(6, 3), "A", declarar, []);
+    let e = r1.estado;
+    igual(
+      e.turno.conflitoTerrestre,
+      { origem: "mexico", alvo: "novayork", defensor: "B" },
+      "conflito aberto",
+    );
+    igual(eventos(r1, "ataqueTerrestreIniciado").length, 1, "evento de início");
+    igual(e.turno.ataqueTerrestre, null, "nada rolado");
+    e = rodar(e, "A", atqMexNy(3), d6(6, 5, 4, 6, 6, 6)).estado;
+    igual(e.turno.conflitoTerrestre?.alvo, "novayork", "continua aberto depois do ataque");
+    const r2 = rodarSo(e, "A", { tipo: "encerrarAtaqueTerrestre" }, []);
+    igual(r2.estado.turno.conflitoTerrestre, null, "fechado");
+    igual(eventos(r2, "ataqueTerrestreEncerrado").length, 1, "evento de fim");
+    recusa(r2.estado, "A", { tipo: "encerrarAtaqueTerrestre" }, "FASE_ERRADA");
+    recusa(terrestre(1, 3), "A", declarar, "EXERCITOS_INSUFICIENTES");
+  });
+
+  test("Atacar sem declarar declara; outra ação fecha o combate aberto", () => {
+    const r1 = rodarSo(terrestre(6, 3), "A", atqMexNy(1), d6(6));
+    igual(eventos(r1, "ataqueTerrestreIniciado").length, 1, "declarado pelo atacar");
+    const e = rodarSo(r1.estado, "B", { tipo: "rolarDefesa" }, d6(1, 1, 1)).estado;
+    igual(e.turno.conflitoTerrestre?.origem, "mexico", "aberto depois da defesa");
+    const r2 = rodarSo(e, "A", { tipo: "encerrarAtaques" }, []);
+    igual(r2.estado.turno.conflitoTerrestre, null, "fechado ao encerrar os ataques");
+    igual(eventos(r2, "ataqueTerrestreEncerrado").length, 1, "evento de fim");
+  });
 });
 
 describe("Ataque aéreo (§7.3)", () => {

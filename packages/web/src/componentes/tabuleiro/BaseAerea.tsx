@@ -40,14 +40,7 @@ export function BaseAerea({ x, y, dono, bombardeiros }: Props) {
         rx={5}
         fill={`url(#${ID_RELEVO_BASE})`}
       />
-      <rect
-        className="mapa-base-pista"
-        x={x - 92}
-        y={y - 15}
-        width={244}
-        height={30}
-        rx={3}
-      />
+      <rect className="mapa-base-pista" x={x - 92} y={y - 15} width={244} height={30} rx={3} />
       <line className="mapa-base-faixa" x1={x - 88} y1={y} x2={x + 148} y2={y} />
       <text className="mapa-base-rotulo" x={x - 124} y={y - 6}>
         BASE AÉREA

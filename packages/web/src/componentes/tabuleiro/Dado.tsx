@@ -160,14 +160,7 @@ function useFaceRolando(rolando: boolean, faces: readonly number[]): number | nu
   return face;
 }
 
-export function Dado({
-  tipo,
-  valor,
-  tamanho = 38,
-  rolando = false,
-  faces,
-  className = "",
-}: Props) {
+export function Dado({ tipo, valor, tamanho = 38, rolando = false, faces, className = "" }: Props) {
   const terrestre = tipo === "ataque" || tipo === "defesa";
   const girando = useFaceRolando(rolando, faces ?? (terrestre ? FACES_TERRESTRES : []));
   const id = useId().replace(/\W/g, "");

@@ -87,6 +87,37 @@ interface Props {
   onClicar?: (territorio: TerritorioId | null) => void;
   // Painel HTML no canto inferior esquerdo (Pacífico), fora do zoom: some ao aproximar.
   cantoInferiorEsquerdo?: ReactNode;
+  // Enquadra só estes territórios (com uma folga em volta), sem zoom nem arraste: o mapa da
+  // janela de combate.
+  foco?: readonly TerritorioId[] | null;
+}
+
+// Proporção (largura / altura) do recorte de `foco`; quem usa dá a mesma proporção à área.
+export const PROPORCAO_DO_FOCO = 1.45;
+
+// Recorte do mapa em volta dos territórios: a caixa deles com folga, um tamanho mínimo, na
+// proporção do foco e sem sair do tabuleiro.
+function caixaDoFoco(geografia: Geografia, ids: readonly TerritorioId[]): string {
+  let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const id of ids) {
+    const { caixa, rotulo } = geografia.territorios[id];
+    x0 = Math.min(x0, caixa[0], rotulo[0]);
+    y0 = Math.min(y0, caixa[1], rotulo[1]);
+    x1 = Math.max(x1, caixa[2], rotulo[0]);
+    y1 = Math.max(y1, caixa[3], rotulo[1]);
+  }
+  const { largura, altura } = geografia;
+  let w = Math.max((x1 - x0) * 1.6, 300);
+  let h = Math.max((y1 - y0) * 1.6, 300 / PROPORCAO_DO_FOCO);
+  if (w / h < PROPORCAO_DO_FOCO) w = h * PROPORCAO_DO_FOCO;
+  else h = w / PROPORCAO_DO_FOCO;
+  if (h > altura) {
+    h = altura;
+    w = h * PROPORCAO_DO_FOCO;
+  }
+  const x = Math.max(0, Math.min(largura - w, (x0 + x1) / 2 - w / 2));
+  const y = Math.max(0, Math.min(altura - h, (y0 + y1) / 2 - h / 2));
+  return `${x} ${y} ${w} ${h}`;
 }
 
 const POSICOES_BASES = (largura: number, altura: number): [number, number][] => [
@@ -140,6 +171,7 @@ export function Tabuleiro({
   explosoes = null,
   onClicar,
   cantoInferiorEsquerdo,
+  foco = null,
 }: Props) {
   const { largura, altura } = geografia;
   const svgRef = useRef<SVGSVGElement>(null);
@@ -147,10 +179,11 @@ export function Tabuleiro({
   // O painel do canto só aparece com o mapa inteiro à vista (zoom 1).
   const [semZoom, setSemZoom] = useState(true);
 
+  const comFoco = foco !== null && foco.length > 0;
   useEffect(() => {
     const svg = svgRef.current;
     const raiz = raizRef.current;
-    if (!svg || !raiz) return () => {};
+    if (!svg || !raiz || comFoco) return () => {};
     const comportamento = zoom<SVGSVGElement, unknown>()
       .scaleExtent([1, 8])
       .translateExtent([
@@ -166,7 +199,7 @@ export function Tabuleiro({
     return () => {
       selecao.on(".zoom", null);
     };
-  }, [largura, altura]);
+  }, [largura, altura, comFoco]);
 
   const cores = useMemo(
     () =>
@@ -206,12 +239,12 @@ export function Tabuleiro({
   return (
     <svg
       ref={svgRef}
-      viewBox={`0 0 ${largura} ${altura}`}
+      viewBox={comFoco ? caixaDoFoco(geografia, foco) : `0 0 ${largura} ${altura}`}
       preserveAspectRatio="xMidYMid meet"
       className="mapa block h-full w-full select-none"
       onClick={clicar}
       role="img"
-      aria-label="Tabuleiro"
+      aria-label={comFoco ? "Local do combate" : "Tabuleiro"}
     >
       <defs>
         <radialGradient id="tabuleiro-fundo" cx="50%" cy="48%" r="70%">
@@ -457,7 +490,7 @@ export function Tabuleiro({
           />
         )}
       </g>
-      {cantoInferiorEsquerdo && semZoom && (
+      {cantoInferiorEsquerdo && semZoom && !comFoco && (
         // Entre a costa do Pacífico e a base aérea de baixo; o conteúdo se apoia no pé da área.
         <foreignObject x={28} y={540} width={390} height={altura - 34 - 22 - 540 - 8}>
           <div className="pointer-events-none flex h-full flex-col justify-end">
