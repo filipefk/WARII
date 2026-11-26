@@ -11,7 +11,8 @@ import { aplicarAcao } from "../regras/aplicar.js";
 import {
   centrosDe,
   exercitosMoviveis,
-  jogadorDaVez,
+  jogador,
+  jogadorQueAge,
   territoriosDaCarta,
   territoriosDe,
   territoriosVagos,
@@ -348,6 +349,9 @@ function movimentoAposConquista(c: Contexto): Acao[] {
 function acoesDeAtaque(c: Contexto): Acao[] {
   const t = c.estado.turno;
   if (t.conquistaPendente !== null) return movimentoAposConquista(c);
+  if (t.ataqueTerrestre !== null) return [{ tipo: "rolarDefesa" }];
+  if (t.ataqueAereo?.etapa === "antiaereo") return [{ tipo: "rolarAntiaereo" }];
+  if (t.ataqueAereo?.etapa === "ataque") return [{ tipo: "rolarAtaqueAereo" }];
   if (t.ataqueAereo !== null) {
     const continuar = t.ataqueAereo.emCombate > 0 && t.ataqueAereo.ciclos < 6;
     return continuar
@@ -404,6 +408,9 @@ function acoesDeDeslocamento(c: Contexto): Acao[] {
 
 const SAIDAS: readonly Acao[] = [
   { tipo: "moverAposConquista", quantidade: 1 },
+  { tipo: "rolarDefesa" },
+  { tipo: "rolarAntiaereo" },
+  { tipo: "rolarAtaqueAereo" },
   { tipo: "encerrarAtaqueAereo" },
   { tipo: "continuarAtaqueAereo" },
   { tipo: "encerrarRecebimento" },
@@ -414,7 +421,10 @@ const SAIDAS: readonly Acao[] = [
 function candidatas(c: Contexto): Acao[] {
   const e = c.estado;
   if (e.fase === "PREP_ESCOLHA_5J" || e.fase === "PREP_OCUPACAO") return acoesDePreparacao(c);
-  const pendente = e.turno.conquistaPendente !== null || e.turno.ataqueAereo !== null;
+  const pendente =
+    e.turno.conquistaPendente !== null ||
+    e.turno.ataqueTerrestre !== null ||
+    e.turno.ataqueAereo !== null;
   // Mão acima do limite (herança de cartas): usar ou descartar antes de tudo.
   if (!pendente && c.eu.cartas.length > e.parametros.limiteMao) {
     return [...reforcosComCartas(c), ...descartes(c)];
@@ -431,14 +441,14 @@ function candidatas(c: Contexto): Acao[] {
   }
 }
 
-// Próxima ação do robô que tem a vez. A RNG só desempata e varia o estilo; os sorteios do jogo
+// Próxima ação do robô que deve agir (o da vez, ou o defensor que tem dados a rolar). A RNG só desempata e varia o estilo; os sorteios do jogo
 // continuam com o servidor.
 export function decidirAcao(visao: VisaoPartida, rng: Rng): Acao {
   const id = visao.voce;
   if (id === null) throw new Error("O robô precisa da visão de um jogador");
   const estado = estadoDaVisao(visao);
-  const eu = jogadorDaVez(estado);
-  if (eu.id !== id) throw new Error("Não é a vez do robô");
+  const eu = jogador(estado, id);
+  if (eu === undefined || jogadorQueAge(estado) !== id) throw new Error("Não é a vez do robô");
   const c: Contexto = { estado, eu, rng, interesse: calcularInteresse(estado, eu) };
   for (const acao of [...candidatas(c), ...SAIDAS]) {
     if (aceita(estado, id, acao)) return acao;

@@ -1,6 +1,7 @@
-// Último combate da vez (ataque terrestre ou ciclos do ataque aéreo), visto por todos na mesa. Os
-// dados "rolam" uma vez, curto, quando o lote chega; dá para pular, e com prefers-reduced-motion
-// o resultado aparece direto. A animação nunca segura a visão nova: o mapa já está atualizado.
+// Último combate da vez (ataque terrestre ou ciclo do ataque aéreo), visto por todos na mesa. Cada
+// jogador rola os seus dados numa ação própria; os que acabaram de ser lançados "rolam" uma vez,
+// curto, quando o lote chega; dá para pular, e com prefers-reduced-motion o resultado aparece
+// direto. A animação nunca segura a visão nova: o mapa já está atualizado.
 import { type Evento, territorio, type VisaoPartida } from "@warii/engine";
 import { useEffect } from "react";
 import type { Mesa } from "../../jogo/mesa";
@@ -20,28 +21,37 @@ function reduzMovimento(): boolean {
 
 type De<K extends Evento["tipo"]> = Extract<Evento, { tipo: K }>;
 
+// Os dados de ataque chegam num lote (dadosDeAtaqueRolados) e os de defesa no seguinte
+// (ataqueTerrestre, com o resultado): em cada lote só rolam os dados que acabaram de ser lançados.
 function Terrestre({
+  declarado,
   ataque,
   conquista,
   rolando,
   mesa,
 }: {
-  ataque: De<"ataqueTerrestre">;
+  declarado: De<"dadosDeAtaqueRolados"> | undefined;
+  ataque: De<"ataqueTerrestre"> | undefined;
   conquista: De<"territorioConquistado"> | undefined;
   rolando: boolean;
   mesa: Mesa;
 }) {
-  const pares = Math.max(ataque.dadosAtaque.length, ataque.dadosDefesa.length);
+  const base = ataque ?? declarado;
+  if (!base) return null;
+  const dadosDefesa = ataque?.dadosDefesa ?? [];
+  const pares = Math.max(base.dadosAtaque.length, dadosDefesa.length);
+  const rolandoAtaque = rolando && !ataque;
+  const rolandoDefesa = rolando && !!ataque;
   return (
     <div>
       <p>
-        <b>{mesa.nome(ataque.jogador)}</b> atacou {nomeT(ataque.alvo)} ({mesa.nome(ataque.defensor)}
-        ) a partir de {nomeT(ataque.origem)}.
+        <b>{mesa.nome(base.jogador)}</b> atacou {nomeT(base.alvo)} ({mesa.nome(base.defensor)}) a
+        partir de {nomeT(base.origem)}.
       </p>
       <ul className="mt-espaco-3 space-y-espaco-2">
         {Array.from({ length: pares }, (_, k) => {
-          const a = ataque.dadosAtaque[k];
-          const d = ataque.dadosDefesa[k];
+          const a = base.dadosAtaque[k];
+          const d = dadosDefesa[k];
           const comparado = a !== undefined && d !== undefined;
           return (
             <li key={k} className="flex items-center gap-espaco-3">
@@ -50,8 +60,8 @@ function Terrestre({
                   <Dado
                     tipo="ataque"
                     valor={a}
-                    rolando={rolando}
-                    className={comparado ? "" : "opacity-[var(--opacidade-esmaecido)]"}
+                    rolando={rolandoAtaque}
+                    className={comparado || !ataque ? "" : "opacity-[var(--opacidade-esmaecido)]"}
                   />
                 )}
               </span>
@@ -61,12 +71,12 @@ function Terrestre({
                   <Dado
                     tipo="defesa"
                     valor={d}
-                    rolando={rolando}
+                    rolando={rolandoDefesa}
                     className={comparado ? "" : "opacity-[var(--opacidade-esmaecido)]"}
                   />
                 )}
               </span>
-              {!rolando && (
+              {ataque && !rolando && (
                 <span className="dica">
                   {comparado ? (a > d ? "defesa perde 1" : "ataque perde 1") : "sem par"}
                 </span>
@@ -75,7 +85,10 @@ function Terrestre({
           );
         })}
       </ul>
-      {!rolando && (
+      {!ataque && (
+        <p className="dica mt-espaco-3">Aguardando {mesa.nome(base.defensor)} rolar a defesa.</p>
+      )}
+      {ataque && !rolando && (
         <p className="mt-espaco-3">
           Ataque perdeu <b>{ataque.perdasAtaque}</b> · defesa perdeu <b>{ataque.perdasDefesa}</b>.
           {conquista && (
@@ -87,6 +100,8 @@ function Terrestre({
   );
 }
 
+// Cada ciclo tem dois lotes: a antiaérea do defensor (antiaereoRolado) e o ataque (cicloAereo,
+// com o ciclo completo). Se a antiaérea derruba todos, o ciclo vem inteiro no primeiro lote.
 function Aereo({
   eventos,
   rolando,
@@ -98,53 +113,53 @@ function Aereo({
   mesa: Mesa;
   parametros: VisaoPartida["parametros"];
 }) {
-  const inicio = eventos.find(
-    (e): e is De<"ataqueAereoIniciado"> => e.tipo === "ataqueAereoIniciado",
-  );
-  const ciclos = eventos.filter((e): e is De<"cicloAereo"> => e.tipo === "cicloAereo");
+  const ciclo = eventos.find((e): e is De<"cicloAereo"> => e.tipo === "cicloAereo");
+  const antiaereo = eventos.find((e): e is De<"antiaereoRolado"> => e.tipo === "antiaereoRolado");
   const fim = eventos.find(
     (e): e is De<"ataqueAereoEncerrado"> => e.tipo === "ataqueAereoEncerrado",
   );
-  const primeiro = ciclos[0];
-  if (!primeiro) return null;
+  const base = ciclo ?? antiaereo;
+  if (!base) return null;
+  const dadoAtaque = ciclo?.dadoAtaque ?? null;
+  // A antiaérea rolou neste lote se ainda falta o ataque ou se ela encerrou o ciclo sozinha.
+  const rolandoAntiaereo = rolando && dadoAtaque === null;
   return (
     <div>
       <p>
-        <b>{mesa.nome(primeiro.jogador)}</b> bombardeia {nomeT(primeiro.alvo)} (
-        {mesa.nome(primeiro.defensor)}).
-        {inicio &&
-          ` ${plural(inicio.daBase + inicio.daCaixa, "bombardeiro", "bombardeiros")}: ${inicio.daBase} da base, ${inicio.daCaixa} da caixa.`}
+        <b>{mesa.nome(base.jogador)}</b> bombardeia {nomeT(base.alvo)} ({mesa.nome(base.defensor)}
+        ).
       </p>
-      <ul className="mt-espaco-3 space-y-espaco-2">
-        {ciclos.map((c, k) => (
-          <li key={k} className="flex items-center gap-espaco-3">
+      <div className="mt-espaco-3 flex items-center gap-espaco-3">
+        <Dado
+          tipo="antiaereo"
+          valor={base.dadoAntiaereo}
+          rolando={rolandoAntiaereo}
+          faces={parametros.facesAntiaereo}
+        />
+        <span className="inline-block w-[38px]">
+          {dadoAtaque !== null && (
             <Dado
-              tipo="antiaereo"
-              valor={c.dadoAntiaereo}
+              tipo="aereo"
+              valor={dadoAtaque}
               rolando={rolando}
-              faces={parametros.facesAntiaereo}
+              faces={parametros.facesAtaqueAereo}
             />
-            <span className="inline-block w-[38px]">
-              {c.dadoAtaque !== null && (
-                <Dado
-                  tipo="aereo"
-                  valor={c.dadoAtaque}
-                  rolando={rolando}
-                  faces={parametros.facesAtaqueAereo}
-                />
-              )}
-            </span>
-            {!rolando && (
-              <span className="dica">
-                Antiaérea abateu {plural(c.bombardeirosAbatidos, "bombardeiro", "bombardeiros")}
-                {c.dadoAtaque === null
-                  ? "; nenhum sobrou para atacar."
-                  : `; ataque abateu ${plural(c.exercitosAbatidos, "exército", "exércitos")}.`}
-              </span>
-            )}
-          </li>
-        ))}
-      </ul>
+          )}
+        </span>
+        {!rolando && (
+          <span className="dica">
+            Antiaérea abateu {plural(base.bombardeirosAbatidos, "bombardeiro", "bombardeiros")}
+            {!ciclo
+              ? "."
+              : ciclo.dadoAtaque === null
+                ? "; nenhum sobrou para atacar."
+                : `; ataque abateu ${plural(ciclo.exercitosAbatidos, "exército", "exércitos")}.`}
+          </span>
+        )}
+      </div>
+      {!ciclo && (
+        <p className="dica mt-espaco-3">Aguardando {mesa.nome(base.jogador)} rolar o ataque.</p>
+      )}
       {!rolando && fim && (
         <p className="mt-espaco-3">
           Ataque aéreo encerrado:{" "}
@@ -184,7 +199,11 @@ export function PainelCombate({
   if (!combate) return null;
   // Só o combate da vez em curso: o da vez anterior sai do painel (fica no log).
   const atacante = combate.eventos.find(
-    (e) => e.tipo === "ataqueTerrestre" || e.tipo === "cicloAereo",
+    (e) =>
+      e.tipo === "dadosDeAtaqueRolados" ||
+      e.tipo === "ataqueTerrestre" ||
+      e.tipo === "antiaereoRolado" ||
+      e.tipo === "cicloAereo",
   );
   if (!atacante || !("jogador" in atacante)) return null;
   if (visao.fase === "FIM" || visao.jogadores[visao.vez]?.id !== atacante.jogador) return null;
@@ -192,14 +211,23 @@ export function PainelCombate({
   const terrestre = combate.eventos.find(
     (e): e is De<"ataqueTerrestre"> => e.tipo === "ataqueTerrestre",
   );
+  const declarado = combate.eventos.find(
+    (e): e is De<"dadosDeAtaqueRolados"> => e.tipo === "dadosDeAtaqueRolados",
+  );
   const conquista = combate.eventos.find(
     (e): e is De<"territorioConquistado"> => e.tipo === "territorioConquistado",
   );
   return (
     <Bloco titulo="Combate">
       <div key={combate.seq} aria-live="polite">
-        {terrestre ? (
-          <Terrestre ataque={terrestre} conquista={conquista} rolando={rolando} mesa={mesa} />
+        {terrestre || declarado ? (
+          <Terrestre
+            declarado={declarado}
+            ataque={terrestre}
+            conquista={conquista}
+            rolando={rolando}
+            mesa={mesa}
+          />
         ) : (
           <Aereo
             eventos={combate.eventos}

@@ -24,6 +24,7 @@ const ACOES_VALIDAS = [
   { tipo: "posicionar", territorio: "brasil", quantidade: 3 },
   { tipo: "encerrarRecebimento" },
   { tipo: "atacar", origem: "brasil", alvo: "argentina", dados: 3 },
+  { tipo: "rolarDefesa" },
   { tipo: "moverAposConquista", quantidade: 2 },
   { tipo: "iniciarAtaqueAereo", alvo: "egito", daBase: 4 },
   {
@@ -32,6 +33,8 @@ const ACOES_VALIDAS = [
     daBase: 0,
     cartas: { carta: "moscou", numericas: ["num2-01"] },
   },
+  { tipo: "rolarAntiaereo" },
+  { tipo: "rolarAtaqueAereo" },
   { tipo: "continuarAtaqueAereo" },
   { tipo: "encerrarAtaqueAereo" },
   { tipo: "encerrarAtaques" },

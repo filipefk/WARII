@@ -17,11 +17,16 @@ export interface JogoRecebido {
   seqEventos: number;
   // Eventos do lote mais recente.
   ultimos: Evento[];
-  // Último lote com combate (ataque terrestre ou ciclo aéreo), para o painel de combate.
+  // Último lote com dados rolados (ataque terrestre, defesa, antiaérea ou ataque aéreo), para o
+  // painel de combate.
   combate: { seq: number; eventos: Evento[] } | null;
 }
 
-const TEM_COMBATE = (e: Evento) => e.tipo === "ataqueTerrestre" || e.tipo === "cicloAereo";
+const TEM_COMBATE = (e: Evento) =>
+  e.tipo === "dadosDeAtaqueRolados" ||
+  e.tipo === "ataqueTerrestre" ||
+  e.tipo === "antiaereoRolado" ||
+  e.tipo === "cicloAereo";
 
 export interface DadosPartida {
   lobby: PartidaLobbyDto | null;

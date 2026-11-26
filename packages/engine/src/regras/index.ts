@@ -11,6 +11,7 @@ export {
   jogador,
   jogadorDaVez,
   jogadoresAtivos,
+  jogadorQueAge,
   territoriosDaCarta,
   territoriosDe,
   territoriosVagos,

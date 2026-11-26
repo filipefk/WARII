@@ -9,6 +9,7 @@ import {
   type Acao,
   type EstadoPartida,
   IDS_TERRITORIOS,
+  jogadorQueAge,
   OBJETIVO_SUBSTITUTO_DESTRUIR,
   type Rng,
   rngComSemente,
@@ -76,8 +77,9 @@ const codigo = (r: Confirmacao): string => (r.ok ? "ok" : r.erro.codigo);
 const verPartida = (partidaId: string): Promise<PartidaAtiva> =>
   naFila(partidaId, () => partidaAtiva(partidaId));
 
+// Quem deve agir: o da vez, ou o defensor quando é ele quem rola.
 function daVez(estado: EstadoPartida, jogadores: readonly Jogador[]): Jogador {
-  const id = obter(estado.jogadores[estado.vez], "jogador da vez").id;
+  const id = jogadorQueAge(estado);
   return obter(
     jogadores.find((j) => j.conta.id === id),
     "cliente do jogador da vez",
@@ -384,12 +386,14 @@ describe("servidor de partida (Socket.IO)", { skip: motivoSemBanco, concurrency:
     let vezesDoHumano = 0;
     for (;;) {
       const { estado } = await verPartida(partidaId);
-      if (estado.fase === "FIM" || (estado.rodada >= 3 && vezesDoHumano >= 3)) break;
+      const daVezId = jogadorQueAge(estado);
+      // Para só quando cabe ao humano agir: com a ação de um robô os robôs seguem jogando.
+      if (estado.fase === "FIM") break;
+      if (daVezId === humano.id && estado.rodada >= 3 && vezesDoHumano >= 3) break;
       assert.ok(
         Date.now() < prazo,
         `robôs parados na fase ${estado.fase}, rodada ${estado.rodada}`,
       );
-      const daVezId = obter(estado.jogadores[estado.vez], "jogador da vez").id;
       if (daVezId !== humano.id) {
         await new Promise((r) => setTimeout(r, 5));
         continue;

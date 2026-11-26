@@ -16,13 +16,15 @@ export type Acao =
   // Recebimento (§6).
   | { readonly tipo: "posicionar"; readonly territorio: TerritorioId; readonly quantidade: number }
   | { readonly tipo: "encerrarRecebimento" }
-  // Ataque terrestre (§7.1–7.2). `dados` = exércitos que atacam.
+  // Ataque terrestre (§7.1–7.2). `dados` = exércitos que atacam; o atacante já rola os dele.
   | {
       readonly tipo: "atacar";
       readonly origem: TerritorioId;
       readonly alvo: TerritorioId;
       readonly dados: number;
     }
+  // Do defensor: rola os dados de defesa do ataque terrestre em curso.
+  | { readonly tipo: "rolarDefesa" }
   // Total de exércitos que entram no território conquistado (1 até os dados do último ataque).
   | { readonly tipo: "moverAposConquista"; readonly quantidade: number }
   // Ataque aéreo (§7.3): bombardeiros da base e/ou da caixa por cartas (§9.3 B).
@@ -32,6 +34,10 @@ export type Acao =
       readonly daBase: number;
       readonly cartas?: { readonly carta: CartaId; readonly numericas: readonly CartaId[] };
     }
+  // Do defensor: rola a antiaérea do ciclo. Do atacante: rola o dado de ataque do ciclo.
+  | { readonly tipo: "rolarAntiaereo" }
+  | { readonly tipo: "rolarAtaqueAereo" }
+  // Do atacante, entre os ciclos (só com interromperAtaqueAereo).
   | { readonly tipo: "continuarAtaqueAereo" }
   | { readonly tipo: "encerrarAtaqueAereo" }
   | { readonly tipo: "encerrarAtaques" }

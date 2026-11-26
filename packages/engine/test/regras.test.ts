@@ -41,6 +41,7 @@ import {
   recusa,
   rngMisto,
   rodar,
+  rodarSo,
   verdade,
 } from "./apoio.js";
 
@@ -369,6 +370,31 @@ describe("Ataque terrestre e conquista (§7.1–7.2)", () => {
     );
     recusa(e, "B", atqMexNy(1), "NAO_E_SUA_VEZ");
   });
+
+  test("Cada um rola os seus: primeiro o ataque, depois a defesa", () => {
+    const r1 = rodarSo(terrestre(4, 2), "A", atqMexNy(3), d6(6, 3, 2));
+    let e = r1.estado;
+    igual(eventos(r1, "dadosDeAtaqueRolados")[0]?.dadosAtaque, [6, 3, 2], "dados do ataque");
+    igual(e.turno.ataqueTerrestre?.defensor, "B", "esperando a defesa de B");
+    igual(e.territorios.novayork.exercitos, 2, "nada perdido antes da defesa");
+    recusa(e, "A", { tipo: "encerrarAtaques" }, "NAO_E_SUA_VEZ");
+    recusa(e, "C", { tipo: "rolarDefesa" }, "NAO_E_SUA_VEZ");
+    recusa(e, "B", { tipo: "encerrarAtaques" }, "ACAO_BLOQUEADA");
+    const r2 = rodarSo(e, "B", { tipo: "rolarDefesa" }, d6(5, 4));
+    e = r2.estado;
+    const ataque = eventos(r2, "ataqueTerrestre")[0];
+    igual(
+      [ataque?.dadosAtaque, ataque?.dadosDefesa],
+      [
+        [6, 3, 2],
+        [5, 4],
+      ],
+      "dados do combate",
+    );
+    igual([ataque?.perdasAtaque, ataque?.perdasDefesa], [1, 1], "perdas");
+    igual(e.turno.ataqueTerrestre, null, "sem pendência");
+    recusa(e, "B", { tipo: "rolarDefesa" }, "NAO_E_SUA_VEZ");
+  });
 });
 
 describe("Ataque aéreo (§7.3)", () => {
@@ -386,6 +412,35 @@ describe("Ataque aéreo (§7.3)", () => {
     igual(e.turno.ataqueAereo, null, "encerrado ao restar 1 exército");
     igual([jog(e, "A").bombardeirosBase, jog(e, "A").bombardeirosCaixa], [3, 7], "base e caixa");
     igual(eventos(r, "ataqueAereoEncerrado")[0]?.destino, "base", "sobreviventes");
+  });
+
+  test("Cada um rola os seus: primeiro a antiaérea do defensor, depois o ataque", () => {
+    let e = rodarSo(aereo(), "A", { tipo: "iniciarAtaqueAereo", alvo: "china", daBase: 5 }).estado;
+    igual(e.turno.ataqueAereo?.etapa, "antiaereo", "esperando a antiaérea");
+    recusa(e, "A", { tipo: "rolarAtaqueAereo" }, "NAO_E_SUA_VEZ");
+    recusa(e, "C", { tipo: "rolarAntiaereo" }, "NAO_E_SUA_VEZ");
+    const r = rodarSo(e, "B", { tipo: "rolarAntiaereo" }, [face(AA, 2)]);
+    e = r.estado;
+    igual(eventos(r, "antiaereoRolado")[0]?.bombardeirosAbatidos, 2, "antiaérea");
+    igual([e.turno.ataqueAereo?.etapa, e.turno.ataqueAereo?.emCombate], ["ataque", 3], "etapa");
+    recusa(e, "B", { tipo: "rolarAntiaereo" }, "NAO_E_SUA_VEZ");
+    recusa(e, "A", { tipo: "encerrarAtaqueAereo" }, "ACAO_BLOQUEADA");
+    const c = rodarSo(e, "A", { tipo: "rolarAtaqueAereo" }, [face(AT, 2)]);
+    const ciclo = eventos(c, "cicloAereo")[0];
+    igual([ciclo?.dadoAntiaereo, ciclo?.dadoAtaque], [2, 2], "ciclo completo");
+    igual(c.estado.turno.ataqueAereo?.etapa, "decisao", "atacante decide se continua");
+    igual(c.estado.territorios.china.exercitos, 4, "exércitos abatidos");
+  });
+
+  test("Antiaérea que derruba todos encerra o ciclo sem dado de ataque", () => {
+    const e = rodarSo(aereo(), "A", {
+      tipo: "iniciarAtaqueAereo",
+      alvo: "china",
+      daBase: 1,
+    }).estado;
+    const r = rodarSo(e, "B", { tipo: "rolarAntiaereo" }, [face(AA, 1)]);
+    igual(eventos(r, "cicloAereo")[0]?.dadoAtaque, null, "sem dado de ataque");
+    igual(r.estado.turno.ataqueAereo, null, "encerrado");
   });
 
   test("Interromper entre ciclos (vídeo)", () => {
@@ -410,7 +465,7 @@ describe("Ataque aéreo (§7.3)", () => {
     recusa(e, "A", { tipo: "iniciarAtaqueAereo", alvo: "china", daBase: 0 }, "QUANTIDADE_INVALIDA");
   });
 
-  test("Manual: sem interrupção, os ciclos seguem até o fim numa ação só", () => {
+  test("Manual: sem interrupção, os ciclos seguem sem o atacante decidir", () => {
     const r = rodar(
       aereo({ interromperAtaqueAereo: false }),
       "A",

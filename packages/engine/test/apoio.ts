@@ -21,6 +21,7 @@ import {
   IDS_TERRITORIOS,
   jogador,
   jogadorDaVez,
+  jogadorQueAge,
   type Parametros,
   type Resultado,
   type Rng,
@@ -52,7 +53,42 @@ export const d6 = (...faces: number[]): number[] => faces.map((f) => f - 1);
 
 export type Aceita = Extract<Resultado, { ok: true }>;
 
+// Rolagem que o estado espera de alguém (defesa, antiaérea ou ataque aéreo), se houver.
+export function rolagemPendente(e: EstadoPartida): Acao | null {
+  const t = e.turno;
+  if (t.ataqueTerrestre !== null) return { tipo: "rolarDefesa" };
+  if (t.ataqueAereo?.etapa === "antiaereo") return { tipo: "rolarAntiaereo" };
+  if (t.ataqueAereo?.etapa === "ataque") return { tipo: "rolarAtaqueAereo" };
+  return null;
+}
+
+// Aplica a ação com os sorteios roteirizados e, em seguida, as rolagens que ela deixar pendentes,
+// cada uma por quem a deve (o defensor na defesa e na antiaérea), até o combate acabar ou parar
+// na decisão do atacante. Os eventos de todas vêm juntos. Para aplicar só a ação: rodarSo().
 export function rodar(
+  e: EstadoPartida,
+  quem: string,
+  acao: Acao,
+  roteiro: readonly number[] = [],
+): Aceita {
+  const rng = rngRoteirizado(roteiro);
+  const aplicar = (estado: EstadoPartida, id: string, a: Acao): Aceita => {
+    const r = aplicarAcao(estado, id, a, rng);
+    if (!r.ok) throw new Error(`${a.tipo} recusada: ${r.erro.codigo} — ${r.erro.mensagem}`);
+    return r;
+  };
+  let r = aplicar(e, quem, acao);
+  const todos = [...r.eventos];
+  for (let rolagem = rolagemPendente(r.estado); rolagem !== null;) {
+    r = aplicar(r.estado, jogadorQueAge(r.estado), rolagem);
+    todos.push(...r.eventos);
+    rolagem = rolagemPendente(r.estado);
+  }
+  if (rng.restantes() !== 0) throw new Error(`${acao.tipo}: sobraram ${rng.restantes()} sorteios`);
+  return { ok: true, estado: r.estado, eventos: todos };
+}
+
+export function rodarSo(
   e: EstadoPartida,
   quem: string,
   acao: Acao,
@@ -270,6 +306,9 @@ export function escolherAcao(e: EstadoPartida, r: Rng): Acao {
   if (t.conquistaPendente !== null) {
     return { tipo: "moverAposConquista", quantidade: 1 + r.inteiro(t.conquistaPendente.maximo) };
   }
+  if (t.ataqueTerrestre !== null) return { tipo: "rolarDefesa" };
+  if (t.ataqueAereo?.etapa === "antiaereo") return { tipo: "rolarAntiaereo" };
+  if (t.ataqueAereo?.etapa === "ataque") return { tipo: "rolarAtaqueAereo" };
   if (t.ataqueAereo !== null) {
     return chance(r, 0.7) ? { tipo: "continuarAtaqueAereo" } : { tipo: "encerrarAtaqueAereo" };
   }

@@ -16,6 +16,7 @@ import {
   IDS_TERRITORIOS,
   jogador,
   jogadorDaVez,
+  jogadorQueAge,
   PARAMETROS_PADRAO,
   type Parametros,
   rngComSemente,
@@ -124,7 +125,7 @@ function simular(indice: number): { vencedor: string | null; rodadas: number; ac
   conferirInvariantes(estado, criada.eventos, true);
   const jogadas: Jogada[] = [];
   while (estado.fase !== "FIM" && jogadas.length < MAX_ACOES && estado.rodada <= MAX_RODADAS) {
-    const id = jogadorDaVez(estado).id;
+    const id = jogadorQueAge(estado);
     const acao = escolherAcao(estado, robo);
     const r = aplicarAcao(estado, id, acao, gravado.rng);
     if (!r.ok) {

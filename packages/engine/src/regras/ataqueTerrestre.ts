@@ -30,8 +30,30 @@ export function atacar(
   const maximo = Math.min(3, o.exercitos - 1);
   exigir(dados <= maximo, "QUANTIDADE_INVALIDA", `Dá para atacar com no máximo ${maximo} dados`);
 
+  // Cada um rola os seus: primeiro o atacante, aqui; depois o defensor, em rolarDefesa().
   const defensor = a.dono;
   const dadosAtaque = rolarOrdenado(ctx, dados);
+  estado.turno.ataqueTerrestre = { origem, alvo, defensor, dadosAtaque };
+  emitir(ctx, {
+    tipo: "dadosDeAtaqueRolados",
+    jogador: j.id,
+    defensor,
+    origem,
+    alvo,
+    dadosAtaque,
+  });
+}
+
+export function rolarDefesa(ctx: Contexto): void {
+  const estado = ctx.estado;
+  const pendente = estado.turno.ataqueTerrestre;
+  exigir(pendente !== null, "FASE_ERRADA", "Não há ataque terrestre esperando a defesa");
+  estado.turno.ataqueTerrestre = null;
+  const j = daVez(ctx);
+  const { origem, alvo, defensor, dadosAtaque } = pendente;
+  const dados = dadosAtaque.length;
+  const o = estado.territorios[origem];
+  const a = estado.territorios[alvo];
   const dadosDefesa = rolarOrdenado(ctx, Math.min(3, a.exercitos));
   let perdasAtaque = 0;
   let perdasDefesa = 0;

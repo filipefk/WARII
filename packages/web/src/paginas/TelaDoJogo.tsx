@@ -119,27 +119,42 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
   const encerrado = jogo?.ultimos.find((e) => e.tipo === "ataqueAereoEncerrado");
   const iniciado = jogo?.ultimos.find((e) => e.tipo === "ataqueAereoIniciado");
   const ciclo = jogo?.ultimos.find((e) => e.tipo === "cicloAereo");
+  const antiaereo = jogo?.ultimos.find((e) => e.tipo === "antiaereoRolado");
   const assentoDoAtacante = encerrado
     ? visao.jogadores.findIndex((j) => j.id === encerrado.jogador)
     : -1;
   const atacante = visao.jogadores[assentoDoAtacante];
-  // Perdas do ciclo aéreo do último lote. Se o ataque começou neste lote, espera a esquadrilha
-  // chegar: 1,5 s no voo ou 1,37 s na ida e volta (ataque que já acabou).
-  const atacanteDoCiclo =
-    ciclo?.tipo === "cicloAereo" ? visao.jogadores.findIndex((j) => j.id === ciclo.jogador) : -1;
+  // Perdas do último lote: os bombardeiros caem quando o defensor rola a antiaérea e os exércitos
+  // quando o atacante rola o ataque (cada um num lote). Se o ataque começou neste lote, espera a
+  // esquadrilha chegar: 1,5 s no voo ou 1,37 s na ida e volta (ataque que já acabou).
+  const perdas =
+    antiaereo?.tipo === "antiaereoRolado"
+      ? {
+          jogador: antiaereo.jogador,
+          alvo: antiaereo.alvo,
+          avioes: antiaereo.bombardeirosAbatidos,
+          exercitos: 0,
+        }
+      : ciclo?.tipo === "cicloAereo"
+        ? {
+            jogador: ciclo.jogador,
+            alvo: ciclo.alvo,
+            avioes: ciclo.dadoAtaque === null ? ciclo.bombardeirosAbatidos : 0,
+            exercitos: ciclo.exercitosAbatidos,
+          }
+        : null;
+  const atacanteDoCiclo = perdas ? visao.jogadores.findIndex((j) => j.id === perdas.jogador) : -1;
   const explosoes =
-    ciclo?.tipo === "cicloAereo" &&
-    atacanteDoCiclo >= 0 &&
-    (ciclo.bombardeirosAbatidos > 0 || ciclo.exercitosAbatidos > 0)
+    perdas && atacanteDoCiclo >= 0 && (perdas.avioes > 0 || perdas.exercitos > 0)
       ? {
           seq: jogo?.seqEventos ?? 0,
           base: atacanteDoCiclo,
-          alvo: ciclo.alvo,
+          alvo: perdas.alvo,
           restantes:
             visao.turno.ataqueAereo?.emCombate ??
             (encerrado?.tipo === "ataqueAereoEncerrado" ? encerrado.sobreviventes : 0),
-          avioes: ciclo.bombardeirosAbatidos,
-          exercitos: ciclo.exercitosAbatidos,
+          avioes: perdas.avioes,
+          exercitos: perdas.exercitos,
           atraso: iniciado ? (encerrado ? 1370 : 1500) : 0,
         }
       : null;
@@ -183,8 +198,7 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
                   cor: mesa.jogadorDaVez.cor,
                   alvo: visao.turno.ataqueAereo.alvo,
                   bombardeiros: visao.turno.ataqueAereo.emCombate,
-                  abatidosNaChegada:
-                    iniciado && ciclo?.tipo === "cicloAereo" ? ciclo.bombardeirosAbatidos : 0,
+                  abatidosNaChegada: iniciado && perdas ? perdas.avioes : 0,
                 }
               : null
           }

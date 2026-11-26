@@ -5,6 +5,7 @@ import {
   type Acao,
   cartaDeTroca,
   CONTINENTES,
+  jogadorQueAge,
   type CartaId,
   territorio,
   type TerritorioId,
@@ -416,7 +417,7 @@ function AereoEmCurso({
   ctx: Contexto;
   etapa: Extract<Etapa, { tipo: "aereoEmCurso" }>;
 }) {
-  const { alvo, defensor, emCombate, ciclos } = etapa.ataque;
+  const { alvo, defensor, emCombate, ciclos, etapa: momento } = etapa.ataque;
   return (
     <div className="rounded-raio-md border border-accent bg-panel-2 p-espaco-4">
       <p>
@@ -425,15 +426,69 @@ function AereoEmCurso({
         {plural(ciclos, "ciclo", "ciclos")}.
       </p>
       <Dica>O ataque aéreo nunca conquista: o alvo fica com pelo menos 1 exército.</Dica>
-      <Linha>
-        <Botao disabled={ctx.ocupado} onClick={() => ctx.mandar({ tipo: "continuarAtaqueAereo" })}>
-          Continuar
-        </Botao>
-        {ctx.visao.parametros.interromperAtaqueAereo && (
+      {momento === "ataque" ? (
+        <>
+          <Dica>A antiaérea já foi rolada. Agora é a sua vez de rolar o dado de ataque.</Dica>
+          <Linha>
+            <Botao disabled={ctx.ocupado} onClick={() => ctx.mandar({ tipo: "rolarAtaqueAereo" })}>
+              🎲 Rolar ataque aéreo
+            </Botao>
+          </Linha>
+        </>
+      ) : (
+        <Linha>
+          <Botao
+            disabled={ctx.ocupado}
+            onClick={() => ctx.mandar({ tipo: "continuarAtaqueAereo" })}
+          >
+            Continuar
+          </Botao>
           <Botao disabled={ctx.ocupado} onClick={() => ctx.mandar({ tipo: "encerrarAtaqueAereo" })}>
             Encerrar
           </Botao>
-        )}
+        </Linha>
+      )}
+    </div>
+  );
+}
+
+function Defesa({ ctx, etapa }: { ctx: Contexto; etapa: Extract<Etapa, { tipo: "defesa" }> }) {
+  const { origem, alvo, dadosAtaque } = etapa.ataque;
+  return (
+    <div className="rounded-raio-md border border-accent bg-panel-2 p-espaco-4">
+      <p>
+        <b>{ctx.mesa.nome(ctx.visao.jogadores[ctx.visao.vez]?.id ?? null)}</b> ataca{" "}
+        <b>{nomeT(alvo)}</b> a partir de {nomeT(origem)} e tirou {dadosAtaque.join("-")}.
+      </p>
+      <Dica>Empate favorece a defesa.</Dica>
+      <Linha>
+        <Botao disabled={ctx.ocupado} onClick={() => ctx.mandar({ tipo: "rolarDefesa" })}>
+          🎲 Rolar defesa ({plural(etapa.dados, "dado", "dados")})
+        </Botao>
+      </Linha>
+    </div>
+  );
+}
+
+function Antiaereo({
+  ctx,
+  etapa,
+}: {
+  ctx: Contexto;
+  etapa: Extract<Etapa, { tipo: "antiaereo" }>;
+}) {
+  const { alvo, emCombate } = etapa.ataque;
+  return (
+    <div className="rounded-raio-md border border-accent bg-panel-2 p-espaco-4">
+      <p>
+        <b>{ctx.mesa.nome(ctx.visao.jogadores[ctx.visao.vez]?.id ?? null)}</b> bombardeia{" "}
+        <b>{nomeT(alvo)}</b> com {plural(emCombate, "bombardeiro", "bombardeiros")}.
+      </p>
+      <Dica>A antiaérea rola primeiro; o atacante só rola com os bombardeiros que sobrarem.</Dica>
+      <Linha>
+        <Botao disabled={ctx.ocupado} onClick={() => ctx.mandar({ tipo: "rolarAntiaereo" })}>
+          🎲 Rolar antiaérea
+        </Botao>
       </Linha>
     </div>
   );
@@ -794,6 +849,10 @@ function Corpo({ ctx, etapa }: { ctx: Contexto; etapa: Etapa }) {
       return <Conquista ctx={ctx} etapa={etapa} />;
     case "aereoEmCurso":
       return <AereoEmCurso ctx={ctx} etapa={etapa} />;
+    case "defesa":
+      return <Defesa ctx={ctx} etapa={etapa} />;
+    case "antiaereo":
+      return <Antiaereo ctx={ctx} etapa={etapa} />;
     case "maoCheia":
       return <MaoCheia ctx={ctx} etapa={etapa} />;
     case "terrestre":
@@ -824,6 +883,15 @@ interface Props {
   envio: Envio;
 }
 
+// Dados que alguém precisa rolar para o combate seguir, para o texto de espera.
+function rolagemEsperada(visao: VisaoPartida): string | null {
+  const { ataqueTerrestre, ataqueAereo } = visao.turno;
+  if (ataqueTerrestre) return "a defesa";
+  if (ataqueAereo?.etapa === "antiaereo") return "a antiaérea";
+  if (ataqueAereo?.etapa === "ataque") return "o ataque aéreo";
+  return null;
+}
+
 export function PainelAcao({ visao, mesa, geografia, etapa, envio }: Props) {
   const { ocupado, erro, enviar } = envio;
   const ctx: Contexto = {
@@ -839,11 +907,18 @@ export function PainelAcao({ visao, mesa, geografia, etapa, envio }: Props) {
     },
   };
   const daVez = mesa.jogadorDaVez;
+  const rolagem = rolagemEsperada(visao);
   return (
     <Bloco titulo="Ação">
       {etapa.tipo === "espera" ? (
         <p className="dica">
-          Aguardando {mesa.nome(daVez?.id ?? null)} ({NOMES_FASES[visao.fase].toLowerCase()}).
+          {rolagem && visao.fase !== "FIM"
+            ? `Aguardando ${mesa.nome(jogadorQueAge(visao))} rolar ${rolagem}.`
+            : `Aguardando ${mesa.nome(daVez?.id ?? null)} (${NOMES_FASES[visao.fase].toLowerCase()}).`}
+        </p>
+      ) : etapa.tipo === "defesa" || etapa.tipo === "antiaereo" ? (
+        <p className="mb-espaco-2">
+          Sua vez de rolar <b>{rolagem}</b>.
         </p>
       ) : (
         <p className="mb-espaco-2">

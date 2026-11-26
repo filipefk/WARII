@@ -68,7 +68,17 @@ export type Evento =
       readonly quantidade: number;
     }
   | { readonly tipo: "faseAlterada"; readonly jogador: JogadorId; readonly fase: Fase }
-  // Ataque terrestre
+  // Ataque terrestre: o atacante rola (dadosDeAtaqueRolados) e depois o defensor (ataqueTerrestre,
+  // com o resultado do combate).
+  | {
+      readonly tipo: "dadosDeAtaqueRolados";
+      readonly jogador: JogadorId;
+      readonly defensor: JogadorId;
+      readonly origem: TerritorioId;
+      readonly alvo: TerritorioId;
+      // Já ordenados do maior para o menor.
+      readonly dadosAtaque: readonly number[];
+    }
   | {
       readonly tipo: "ataqueTerrestre";
       readonly jogador: JogadorId;
@@ -106,6 +116,17 @@ export type Evento =
       readonly daCaixa: number;
       readonly cartas: readonly CartaId[];
     }
+  // Antiaérea rolada pelo defensor, com bombardeiros sobrando para o atacante rolar o ataque.
+  // Quando não sobra nenhum, o ciclo termina ali e vem direto o cicloAereo.
+  | {
+      readonly tipo: "antiaereoRolado";
+      readonly jogador: JogadorId;
+      readonly defensor: JogadorId;
+      readonly alvo: TerritorioId;
+      readonly dadoAntiaereo: number;
+      readonly bombardeirosAbatidos: number;
+    }
+  // Ciclo completo (antiaérea e ataque), emitido quando o último dado do ciclo é rolado.
   | {
       readonly tipo: "cicloAereo";
       readonly jogador: JogadorId;

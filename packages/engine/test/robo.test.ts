@@ -10,7 +10,7 @@ import {
   criarPartida,
   decidirAcao,
   type EstadoPartida,
-  jogadorDaVez,
+  jogadorQueAge,
   PARAMETROS_PADRAO,
   rngComSemente,
   visaoDoJogador,
@@ -32,7 +32,7 @@ function jogar(
   let estado = criada.estado;
   let acoes = 0;
   while (estado.fase !== "FIM" && acoes < MAX_ACOES) {
-    const id = jogadorDaVez(estado).id;
+    const id = jogadorQueAge(estado);
     const acao: Acao = aleatorios.has(id)
       ? escolherAcao(estado, decisao)
       : decidirAcao(visaoDoJogador(estado, id), decisao);
@@ -77,7 +77,7 @@ describe("Robô heurístico", () => {
     let estado = criada.estado;
     const jogo = rngComSemente(10);
     for (let k = 0; k < 400 && estado.fase !== "FIM"; k++) {
-      const id = jogadorDaVez(estado).id;
+      const id = jogadorQueAge(estado);
       // A visão é a única entrada: trocar o que é oculto no estado não muda a decisão.
       const trocado = structuredClone(estado);
       for (const j of trocado.jogadores) {

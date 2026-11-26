@@ -39,6 +39,7 @@ export const esquemaAcao = z.discriminatedUnion("tipo", [
     alvo: esquemaTerritorio,
     dados: inteiro(1, MAXIMO_DADOS),
   }),
+  z.strictObject({ tipo: z.literal("rolarDefesa") }),
   z.strictObject({ tipo: z.literal("moverAposConquista"), quantidade: inteiro(1, MAXIMO_DADOS) }),
   z.strictObject({
     tipo: z.literal("iniciarAtaqueAereo"),
@@ -46,6 +47,8 @@ export const esquemaAcao = z.discriminatedUnion("tipo", [
     daBase: inteiro(0, MAXIMO_BOMBARDEIROS),
     cartas: z.strictObject({ carta: esquemaCarta, numericas: listaDeCartas }).optional(),
   }),
+  z.strictObject({ tipo: z.literal("rolarAntiaereo") }),
+  z.strictObject({ tipo: z.literal("rolarAtaqueAereo") }),
   z.strictObject({ tipo: z.literal("continuarAtaqueAereo") }),
   z.strictObject({ tipo: z.literal("encerrarAtaqueAereo") }),
   z.strictObject({ tipo: z.literal("encerrarAtaques") }),

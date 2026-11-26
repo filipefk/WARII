@@ -9,7 +9,7 @@ import {
   type TerritorioId,
   territoriosDoContinente,
 } from "../data/territorios.js";
-import type { EstadoJogador, EstadoPartida, JogadorId } from "./estado.js";
+import type { EstadoJogador, EstadoPartida, EstadoTurno, JogadorId } from "./estado.js";
 import { naoAlcancavel } from "./util.js";
 
 export function jogador(estado: EstadoPartida, id: JogadorId): EstadoJogador | undefined {
@@ -20,6 +20,22 @@ export function jogadorDaVez(estado: EstadoPartida): EstadoJogador {
   const j = estado.jogadores[estado.vez];
   if (j === undefined) throw new Error(`Estado corrompido: vez ${estado.vez} sem jogador`);
   return j;
+}
+
+// Quem deve agir agora: o jogador da vez, ou o defensor quando é ele quem tem dados a rolar (a
+// defesa de um ataque terrestre ou a antiaérea de um ciclo aéreo).
+// Aceita também a visão de um jogador (só usa a vez, os ids e o turno).
+export function jogadorQueAge(estado: {
+  readonly vez: number;
+  readonly jogadores: readonly { readonly id: JogadorId }[];
+  readonly turno: EstadoTurno;
+}): JogadorId {
+  const t = estado.turno;
+  if (t.ataqueTerrestre !== null) return t.ataqueTerrestre.defensor;
+  if (t.ataqueAereo?.etapa === "antiaereo") return t.ataqueAereo.defensor;
+  const j = estado.jogadores[estado.vez];
+  if (j === undefined) throw new Error(`Estado corrompido: vez ${estado.vez} sem jogador`);
+  return j.id;
 }
 
 export function jogadoresAtivos(estado: EstadoPartida): EstadoJogador[] {

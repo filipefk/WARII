@@ -1,11 +1,12 @@
 // Ataque aéreo em ciclos (WARII.md §7.3), com bombardeiros da base e/ou da caixa por cartas
-// (§9.3 B). Nunca conquista: o alvo fica sempre com pelo menos 1 exército.
+// (§9.3 B). Nunca conquista: o alvo fica sempre com pelo menos 1 exército. Em cada ciclo o
+// defensor rola a antiaérea e depois o atacante rola o ataque, cada um com a sua ação.
 
 import type { CartaId } from "../data/cartas.js";
 import { territoriosDaCarta } from "./consultas.js";
 import { type Contexto, daVez, emitir, exigirTerritorio } from "./contexto.js";
 import { descartarCartas, exigirCombinacao, idsDaCombinacao } from "./cartas.js";
-import type { AtaqueAereoEmCurso } from "./estado.js";
+import type { AtaqueAereoEmCurso, EtapaAerea } from "./estado.js";
 import { exigir, exigirQuantidade } from "./resultado.js";
 import { rolar } from "./rng.js";
 
@@ -62,7 +63,15 @@ export function iniciarAtaqueAereo(
   j.bombardeirosBase -= daBase;
   j.bombardeirosCaixa -= daCaixa;
   if (idsCartas.length > 0) descartarCartas(ctx, idsCartas);
-  const ataque: AtaqueAereoEmCurso = { alvo, defensor, emCombate: daBase + daCaixa, ciclos: 0 };
+  const ataque: AtaqueAereoEmCurso = {
+    alvo,
+    defensor,
+    emCombate: daBase + daCaixa,
+    ciclos: 0,
+    etapa: "antiaereo",
+    dadoAntiaereo: null,
+    bombardeirosAbatidos: 0,
+  };
   estado.turno.ataqueAereo = ataque;
   emitir(ctx, {
     tipo: "ataqueAereoIniciado",
@@ -73,67 +82,98 @@ export function iniciarAtaqueAereo(
     daCaixa,
     cartas: idsCartas,
   });
-  executarCiclo(ctx);
-  // Sem interrupção (manual), os ciclos seguem até uma das condições de fim.
-  if (!p.interromperAtaqueAereo) {
-    while (estado.turno.ataqueAereo !== null) executarCiclo(ctx);
-  }
+  // Cada ciclo começa pela antiaérea, rolada pelo defensor (rolarAntiaereo).
 }
 
-function emCurso(ctx: Contexto): AtaqueAereoEmCurso {
+function emCurso(ctx: Contexto, etapa: EtapaAerea): AtaqueAereoEmCurso {
   const a = ctx.estado.turno.ataqueAereo;
   exigir(a !== null, "FASE_ERRADA", "Não há ataque aéreo em curso");
+  exigir(a.etapa === etapa, "ACAO_BLOQUEADA", "Essa ação não vale nesta etapa do ataque aéreo");
   return a;
 }
 
-// Um ciclo: antiaérea do defensor e, se sobrar bombardeiro, dado de ataque do atacante.
-function executarCiclo(ctx: Contexto): void {
+// Primeira metade do ciclo: a antiaérea do defensor. Se não sobra bombardeiro, o ciclo acaba ali.
+export function rolarAntiaereo(ctx: Contexto): void {
   const estado = ctx.estado;
-  const p = estado.parametros;
   const j = daVez(ctx);
-  const ataque = emCurso(ctx);
-  const alvo = estado.territorios[ataque.alvo];
-
-  const dadoAntiaereo = rolar(ctx.rng, p.facesAntiaereo);
+  const ataque = emCurso(ctx, "antiaereo");
+  const dadoAntiaereo = rolar(ctx.rng, estado.parametros.facesAntiaereo);
   const bombardeirosAbatidos = Math.min(dadoAntiaereo, ataque.emCombate);
   ataque.emCombate -= bombardeirosAbatidos;
   j.bombardeirosCaixa += bombardeirosAbatidos;
-
-  let dadoAtaque: number | null = null;
-  let exercitosAbatidos = 0;
-  if (ataque.emCombate > 0) {
-    dadoAtaque = rolar(ctx.rng, p.facesAtaqueAereo);
-    // Nunca deixa menos de 1 exército; o excesso se perde.
-    exercitosAbatidos = Math.min(dadoAtaque, alvo.exercitos - 1);
-    alvo.exercitos -= exercitosAbatidos;
+  if (ataque.emCombate === 0) {
+    ataque.ciclos += 1;
+    emitir(ctx, {
+      tipo: "cicloAereo",
+      jogador: j.id,
+      defensor: ataque.defensor,
+      alvo: ataque.alvo,
+      dadoAntiaereo,
+      bombardeirosAbatidos,
+      dadoAtaque: null,
+      exercitosAbatidos: 0,
+    });
+    encerrar(ctx);
+    return;
   }
+  ataque.etapa = "ataque";
+  ataque.dadoAntiaereo = dadoAntiaereo;
+  ataque.bombardeirosAbatidos = bombardeirosAbatidos;
+  emitir(ctx, {
+    tipo: "antiaereoRolado",
+    jogador: j.id,
+    defensor: ataque.defensor,
+    alvo: ataque.alvo,
+    dadoAntiaereo,
+    bombardeirosAbatidos,
+  });
+}
+
+// Segunda metade do ciclo: o dado de ataque do atacante.
+export function rolarAtaqueAereo(ctx: Contexto): void {
+  const estado = ctx.estado;
+  const p = estado.parametros;
+  const j = daVez(ctx);
+  const ataque = emCurso(ctx, "ataque");
+  const alvo = estado.territorios[ataque.alvo];
+  const dadoAtaque = rolar(ctx.rng, p.facesAtaqueAereo);
+  // Nunca deixa menos de 1 exército; o excesso se perde.
+  const exercitosAbatidos = Math.min(dadoAtaque, alvo.exercitos - 1);
+  alvo.exercitos -= exercitosAbatidos;
   ataque.ciclos += 1;
   emitir(ctx, {
     tipo: "cicloAereo",
     jogador: j.id,
     defensor: ataque.defensor,
     alvo: ataque.alvo,
-    dadoAntiaereo,
-    bombardeirosAbatidos,
+    dadoAntiaereo: ataque.dadoAntiaereo ?? 0,
+    bombardeirosAbatidos: ataque.bombardeirosAbatidos,
     dadoAtaque,
     exercitosAbatidos,
   });
-  if (ataque.emCombate === 0 || alvo.exercitos < 2) encerrar(ctx);
+  ataque.dadoAntiaereo = null;
+  ataque.bombardeirosAbatidos = 0;
+  if (alvo.exercitos < 2) {
+    encerrar(ctx);
+    return;
+  }
+  // Sem interrupção (manual), os ciclos seguem até uma das condições de fim.
+  ataque.etapa = p.interromperAtaqueAereo ? "decisao" : "antiaereo";
 }
 
 export function continuarAtaqueAereo(ctx: Contexto): void {
-  emCurso(ctx);
-  executarCiclo(ctx);
+  emCurso(ctx, "decisao").etapa = "antiaereo";
 }
 
 export function encerrarAtaqueAereo(ctx: Contexto): void {
-  emCurso(ctx);
+  emCurso(ctx, "decisao");
   encerrar(ctx);
 }
 
 // Sobreviventes voltam para a base (vídeo) ou para a caixa (manual).
 function encerrar(ctx: Contexto): void {
-  const ataque = emCurso(ctx);
+  const ataque = ctx.estado.turno.ataqueAereo;
+  exigir(ataque !== null, "FASE_ERRADA", "Não há ataque aéreo em curso");
   const j = daVez(ctx);
   const paraBase = ctx.estado.parametros.sobreviventesAereoVoltamParaBase;
   if (paraBase) j.bombardeirosBase += ataque.emCombate;

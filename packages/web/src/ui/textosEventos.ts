@@ -72,6 +72,10 @@ export function textoDoEvento(e: Evento, nome: (jogadorId: string) => string): s
       return `${nome(e.jogador)} colocou ${e.quantidade} em ${nomeT(e.territorio)}.`;
     case "faseAlterada":
       return `${nome(e.jogador)} passou para: ${NOMES_FASES[e.fase]}.`;
+    case "dadosDeAtaqueRolados":
+      return `${nome(e.jogador)} ataca ${nomeT(e.alvo)} (${nome(e.defensor)}) a partir de ${nomeT(
+        e.origem,
+      )} e tirou ${e.dadosAtaque.join("-")}. Falta a defesa rolar.`;
     case "ataqueTerrestre":
       return `${nome(e.jogador)} atacou ${nomeT(e.alvo)} (${nome(e.defensor)}) a partir de ${nomeT(
         e.origem,
@@ -88,6 +92,12 @@ export function textoDoEvento(e: Evento, nome: (jogadorId: string) => string): s
       )}) com ${plural(e.daBase + e.daCaixa, "bombardeiro", "bombardeiros")}${
         e.cartas.length ? `, usando ${listaCartas(e.cartas)}` : ""
       }.`;
+    case "antiaereoRolado":
+      return `A antiaérea de ${nome(e.defensor)} em ${nomeT(e.alvo)} abateu ${plural(
+        e.bombardeirosAbatidos,
+        "bombardeiro",
+        "bombardeiros",
+      )}. Falta o ataque rolar.`;
     case "cicloAereo":
       return `Ciclo aéreo em ${nomeT(e.alvo)}: antiaérea abateu ${plural(
         e.bombardeirosAbatidos,

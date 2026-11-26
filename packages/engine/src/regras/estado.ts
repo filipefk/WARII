@@ -46,11 +46,28 @@ export interface Recebimento {
   porContinente: Partial<Record<ContinenteId, number>>;
 }
 
+// Ataque terrestre com os dados do atacante já rolados, esperando o defensor rolar os dele (§7.1).
+export interface AtaqueTerrestreEmCurso {
+  readonly origem: TerritorioId;
+  readonly alvo: TerritorioId;
+  readonly defensor: JogadorId;
+  // Já ordenados do maior para o menor.
+  readonly dadosAtaque: readonly number[];
+}
+
+// Etapa do ciclo aéreo: o defensor rola a antiaérea, depois o atacante rola o ataque e, se a
+// partida permite interromper (vídeo), o atacante decide entre os ciclos se continua.
+export type EtapaAerea = "antiaereo" | "ataque" | "decisao";
+
 export interface AtaqueAereoEmCurso {
   readonly alvo: TerritorioId;
   readonly defensor: JogadorId;
   emCombate: number;
   ciclos: number;
+  etapa: EtapaAerea;
+  // Antiaérea do ciclo em curso, enquanto o atacante não rola o ataque (etapa "ataque").
+  dadoAntiaereo: number | null;
+  bombardeirosAbatidos: number;
 }
 
 // Território recém-conquistado esperando o atacante dizer quantos exércitos entram (§7.2).
@@ -64,6 +81,7 @@ export interface ConquistaPendente {
 export interface EstadoTurno {
   conquistou: boolean;
   recebimento: Recebimento | null;
+  ataqueTerrestre: AtaqueTerrestreEmCurso | null;
   ataqueAereo: AtaqueAereoEmCurso | null;
   conquistaPendente: ConquistaPendente | null;
 }
@@ -102,6 +120,7 @@ export interface EstadoPartida {
 export const turnoVazio = (): EstadoTurno => ({
   conquistou: false,
   recebimento: null,
+  ataqueTerrestre: null,
   ataqueAereo: null,
   conquistaPendente: null,
 });

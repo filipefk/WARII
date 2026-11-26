@@ -7,11 +7,13 @@
 import {
   type Acao,
   type AtaqueAereoEmCurso,
+  type AtaqueTerrestreEmCurso,
   cartaDeTroca,
   type CartaId,
   type ConquistaPendente,
   type ContinenteId,
   IDS_CONTINENTES,
+  jogadorQueAge,
   pendenteDeRecebimento,
   territorio as dadosDoTerritorio,
   type TerritorioId,
@@ -67,6 +69,9 @@ export type Etapa =
     }
   | { tipo: "conquista"; conquista: ConquistaPendente }
   | { tipo: "aereoEmCurso"; ataque: AtaqueAereoEmCurso }
+  // Vez de outro, mas o jogador é o defensor e tem dados a rolar.
+  | { tipo: "defesa"; ataque: AtaqueTerrestreEmCurso; dados: number }
+  | { tipo: "antiaereo"; ataque: AtaqueAereoEmCurso }
   | { tipo: "maoCheia"; quantidade: number; limite: number }
   | {
       tipo: "terrestre";
@@ -351,7 +356,16 @@ function transporte(visao: VisaoPartida, i: Interacao): Etapa {
 }
 
 export function derivarEtapa(visao: VisaoPartida, i: Interacao): Etapa {
-  if (visao.fase === "FIM" || !euSouDaVez(visao)) return { tipo: "espera" };
+  if (visao.fase === "FIM" || visao.voce === null) return { tipo: "espera" };
+  // Rolagem do defensor: só ele age até rolar.
+  const { ataqueTerrestre, ataqueAereo } = visao.turno;
+  if (jogadorQueAge(visao) !== visao.voce) return { tipo: "espera" };
+  if (ataqueTerrestre) {
+    const dados = Math.min(3, visao.territorios[ataqueTerrestre.alvo].exercitos);
+    return { tipo: "defesa", ataque: ataqueTerrestre, dados };
+  }
+  if (ataqueAereo?.etapa === "antiaereo") return { tipo: "antiaereo", ataque: ataqueAereo };
+  if (!euSouDaVez(visao)) return { tipo: "espera" };
   if (visao.fase === "PREP_ESCOLHA_5J") {
     if (i.modo === "doisVagos") return doisVagos(visao, i);
     return {
@@ -420,7 +434,10 @@ export function destaquesDoMapa(etapa: Etapa): DestaquesDoMapa {
     case "conquista":
       return { opcoes: VAZIO, marcados: marcar(etapa.conquista.origem, etapa.conquista.alvo) };
     case "aereoEmCurso":
+    case "antiaereo":
       return { opcoes: VAZIO, marcados: marcar(etapa.ataque.alvo) };
+    case "defesa":
+      return { opcoes: VAZIO, marcados: marcar(etapa.ataque.origem, etapa.ataque.alvo) };
     case "espera":
     case "escolha5j":
     case "maoCheia":

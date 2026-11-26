@@ -1,8 +1,9 @@
-// Faz os robôs jogarem: quando a vez é de um jogador controlado pelo servidor, espera um pouco
-// (para quem acompanha ver o combate), pede a ação ao robô do engine (`decidirAcao`, que só vê a
-// visão dele) e a aplica pelo mesmo caminho das ações humanas (`aplicarEGravar`, na fila da
-// partida). Repete até a vez ser de um humano ou a partida acabar.
-import { decidirAcao, jogadorDaVez, visaoDoJogador } from "@warii/engine";
+// Faz os robôs jogarem: quando quem deve agir é um jogador controlado pelo servidor (o da vez, ou
+// o defensor que tem dados a rolar), espera um pouco (para quem acompanha ver o combate), pede a
+// ação ao robô do engine (`decidirAcao`, que só vê a visão dele) e a aplica pelo mesmo caminho das
+// ações humanas (`aplicarEGravar`, na fila da partida). Repete até a ação caber a um humano ou a
+// partida acabar.
+import { decidirAcao, jogadorQueAge, visaoDoJogador } from "@warii/engine";
 import type { FastifyBaseLogger } from "fastify";
 import { auditar } from "../auditoria.js";
 import { config } from "../config.js";
@@ -66,7 +67,7 @@ async function jogar(partidaId: string): Promise<void> {
       const partida = await partidaAtiva(partidaId);
       const estado = partida.estado;
       if (estado.fase === "FIM") return false;
-      const roboId = jogadorDaVez(estado).id;
+      const roboId = jogadorQueAge(estado);
       if (!partida.robos.has(roboId)) return false;
 
       const vez = `${estado.rodada}:${estado.vez}`;
