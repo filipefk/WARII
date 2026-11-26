@@ -1,0 +1,99 @@
+<!doctype html>
+<!--
+  Composição da imagem de prévia de links (Open Graph), 1200×630.
+  Gerar public/og-imagem.png (em packages/web):
+    & "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless --disable-gpu --hide-scrollbars --force-device-scale-factor=1 --window-size=1200,630 --screenshot="$PWD\public\og-imagem.png" "file:///$PWD/scripts/og-imagem.html"
+-->
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+        background: #1b1410;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        color: #f3e9df;
+      }
+      .palco {
+        position: relative;
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+      }
+      .mapa {
+        position: absolute;
+        inset: -40px -60px auto -60px;
+        width: 1320px;
+        opacity: 0.45;
+      }
+      .cenas {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 1200px;
+        height: 260px;
+        object-fit: cover;
+        object-position: bottom;
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 55%);
+        mask-image: linear-gradient(to bottom, transparent 0%, #000 55%);
+        opacity: 0.9;
+      }
+      .caca {
+        position: absolute;
+        right: 40px;
+        top: 40px;
+        width: 380px;
+        opacity: 0.85;
+        transform: rotate(-8deg);
+      }
+      .veu {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse at 38% 45%, rgba(27, 20, 16, 0.25), rgba(27, 20, 16, 0.85) 75%);
+      }
+      .conteudo {
+        position: absolute;
+        left: 80px;
+        top: 150px;
+        right: 80px;
+      }
+      .logo {
+        width: 720px;
+        display: block;
+        filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.6));
+      }
+      .online {
+        margin-top: 10px;
+        font-weight: 800;
+        font-size: 64px;
+        letter-spacing: 6px;
+        color: #f3e9df;
+        text-shadow: 0 3px 10px rgba(0, 0, 0, 0.7);
+      }
+      .frase {
+        margin-top: 18px;
+        font-size: 30px;
+        color: #ffb347;
+        font-weight: 600;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="palco">
+      <img class="mapa" src="../public/fundos/mapa-mundi.svg" alt="" />
+      <img class="cenas" src="../public/fundos/cenas-de-guerra.svg" alt="" />
+      <img class="caca" src="../public/fundos/caca-tres-quartos.png" alt="" />
+      <div class="veu"></div>
+      <div class="conteudo">
+        <img class="logo" src="../public/WARII-ferrugem.svg" alt="War II" />
+        <div class="online">ONLINE</div>
+        <div class="frase">Estratégia por terra e ar — jogue com os amigos</div>
+      </div>
+    </div>
+  </body>
+</html>
