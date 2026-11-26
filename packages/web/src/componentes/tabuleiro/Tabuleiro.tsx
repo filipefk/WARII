@@ -196,8 +196,10 @@ export function Tabuleiro({
 
   const clicar = (e: MouseEvent<SVGSVGElement>) => {
     if (!onClicar) return;
-    const alvo = e.target instanceof Element ? e.target.closest("[data-territorio]") : null;
-    const id = alvo?.getAttribute("data-territorio") ?? "";
+    // O território ou a pilha de fichas dele (que fica por cima e pode cair sobre o mar).
+    const alvo =
+      e.target instanceof Element ? e.target.closest("[data-territorio], [data-marcador]") : null;
+    const id = alvo?.getAttribute("data-territorio") ?? alvo?.getAttribute("data-marcador") ?? "";
     onClicar(ehTerritorioId(id) ? id : null);
   };
 
@@ -413,6 +415,7 @@ export function Tabuleiro({
             return (
               <MarcadorTerritorio
                 key={t.id}
+                id={t.id}
                 ponto={geo.rotulo}
                 nome={t.nome}
                 sub={geo.sub}

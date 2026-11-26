@@ -16,6 +16,7 @@ import {
   PainelVez,
 } from "../componentes/jogo/Paineis";
 import { PainelCombate } from "../componentes/jogo/Combate";
+import { Orientacao, useOrientacao } from "../componentes/jogo/Orientacao";
 import { PainelAcao } from "../componentes/jogo/PainelAcao";
 import { TelaDeVitoria } from "../componentes/jogo/TelaDeVitoria";
 import { Galeria } from "../componentes/guia/Galeria";
@@ -115,6 +116,7 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
     [visao, modo, origem, destino, cartasMarcadas, daBase],
   );
   const destaques = useMemo(() => destaquesDoMapa(etapa), [etapa]);
+  const orientacao = useOrientacao(partidaId, visao, etapa, lobby.status === "em_andamento");
 
   if (erro) return <Aviso>{erro}</Aviso>;
   if (!visao || !mesa || !geografia || !jogo) return <Carregando texto="Carregando a partida…" />;
@@ -301,6 +303,9 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
             selecionar(t);
           }}
         />
+      )}
+      {orientacao.mensagem && !fim && (
+        <Orientacao mensagem={orientacao.mensagem} onFechar={orientacao.fechar} />
       )}
       {fim && !vitoriaFechada && (
         <TelaDeVitoria visao={visao} mesa={mesa} onFechar={() => setVitoriaFechada(true)} />

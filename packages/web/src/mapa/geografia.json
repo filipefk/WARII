@@ -685,7 +685,7 @@
   "oceanos": [
     { "texto": "Oceano Pacífico", "ponto": [218.7, 530.7] },
     { "texto": "Oceano Pacífico", "ponto": [1490.8, 530.7] },
-    { "texto": "Oceano Atlântico", "ponto": [644.2, 600.3] },
+    { "texto": "Oceano Atlântico", "ponto": [600.7, 468.4] },
     { "texto": "Oceano Índico", "ponto": [1113.1, 662.5] }
   ],
   "continentes": {

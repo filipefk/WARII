@@ -15,6 +15,7 @@ import { type Mesa, totaisPorJogador } from "../../jogo/mesa";
 import type { Geografia } from "../../mapa/geografia";
 import { NOMES_FASES, textoDoEvento } from "../../ui/textosEventos";
 import { CorJogador, Presenca } from "../basicos";
+import { CartaAmpliavel } from "../tabuleiro/CartaAmpliavel";
 import { CartaObjetivo } from "../tabuleiro/CartaObjetivo";
 import { CartaTroca } from "../tabuleiro/CartaTroca";
 
@@ -215,7 +216,7 @@ export function MinhasCartas({
           {cartas.map((id) => {
             const carta = cartaDeTroca(id);
             if (!carta) return null;
-            return (
+            const peca = (
               <CartaTroca
                 key={id}
                 carta={carta}
@@ -224,6 +225,15 @@ export function MinhasCartas({
                 marcada={marcadas.includes(id)}
                 {...(onAlternar && { onClick: () => onAlternar(id) })}
               />
+            );
+            // Só para ver (sem marcar): aproxima no hover e amplia no clique.
+            if (onAlternar) return peca;
+            const rotulo =
+              carta.tipo === "numerica" ? `carta +${carta.valor}` : `carta ${carta.nome}`;
+            return (
+              <CartaAmpliavel key={id} rotulo={rotulo}>
+                {peca}
+              </CartaAmpliavel>
             );
           })}
         </div>
@@ -238,7 +248,11 @@ export function MeuObjetivo({ visao }: { visao: VisaoPartida }) {
   const trocado = meu.objetivoOriginalId !== null && meu.objetivoOriginalId !== meu.objetivoId;
   return (
     <Bloco titulo="Meu objetivo">
-      <CartaObjetivo id={meu.objetivoId} largura={170} />
+      <div className="w-fit">
+        <CartaAmpliavel rotulo="meu objetivo">
+          <CartaObjetivo id={meu.objetivoId} largura={170} />
+        </CartaAmpliavel>
+      </div>
       {trocado && (
         <p className="dica mt-espaco-2">
           O objetivo sorteado foi trocado automaticamente por este (regra §10.2).

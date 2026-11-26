@@ -552,7 +552,7 @@ const TONS = [0, 0.07, -0.06, 0.12, -0.1, 0.04, -0.03, 0.1, -0.08, 0.05, -0.05, 
 const ROTULOS_OCEANOS = [
   ["Oceano Pacífico", [-128, 8]],
   ["Oceano Pacífico", [165, 8]],
-  ["Oceano Atlântico", [-30, -8]],
+  ["Oceano Atlântico", [-40, 22]],
   ["Oceano Índico", [78, -22]],
 ];
 // Ponto (lon, lat) do nome de cada continente.

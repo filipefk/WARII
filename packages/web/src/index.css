@@ -321,6 +321,11 @@
   .mapa-selo {
     filter: drop-shadow(0 1.5px 1.5px rgba(0, 0, 0, 0.6));
   }
+  /* A pilha de fichas recebe o clique como o território dela (data-marcador). */
+  .mapa-rotulo .mapa-selo {
+    pointer-events: visiblePainted;
+    cursor: pointer;
+  }
   .mapa-selo-reflexo {
     fill: #ffffff;
     opacity: 0.5;
@@ -461,6 +466,26 @@
   .galeria-carta:hover .carta-troca {
     transform: scale(1.45);
     z-index: 2;
+  }
+  /* Carta da mão e objetivo (CartaAmpliavel): aproxima no hover, amplia no clique. */
+  .carta-ampliavel {
+    display: block;
+    cursor: zoom-in;
+    transition: transform 0.15s;
+  }
+  .carta-ampliavel:hover,
+  .carta-ampliavel:focus-visible {
+    transform: translateY(-4px) scale(1.12);
+  }
+  .carta-ampliada {
+    transform: scale(var(--escala));
+    animation: carta-ampliar 0.2s ease-out;
+  }
+  @keyframes carta-ampliar {
+    from {
+      transform: scale(1);
+      opacity: 0.4;
+    }
   }
   .galeria-dado .dado {
     transition: transform 0.15s;
@@ -856,7 +881,11 @@
   .caca-voo,
   .caca-voo-sombra,
   .caca-volta-sombra,
-  .dado.rolando {
+  .dado.rolando,
+  .carta-ampliada {
     animation: none;
+  }
+  .carta-ampliavel {
+    transition: none;
   }
 }

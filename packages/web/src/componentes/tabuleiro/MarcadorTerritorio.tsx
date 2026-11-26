@@ -1,13 +1,15 @@
 // Rótulo de um território sobre o mapa (componente MarcadorTerritorio do sistema): pilha de fichas
 // cilíndricas de plástico na cor do dono com os exércitos no topo (brilho, reflexo, sulco e sombra),
 // nome com halo, países incluídos e alfinete de centro estratégico.
-import type { CorId } from "@warii/engine";
+import type { CorId, TerritorioId } from "@warii/engine";
 import { TONS } from "../../ui/cores";
 import type { Ponto } from "../../mapa/geografia";
 import { ID_SELO_BRILHO, ID_SELO_LATERAL } from "./DefsDoJogo";
 import { AlfineteCE } from "./pecas";
 
 interface Props {
+  // Território do marcador: clicar na pilha de fichas vale como clicar nele.
+  id: TerritorioId;
   ponto: Ponto;
   nome: string;
   sub?: string;
@@ -54,7 +56,15 @@ function Ficha({ x, cy, cor, topo }: { x: number; cy: number; cor: string; topo:
   );
 }
 
-export function MarcadorTerritorio({ ponto: [x, y], nome, sub, centro, dono, exercitos }: Props) {
+export function MarcadorTerritorio({
+  id,
+  ponto: [x, y],
+  nome,
+  sub,
+  centro,
+  dono,
+  exercitos,
+}: Props) {
   const yNome = dono ? y + 18 : y;
   const n = dono ? fichasDaPilha(exercitos) : 0;
   // A ficha de baixo fica no lugar do antigo selo; as de cima sobem.
@@ -63,7 +73,7 @@ export function MarcadorTerritorio({ ponto: [x, y], nome, sub, centro, dono, exe
   return (
     <g className="mapa-rotulo">
       {dono && (
-        <g className="mapa-selo">
+        <g className="mapa-selo" data-marcador={id}>
           {Array.from({ length: n }, (_, k) => (
             <Ficha
               key={k}

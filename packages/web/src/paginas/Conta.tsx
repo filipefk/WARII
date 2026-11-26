@@ -5,6 +5,7 @@ import { useNavigate } from "react-router";
 import { apiAuth } from "../api/auth";
 import { mensagemDoErro } from "../api/cliente";
 import { Aviso, Botao, Campo, Cartao, TituloDaTela } from "../componentes/basicos";
+import { Confirmar } from "../componentes/JanelaPopup";
 import { useSessao } from "../stores/sessao";
 
 function TrocarSenha() {
@@ -83,9 +84,9 @@ function SairDeTodas() {
   const navegar = useNavigate();
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
 
-  const aoClicar = () => {
-    if (!window.confirm("Encerrar a sessão em todos os dispositivos, inclusive este?")) return;
+  const sair = () => {
     setEnviando(true);
     sairDeTodas()
       .then(() => navegar("/entrar", { replace: true }))
@@ -105,9 +106,19 @@ function SairDeTodas() {
           <Aviso>{erro}</Aviso>
         </div>
       )}
-      <Botao ocupado={enviando} onClick={aoClicar}>
+      <Botao ocupado={enviando} onClick={() => setConfirmando(true)}>
         Sair de todos os dispositivos
       </Botao>
+      {confirmando && (
+        <Confirmar
+          titulo="Sair de todos os dispositivos"
+          rotulo="Sair de todos"
+          acao={sair}
+          onFechar={() => setConfirmando(false)}
+        >
+          A sessão é encerrada em todos os dispositivos, inclusive neste.
+        </Confirmar>
+      )}
     </Cartao>
   );
 }

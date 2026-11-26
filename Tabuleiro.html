@@ -576,7 +576,7 @@ async function init() {
 
   // ---- textos fixos ----
   const gTxt = root.append("g");
-  [["Oceano Pacífico", [-128, 8]], ["Oceano Pacífico", [165, 8]], ["Oceano Atlântico", [-30, -8]], ["Oceano Índico", [78, -22]]]
+  [["Oceano Pacífico", [-128, 8]], ["Oceano Pacífico", [165, 8]], ["Oceano Atlântico", [-40, 22]], ["Oceano Índico", [78, -22]]]
     .forEach(([txt, ll]) => { const [x, y] = projection(ll); gTxt.append("text").attr("class", "ocean").attr("x", x).attr("y", y).text(txt); });
   Object.values(CONTINENTS).forEach(c => {
     const [x, y] = projection(c.label);

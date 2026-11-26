@@ -6,7 +6,8 @@ import { apiAdmin } from "../../api/admin";
 import { mensagemDoErro } from "../../api/cliente";
 import { Aviso, Botao, Carregando, Cartao } from "../../componentes/basicos";
 import { Abas } from "../../componentes/Modal";
-import { Confirmar, formatoData } from "./Admin";
+import { Confirmar } from "../../componentes/JanelaPopup";
+import { formatoData } from "./Admin";
 
 type Filtro = StatusPartida | "todas";
 

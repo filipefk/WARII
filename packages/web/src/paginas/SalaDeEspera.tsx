@@ -7,6 +7,7 @@ import { useNavigate } from "react-router";
 import { mensagemDoErro } from "../api/cliente";
 import { apiPartidas } from "../api/partidas";
 import { Aviso, Botao, Cartao, CorJogador, Presenca, TituloDaTela } from "../componentes/basicos";
+import { Confirmar } from "../componentes/JanelaPopup";
 import { usePartidas } from "../stores/partidas";
 import { TONS } from "../ui/cores";
 import { ParametrosPartida } from "./ParametrosPartida";
@@ -46,12 +47,12 @@ function Participantes({ lobby, presenca, usuarioId }: Props) {
   const livres = (atual: CorId | null) =>
     IDS_CORES.filter((c) => c === atual || !lobby.participantes.some((p) => p.cor === c));
 
-  const remover = (alvoId: string, nome: string) => {
-    if (!window.confirm(`Remover ${nome} da partida?`)) return;
+  // Pessoa a remover, à espera da confirmação (robô sai direto).
+  const [removendo, setRemovendo] = useState<{ id: string; nome: string } | null>(null);
+  const remover = (alvoId: string) =>
     executar(`remover:${alvoId}`, async () =>
       gravarLobby(await apiPartidas.remover(lobby.id, alvoId)),
     );
-  };
 
   return (
     <Cartao titulo={`Jogadores (${lobby.participantes.length} de ${MAXIMO_JOGADORES})`}>
@@ -98,7 +99,9 @@ function Participantes({ lobby, presenca, usuarioId }: Props) {
                   type="button"
                   className="link dica"
                   disabled={ocupado !== null}
-                  onClick={() => remover(p.usuarioId, p.nome)}
+                  onClick={() =>
+                    p.robo ? remover(p.usuarioId) : setRemovendo({ id: p.usuarioId, nome: p.nome })
+                  }
                 >
                   remover
                 </button>
@@ -119,6 +122,16 @@ function Participantes({ lobby, presenca, usuarioId }: Props) {
         <div className="mt-espaco-5">
           <Aviso>{erro}</Aviso>
         </div>
+      )}
+      {removendo && (
+        <Confirmar
+          titulo="Remover jogador"
+          rotulo="Remover"
+          acao={() => remover(removendo.id)}
+          onFechar={() => setRemovendo(null)}
+        >
+          Remover <b>{removendo.nome}</b> da partida?
+        </Confirmar>
       )}
     </Cartao>
   );
@@ -172,6 +185,7 @@ function ConviteDaPartida({ lobby }: { lobby: PartidaLobbyDto }) {
   const gravarLobby = usePartidas((s) => s.gravarLobby);
   const { ocupado, erro, executar } = useOperacao();
   const [copiado, setCopiado] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
   if (!lobby.convite) return null;
   const link = lobby.convite;
 
@@ -185,10 +199,8 @@ function ConviteDaPartida({ lobby }: { lobby: PartidaLobbyDto }) {
       .catch(() => window.prompt("Copie o link do convite:", link));
   };
 
-  const renovar = () => {
-    if (!window.confirm("Gerar um novo link? O link atual deixa de funcionar.")) return;
+  const renovar = () =>
     executar("renovar", async () => gravarLobby(await apiPartidas.renovarConvite(lobby.id)));
-  };
 
   return (
     <Cartao titulo="Convite">
@@ -201,7 +213,7 @@ function ConviteDaPartida({ lobby }: { lobby: PartidaLobbyDto }) {
           className="campo flex-1 font-mono text-dica"
         />
         <Botao onClick={copiar}>{copiado ? "Copiado!" : "Copiar"}</Botao>
-        <Botao ocupado={ocupado === "renovar"} onClick={renovar}>
+        <Botao ocupado={ocupado === "renovar"} onClick={() => setConfirmando(true)}>
           Gerar novo link
         </Botao>
       </div>
@@ -209,6 +221,16 @@ function ConviteDaPartida({ lobby }: { lobby: PartidaLobbyDto }) {
         <div className="mt-espaco-5">
           <Aviso>{erro}</Aviso>
         </div>
+      )}
+      {confirmando && (
+        <Confirmar
+          titulo="Gerar novo link"
+          rotulo="Gerar novo link"
+          acao={renovar}
+          onFechar={() => setConfirmando(false)}
+        >
+          O link atual deixa de funcionar.
+        </Confirmar>
       )}
     </Cartao>
   );
@@ -233,6 +255,7 @@ function Comandos({ lobby, usuarioId }: Omit<Props, "presenca">) {
   const { ocupado, erro, executar } = useOperacao();
   const souAnfitriao = lobby.anfitriao.id === usuarioId;
   const pendencias = pendenciasParaIniciar(lobby);
+  const [confirmando, setConfirmando] = useState<"cancelar" | "sair" | null>(null);
 
   const voltar = (aviso: string) => {
     const estado: EstadoAviso = { aviso };
@@ -241,20 +264,16 @@ function Comandos({ lobby, usuarioId }: Omit<Props, "presenca">) {
 
   const iniciar = () =>
     executar("iniciar", async () => gravarLobby(await apiPartidas.iniciar(lobby.id)));
-  const cancelar = () => {
-    if (!window.confirm("Cancelar a partida? Ela some da lista de todos.")) return;
+  const cancelar = () =>
     executar("cancelar", async () => {
       await apiPartidas.cancelar(lobby.id);
       voltar("Partida cancelada.");
     });
-  };
-  const sair = () => {
-    if (!window.confirm("Sair desta partida?")) return;
+  const sair = () =>
     executar("sair", async () => {
       await apiPartidas.sair(lobby.id);
       voltar("Você saiu da partida.");
     });
-  };
 
   return (
     <Cartao>
@@ -268,7 +287,11 @@ function Comandos({ lobby, usuarioId }: Omit<Props, "presenca">) {
             >
               Iniciar partida
             </Botao>
-            <Botao ocupado={ocupado === "cancelar"} disabled={ocupado !== null} onClick={cancelar}>
+            <Botao
+              ocupado={ocupado === "cancelar"}
+              disabled={ocupado !== null}
+              onClick={() => setConfirmando("cancelar")}
+            >
               Cancelar partida
             </Botao>
           </div>
@@ -283,7 +306,11 @@ function Comandos({ lobby, usuarioId }: Omit<Props, "presenca">) {
       ) : (
         <div className="flex flex-wrap items-center gap-espaco-5">
           <p>Aguardando {lobby.anfitriao.nome} iniciar a partida.</p>
-          <Botao ocupado={ocupado === "sair"} onClick={sair} className="ml-auto">
+          <Botao
+            ocupado={ocupado === "sair"}
+            onClick={() => setConfirmando("sair")}
+            className="ml-auto"
+          >
             Sair da partida
           </Botao>
         </div>
@@ -292,6 +319,26 @@ function Comandos({ lobby, usuarioId }: Omit<Props, "presenca">) {
         <div className="mt-espaco-5">
           <Aviso>{erro}</Aviso>
         </div>
+      )}
+      {confirmando === "cancelar" && (
+        <Confirmar
+          titulo="Cancelar partida"
+          rotulo="Cancelar partida"
+          acao={cancelar}
+          onFechar={() => setConfirmando(null)}
+        >
+          A partida some da lista de todos.
+        </Confirmar>
+      )}
+      {confirmando === "sair" && (
+        <Confirmar
+          titulo="Sair da partida"
+          rotulo="Sair da partida"
+          acao={sair}
+          onFechar={() => setConfirmando(null)}
+        >
+          Sair desta partida?
+        </Confirmar>
       )}
     </Cartao>
   );

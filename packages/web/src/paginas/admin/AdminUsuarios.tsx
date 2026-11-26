@@ -14,7 +14,8 @@ import { mensagemDoErro } from "../../api/cliente";
 import { Aviso, Botao, Campo, Carregando, Cartao } from "../../componentes/basicos";
 import { Modal } from "../../componentes/Modal";
 import { useSessao } from "../../stores/sessao";
-import { Confirmar, formatoData } from "./Admin";
+import { Confirmar } from "../../componentes/JanelaPopup";
+import { formatoData } from "./Admin";
 
 type Janela =
   | { tipo: "editar"; usuario: UsuarioAdminDto }
