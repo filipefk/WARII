@@ -4,6 +4,7 @@
 import type { Evento, VisaoPartida } from "@warii/engine";
 import type { PartidaLobbyDto } from "@warii/shared";
 import { create } from "zustand";
+import { type CartasDoFimDaVez, cartasDoFimDaVez } from "../jogo/cartasDoFimDaVez";
 
 const MAXIMO_EVENTOS_GUARDADOS = 100;
 
@@ -20,6 +21,8 @@ export interface JogoRecebido {
   // Último lote com dados rolados (ataque terrestre, defesa, antiaérea ou ataque aéreo) ou com o
   // início de um combate, para a janela de combate.
   combate: { seq: number; eventos: Evento[] } | null;
+  // Cartas recebidas (ou não) no fim da última jogada encerrada pelo próprio jogador.
+  fimDaVez: CartasDoFimDaVez | null;
 }
 
 // O início de um combate também troca o lote: a janela do combate novo começa sem dados.
@@ -79,15 +82,24 @@ export const usePartidas = create<EstadoPartidas>()((set, get) => {
     gravarPresenca: (partidaId, presenca) => alterar(partidaId, { presenca }),
     gravarEstado: (partidaId, visao, seq) =>
       alterar(partidaId, {
-        jogo: { visao, seq, eventos: [], seqEventos: 0, ultimos: [], combate: null },
+        jogo: {
+          visao,
+          seq,
+          eventos: [],
+          seqEventos: 0,
+          ultimos: [],
+          combate: null,
+          fimDaVez: null,
+        },
       }),
     gravarEventos(partidaId, eventos, visao, seq) {
       const jogo = get().porId[partidaId]?.jogo;
       if (!jogo || seq !== jogo.seq + 1) return false;
       const todos = [...jogo.eventos, ...eventos].slice(-MAXIMO_EVENTOS_GUARDADOS);
       const combate = eventos.some(TEM_COMBATE) ? { seq, eventos } : jogo.combate;
+      const fimDaVez = cartasDoFimDaVez(jogo.visao, eventos, seq) ?? jogo.fimDaVez;
       alterar(partidaId, {
-        jogo: { visao, seq, eventos: todos, seqEventos: seq, ultimos: eventos, combate },
+        jogo: { visao, seq, eventos: todos, seqEventos: seq, ultimos: eventos, combate, fimDaVez },
       });
       return true;
     },

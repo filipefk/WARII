@@ -498,6 +498,42 @@ export function Antiaereo({
   );
 }
 
+// Orientação das etapas de origem e destino: o que já foi escolhido, o que falta e o último clique
+// recusado. "Limpar seleção" desfaz a origem e o destino.
+function OrigemEDestino({
+  origem,
+  destino,
+}: {
+  origem: TerritorioId | null;
+  destino: TerritorioId | null;
+}) {
+  const invalido = useJogo((s) => s.invalido);
+  const limparEscolha = useJogo((s) => s.limparEscolha);
+  const linha = (papel: "origem" | "destino", escolhido: TerritorioId | null) => {
+    const rotulo = papel === "origem" ? "Origem" : "Destino";
+    if (escolhido !== null) return <b>{nomeT(escolhido)}</b>;
+    if (invalido?.papel === papel) {
+      return (
+        <span className="text-bad">
+          {rotulo} {nomeT(invalido.territorio)} {papel === "origem" ? "inválida" : "inválido"}
+        </span>
+      );
+    }
+    return <span className="text-muted">Aguardando seleção</span>;
+  };
+  return (
+    <div className="secao mt-espaco-3">
+      <p>Origem: {linha("origem", origem)}</p>
+      {origem !== null && <p>Destino: {linha("destino", destino)}</p>}
+      {(origem !== null || invalido !== null) && (
+        <Linha>
+          <Botao onClick={limparEscolha}>Limpar seleção</Botao>
+        </Linha>
+      )}
+    </div>
+  );
+}
+
 function MaoCheia({ ctx, etapa }: { ctx: Contexto; etapa: Extract<Etapa, { tipo: "maoCheia" }> }) {
   return (
     <>
@@ -521,6 +557,7 @@ function Terrestre({
   return (
     <>
       <AbasDeAtaque ctx={ctx} aereo={false} />
+      {etapa.origens.size > 0 && <OrigemEDestino origem={origem} destino={alvo} />}
       {origem === null ? (
         <Dica>
           {etapa.origens.size > 0
@@ -533,9 +570,6 @@ function Terrestre({
         </Dica>
       ) : (
         <>
-          <p className="mt-espaco-3">
-            <b>{nomeT(origem)}</b> → <b>{nomeT(alvo)}</b>
-          </p>
           <Linha>
             <Botao
               disabled={ctx.ocupado || maximoDados === 0}
@@ -633,10 +667,11 @@ function QuantoDeslocar({
   const [quantidade, setQuantidade] = useQuantidade(maximo);
   return (
     <>
-      <p className="mt-espaco-3">
-        <b>{nomeT(origem)}</b> → <b>{nomeT(destino)}</b>
-        {aereo && <span className="tag ml-espaco-2">aerotransporte</span>}
-      </p>
+      {aereo && (
+        <p className="mt-espaco-3">
+          <span className="tag">aerotransporte</span>
+        </p>
+      )}
       <Quantidade rotulo="Exércitos" valor={quantidade} maximo={maximo} onMudar={setQuantidade} />
       <Linha>
         <Botao
@@ -658,6 +693,7 @@ function Deslocar({ ctx, etapa }: { ctx: Contexto; etapa: Extract<Etapa, { tipo:
   const { origem, destino } = etapa;
   return (
     <>
+      {etapa.origens.size > 0 && <OrigemEDestino origem={origem} destino={destino} />}
       {origem === null ? (
         <Dica>
           {etapa.origens.size > 0
@@ -747,9 +783,6 @@ function QuantoTransportar({
   const [quantidade, setQuantidade] = useQuantidade(maximo);
   return (
     <>
-      <p className="mt-espaco-3">
-        <b>{nomeT(origem)}</b> → <b>{nomeT(destino)}</b>
-      </p>
       <Quantidade rotulo="Exércitos" valor={quantidade} maximo={maximo} onMudar={setQuantidade} />
       <Linha>
         <Botao
@@ -785,6 +818,9 @@ function Transporte({
         outro.
       </p>
       <SeletorDeCartas ctx={ctx} />
+      {!etapa.problema && etapa.origens.size > 0 && (
+        <OrigemEDestino origem={origem} destino={destino} />
+      )}
       {etapa.problema ? (
         <Dica>{etapa.problema}</Dica>
       ) : etapa.origens.size === 0 ? (

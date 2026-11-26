@@ -21,6 +21,7 @@ import {
   etapaDoCombate,
   JanelaDeCombate,
 } from "../componentes/jogo/JanelaDeCombate";
+import { CartasRecebidas, useCartasRecebidas } from "../componentes/jogo/CartasRecebidas";
 import { Orientacao, useOrientacao } from "../componentes/jogo/Orientacao";
 import { PainelAcao } from "../componentes/jogo/PainelAcao";
 import { TelaDeVitoria } from "../componentes/jogo/TelaDeVitoria";
@@ -30,7 +31,14 @@ import { DefsDoJogo } from "../componentes/tabuleiro/DefsDoJogo";
 import { Tabuleiro } from "../componentes/tabuleiro/Tabuleiro";
 import { useEnviarAcao } from "../jogo/enviarAcao";
 import { eu } from "../jogo/previa";
-import { cliqueNoMapa, derivarEtapa, destaquesDoMapa, type Etapa } from "../jogo/interacao";
+import {
+  cliqueInvalido,
+  parCompleto,
+  cliqueNoMapa,
+  derivarEtapa,
+  destaquesDoMapa,
+  type Etapa,
+} from "../jogo/interacao";
 import { montarMesa } from "../jogo/mesa";
 import { carregarGeografia, type Geografia } from "../mapa/geografia";
 import { chaveDaFase, useJogo } from "../stores/jogo";
@@ -84,6 +92,8 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
   const sincronizarVez = useJogo((s) => s.sincronizarVez);
   const definirOrigem = useJogo((s) => s.definirOrigem);
   const definirDestino = useJogo((s) => s.definirDestino);
+  const marcarInvalido = useJogo((s) => s.marcarInvalido);
+  const limparEscolha = useJogo((s) => s.limparEscolha);
   const modo = useJogo((s) => s.modo);
   const origem = useJogo((s) => s.origem);
   const destino = useJogo((s) => s.destino);
@@ -124,6 +134,7 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
   );
   const destaques = useMemo(() => destaquesDoMapa(etapa), [etapa]);
   const orientacao = useOrientacao(partidaId, visao, etapa, lobby.status === "em_andamento");
+  const cartasRecebidas = useCartasRecebidas(partidaId, jogo?.fimDaVez);
 
   if (erro) return <Aviso>{erro}</Aviso>;
   if (!visao || !mesa || !geografia || !jogo) return <Carregando texto="Carregando a partida…" />;
@@ -132,8 +143,16 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
   const interrompida = lobby.status === "encerrada" && visao.fase !== "FIM";
   // Um clique que faz parte da interação escolhe o território; os outros só o mostram no painel.
   const clicar = (t: TerritorioId | null) => {
+    // Clique fora dos territórios com origem e destino escolhidos: desfaz a escolha.
+    if (t === null && !interrompida && parCompleto(etapa)) {
+      limparEscolha();
+      return;
+    }
     const efeito = t === null || interrompida ? null : cliqueNoMapa(etapa, t);
+    const papel = t === null || interrompida ? null : cliqueInvalido(etapa, t);
+    const invalido = t !== null && papel !== null ? { territorio: t, papel } : null;
     if (efeito === null) {
+      if (invalido) marcarInvalido(invalido);
       selecionar(t === selecionado ? null : t);
       return;
     }
@@ -142,6 +161,8 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
     if (efeito.tipo === "origem") definirOrigem(efeito.territorio);
     else if (efeito.tipo === "destino") definirDestino(efeito.territorio);
     else if (!ocupado) void enviar(efeito.acao);
+    // Recomeço com um território que não pode ser origem: a escolha zera e o aviso fica.
+    if (invalido) marcarInvalido(invalido);
   };
   const fim = visao.fase === "FIM";
   // Espectador não tem mão nem objetivo.
@@ -341,6 +362,9 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
       )}
       {orientacao.mensagem && !fim && !combateVisivel && (
         <Orientacao mensagem={orientacao.mensagem} onFechar={orientacao.fechar} />
+      )}
+      {cartasRecebidas.aviso && !orientacao.mensagem && !fim && !combateVisivel && (
+        <CartasRecebidas aviso={cartasRecebidas.aviso} onFechar={cartasRecebidas.fechar} />
       )}
       {fim && !vitoriaFechada && (
         <TelaDeVitoria visao={visao} mesa={mesa} onFechar={() => setVitoriaFechada(true)} />

@@ -471,7 +471,8 @@ export type Efeito =
   | { tipo: "enviar"; acao: Acao };
 
 // Etapas de dois cliques (origem e depois destino). Clicar de novo num escolhido o desmarca;
-// clicar noutra origem válida troca a origem.
+// clicar noutra origem válida troca a origem. Com o par completo, qualquer outro território
+// recomeça a escolha com ele como origem (ou sem origem, se ele não puder sê-la).
 function doisCliques(
   t: T,
   origem: T | null,
@@ -481,6 +482,9 @@ function doisCliques(
 ): Efeito | null {
   if (t === origem) return { tipo: "origem", territorio: null };
   if (t === destino) return { tipo: "destino", territorio: null };
+  if (origem !== null && destino !== null) {
+    return { tipo: "origem", territorio: origens.has(t) ? t : null };
+  }
   if (origem !== null && opcoes.has(t)) return { tipo: "destino", territorio: t };
   if (origens.has(t)) return { tipo: "origem", territorio: t };
   return null;
@@ -516,4 +520,41 @@ export function cliqueNoMapa(etapa: Etapa, t: T): Efeito | null {
     default:
       return null;
   }
+}
+
+// Escolha recusada num clique de etapa de origem e destino: diz qual das duas o território seria.
+export type PapelDaEscolha = "origem" | "destino";
+
+// Origem e destino das etapas de dois cliques (null nas demais).
+function escolhaDaEtapa(
+  etapa: Etapa,
+): { origem: T | null; destino: T | null; origens: Conjunto; opcoes: Conjunto } | null {
+  switch (etapa.tipo) {
+    case "terrestre":
+      return {
+        origem: etapa.origem,
+        destino: etapa.alvo,
+        origens: etapa.origens,
+        opcoes: etapa.opcoes,
+      };
+    case "deslocar":
+      return etapa;
+    case "transporte":
+      return etapa.cartas === null ? null : etapa;
+    default:
+      return null;
+  }
+}
+
+export function cliqueInvalido(etapa: Etapa, t: T): PapelDaEscolha | null {
+  const e = escolhaDaEtapa(etapa);
+  if (e === null || t === e.origem || t === e.destino) return null;
+  if (e.origem === null || e.destino !== null) return e.origens.has(t) ? null : "origem";
+  return e.opcoes.has(t) || e.origens.has(t) ? null : "destino";
+}
+
+// Origem e destino já escolhidos numa etapa de dois cliques.
+export function parCompleto(etapa: Etapa): boolean {
+  const e = escolhaDaEtapa(etapa);
+  return e !== null && e.origem !== null && e.destino !== null;
 }

@@ -2,6 +2,7 @@
 // interação em andamento (origem, alvo, cartas marcadas) e até que lote de eventos as animações
 // já mostraram. A interação é zerada a cada nova vez.
 import type { CartaId, TerritorioId } from "@warii/engine";
+import type { PapelDaEscolha } from "../jogo/interacao";
 import { create } from "zustand";
 
 export type ModoInteracao =
@@ -25,16 +26,24 @@ export interface Interacao {
   daBase: number | null;
 }
 
-const SEM_INTERACAO: Interacao = {
+const SEM_INTERACAO: Interacao & { invalido: null } = {
   modo: "nenhum",
   origem: null,
   destino: null,
   cartas: [],
   daBase: null,
+  invalido: null,
 };
+
+// Último clique recusado numa etapa de origem e destino, para o painel avisar.
+export interface EscolhaInvalida {
+  territorio: TerritorioId;
+  papel: PapelDaEscolha;
+}
 
 interface EstadoJogo extends Interacao {
   partidaId: string | null;
+  invalido: EscolhaInvalida | null;
   // Território mostrado no painel (só informação; não altera a interação).
   selecionado: TerritorioId | null;
   // Identifica a vez e a fase atuais ("rodada:vez:etapa:fase"); quando muda, a interação é zerada.
@@ -50,6 +59,9 @@ interface EstadoJogo extends Interacao {
   definirDestino: (territorio: TerritorioId | null) => void;
   alternarCarta: (carta: CartaId) => void;
   definirDaBase: (quantidade: number) => void;
+  marcarInvalido: (invalido: EscolhaInvalida | null) => void;
+  // Desfaz a origem e o destino escolhidos (mantém o modo e as cartas).
+  limparEscolha: () => void;
   cancelar: () => void;
   marcarAnimado: (seq: number) => void;
 }
@@ -71,13 +83,15 @@ export const useJogo = create<EstadoJogo>()((set, get) => ({
   },
   selecionar: (selecionado) => set({ selecionado }),
   iniciar: (modo) => set({ ...SEM_INTERACAO, modo }),
-  definirOrigem: (origem) => set({ origem, destino: null }),
-  definirDestino: (destino) => set({ destino }),
+  definirOrigem: (origem) => set({ origem, destino: null, invalido: null }),
+  definirDestino: (destino) => set({ destino, invalido: null }),
   alternarCarta: (carta) =>
     set((s) => ({
       cartas: s.cartas.includes(carta) ? s.cartas.filter((c) => c !== carta) : [...s.cartas, carta],
     })),
   definirDaBase: (daBase) => set({ daBase }),
+  marcarInvalido: (invalido) => set({ invalido }),
+  limparEscolha: () => set({ origem: null, destino: null, invalido: null, selecionado: null }),
   cancelar: () => set(SEM_INTERACAO),
   marcarAnimado: (seq) => set((s) => ({ seqAnimado: Math.max(s.seqAnimado, seq) })),
 }));
