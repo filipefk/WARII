@@ -558,7 +558,8 @@ const ROTULOS_OCEANOS = [
 // Ponto (lon, lat) do nome de cada continente.
 const ROTULOS_CONTINENTES = {
   AN: [-160, 75],
-  AS: [-86, -22],
+  // À direita do continente: a oeste fica a tabela da mesa, sobre o Pacífico.
+  AS: [-28, -30],
   EU: [18, 73],
   AF: [-8, 5],
   ASI: [120, 81],

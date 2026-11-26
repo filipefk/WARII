@@ -12,7 +12,15 @@ import {
   type TerritorioId,
 } from "@warii/engine";
 import { select, zoom } from "d3";
-import { type CSSProperties, type MouseEvent, useEffect, useMemo, useRef } from "react";
+import {
+  type CSSProperties,
+  type MouseEvent,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { chaveDaRota, type Geografia } from "../../mapa/geografia";
 import { TONS } from "../../ui/cores";
 import { corClareadaDoContinente, corDoTerritorio } from "../../ui/tokens";
@@ -77,6 +85,8 @@ interface Props {
   // Perdas de um ciclo aéreo: explosões nos bombardeiros abatidos e sobre o alvo.
   explosoes?: ExplosoesNoMapa | null;
   onClicar?: (territorio: TerritorioId | null) => void;
+  // Painel HTML no canto inferior esquerdo (Pacífico), fora do zoom: some ao aproximar.
+  cantoInferiorEsquerdo?: ReactNode;
 }
 
 const POSICOES_BASES = (largura: number, altura: number): [number, number][] => [
@@ -129,10 +139,13 @@ export function Tabuleiro({
   volta = null,
   explosoes = null,
   onClicar,
+  cantoInferiorEsquerdo,
 }: Props) {
   const { largura, altura } = geografia;
   const svgRef = useRef<SVGSVGElement>(null);
   const raizRef = useRef<SVGGElement>(null);
+  // O painel do canto só aparece com o mapa inteiro à vista (zoom 1).
+  const [semZoom, setSemZoom] = useState(true);
 
   useEffect(() => {
     const svg = svgRef.current;
@@ -144,8 +157,9 @@ export function Tabuleiro({
         [0, 0],
         [largura, altura],
       ])
-      .on("zoom", (e: { transform: { toString(): string } }) => {
+      .on("zoom", (e: { transform: { k: number; toString(): string } }) => {
         raiz.setAttribute("transform", e.transform.toString());
+        setSemZoom(e.transform.k <= 1);
       });
     const selecao = select(svg);
     selecao.call(comportamento);
@@ -219,7 +233,12 @@ export function Tabuleiro({
         </radialGradient>
         {/* Grão de papelão impresso: ruído em tons de cinza, aplicado por cima do mapa. */}
         <filter id="tabuleiro-ruido" x="0" y="0" width="100%" height="100%">
-          <feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves={2} stitchTiles="stitch" />
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency=".85"
+            numOctaves={2}
+            stitchTiles="stitch"
+          />
           <feColorMatrix type="saturate" values="0" />
         </filter>
         <pattern id={ID_GRAO} width={240} height={240} patternUnits="userSpaceOnUse">
@@ -435,6 +454,14 @@ export function Tabuleiro({
           />
         )}
       </g>
+      {cantoInferiorEsquerdo && semZoom && (
+        // Entre a costa do Pacífico e a base aérea de baixo; o conteúdo se apoia no pé da área.
+        <foreignObject x={28} y={540} width={390} height={altura - 34 - 22 - 540 - 8}>
+          <div className="pointer-events-none flex h-full flex-col justify-end">
+            {cantoInferiorEsquerdo}
+          </div>
+        </foreignObject>
+      )}
     </svg>
   );
 }

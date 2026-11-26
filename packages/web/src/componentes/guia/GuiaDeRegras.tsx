@@ -154,6 +154,8 @@ function Pecas({ ctx }: { ctx: Contexto }) {
 
 function Mapa({ ctx }: { ctx: Contexto }) {
   const bonus = ctx.visao.parametros.bonusContinentes;
+  // Quantos territórios de cada continente são do jogador (espectador não tem a coluna).
+  const voce = ctx.visao.voce;
   return (
     <>
       <p>
@@ -179,6 +181,7 @@ function Mapa({ ctx }: { ctx: Contexto }) {
             <th>Continente</th>
             <th className="n">Terr.</th>
             <th className="n">CE</th>
+            {voce && <th className="n">Seus</th>}
             <th className="n">Maioria</th>
             <th className="n">Totalidade</th>
           </tr>
@@ -199,6 +202,11 @@ function Mapa({ ctx }: { ctx: Contexto }) {
                 <td className="n">
                   {ts.filter((t) => dadosDoTerritorio(t).centroEstrategico).length}
                 </td>
+                {voce && (
+                  <td className="n">
+                    {ts.filter((t) => ctx.visao.territorios[t].dono === voce).length}
+                  </td>
+                )}
                 <td className="n">
                   {CONTINENTES[c].maioriaMinima} ou + → <b>{bonus[c].maioria}</b>
                 </td>

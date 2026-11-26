@@ -1,4 +1,5 @@
-// Blocos do painel lateral da partida (vez, recebimento, mesa, cartas, objetivo e log). Tudo sai
+// Blocos do painel lateral da partida (vez, recebimento, cartas, objetivo e log) e a mesa, que
+// fica sobre o tabuleiro. Tudo sai
 // da visão do jogador: o que é oculto (cartas e objetivo alheios) nem chega ao cliente.
 import {
   cartaDeTroca,
@@ -108,8 +109,14 @@ export function PainelMesa({
 }) {
   const totais = totaisPorJogador(visao);
   const daVez = mesa.jogadorDaVez?.id;
+  // Sobreposta ao canto inferior esquerdo do tabuleiro (área vazia do Pacífico); os cliques nela
+  // não chegam ao mapa.
   return (
-    <Bloco titulo="Mesa">
+    <section
+      className="pointer-events-auto rounded-raio-lg border border-border bg-panel/90 p-espaco-4"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <h2 className="secao mb-espaco-2">Mesa</h2>
       <table className="w-full border-collapse text-tabela">
         <thead>
           <tr className="text-left text-muted">
@@ -181,7 +188,7 @@ export function PainelMesa({
       <p className="dica mt-espaco-1">
         Monte: {visao.quantidadeMonte} · descarte: {visao.descarte.length}
       </p>
-    </Bloco>
+    </section>
   );
 }
 

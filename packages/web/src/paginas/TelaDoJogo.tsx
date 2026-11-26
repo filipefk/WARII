@@ -2,8 +2,9 @@
 // Tabuleiro e InfoTerritorio do sistema). A visão vem do socket; a interação fica em useJogo.
 import type { TerritorioId } from "@warii/engine";
 import type { PartidaLobbyDto } from "@warii/shared";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Aviso, Botao, Carregando } from "../componentes/basicos";
+import { Modal } from "../componentes/Modal";
 import { InfoTerritorio } from "../componentes/jogo/InfoTerritorio";
 import {
   Bloco,
@@ -14,7 +15,6 @@ import {
   PainelRecebimento,
   PainelVez,
 } from "../componentes/jogo/Paineis";
-import { TabelaContinentes } from "../componentes/jogo/TabelaContinentes";
 import { PainelCombate } from "../componentes/jogo/Combate";
 import { PainelAcao } from "../componentes/jogo/PainelAcao";
 import { TelaDeVitoria } from "../componentes/jogo/TelaDeVitoria";
@@ -23,6 +23,7 @@ import { GuiaDeRegras } from "../componentes/guia/GuiaDeRegras";
 import { DefsDoJogo } from "../componentes/tabuleiro/DefsDoJogo";
 import { Tabuleiro } from "../componentes/tabuleiro/Tabuleiro";
 import { useEnviarAcao } from "../jogo/enviarAcao";
+import { eu } from "../jogo/previa";
 import { cliqueNoMapa, derivarEtapa, destaquesDoMapa, type Etapa } from "../jogo/interacao";
 import { montarMesa } from "../jogo/mesa";
 import { carregarGeografia, type Geografia } from "../mapa/geografia";
@@ -42,6 +43,23 @@ function useGeografia(): { geografia: Geografia | null; erro: string | null } {
     };
   }, []);
   return { geografia, erro };
+}
+
+// Botão só com o ícone: o nome vai na dica (title) e no rótulo para leitores de tela.
+function BotaoIcone({
+  dica,
+  onClick,
+  children,
+}: {
+  dica: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button type="button" className="botao" title={dica} aria-label={dica} onClick={onClick}>
+      {children}
+    </button>
+  );
 }
 
 interface Props {
@@ -66,7 +84,7 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
   const daBase = useJogo((s) => s.daBase);
   const { ocupado, erro: erroAcao, enviar, limparErro } = useEnviarAcao(partidaId);
   const [vitoriaFechada, setVitoriaFechada] = useState(false);
-  const [janela, setJanela] = useState<"galeria" | "guia" | null>(null);
+  const [janela, setJanela] = useState<"galeria" | "guia" | "cartas" | null>(null);
 
   const visao = jogo?.visao;
   const seq = jogo?.seq;
@@ -115,6 +133,8 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
     else if (!ocupado) void enviar(efeito.acao);
   };
   const fim = visao.fase === "FIM";
+  // Espectador não tem mão nem objetivo.
+  const minhasCartas = eu(visao)?.cartas;
   // Fim de ataque aéreo no último lote: os sobreviventes voltam voando para a base.
   const encerrado = jogo?.ultimos.find((e) => e.tipo === "ataqueAereoEncerrado");
   const iniciado = jogo?.ultimos.find((e) => e.tipo === "ataqueAereoIniciado");
@@ -205,15 +225,12 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
           volta={volta}
           explosoes={explosoes}
           onClicar={clicar}
+          cantoInferiorEsquerdo={<PainelMesa visao={visao} mesa={mesa} presenca={presenca} />}
         />
       </div>
       <aside className="w-full shrink-0 overflow-y-auto border-t border-border bg-panel p-espaco-7 min-[861px]:w-[340px] min-[861px]:border-t-0 min-[861px]:border-l">
         <h1 className="text-titulo">{lobby.nome}</h1>
         <p className="dica">Use a roda do mouse para dar zoom e arraste para mover.</p>
-        <div className="mt-espaco-4 flex flex-wrap gap-espaco-2">
-          <Botao onClick={() => setJanela("guia")}>📖 Regras do jogo</Botao>
-          <Botao onClick={() => setJanela("galeria")}>🃏 Ver cartas e dados</Botao>
-        </div>
 
         <PainelVez visao={visao} mesa={mesa} presenca={presenca} />
 
@@ -239,13 +256,19 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
           <InfoTerritorio territorio={selecionado} visao={visao} mesa={mesa} />
         </Bloco>
 
-        <PainelMesa visao={visao} mesa={mesa} presenca={presenca} />
-        <MinhasCartas visao={visao} geografia={geografia} marcadas={cartasMarcadas} />
-        <MeuObjetivo visao={visao} />
-
-        <Bloco titulo="Continentes">
-          <TabelaContinentes visao={visao} jogador={visao.voce} />
-        </Bloco>
+        <div className="mt-5 flex flex-wrap gap-espaco-2">
+          <BotaoIcone dica="Regras" onClick={() => setJanela("guia")}>
+            📖
+          </BotaoIcone>
+          <BotaoIcone dica="Todas cartas e dados" onClick={() => setJanela("galeria")}>
+            🎲
+          </BotaoIcone>
+          {minhasCartas && (
+            <BotaoIcone dica="Minhas cartas" onClick={() => setJanela("cartas")}>
+              🃏 <span className="tabular-nums">{minhasCartas.length}</span>
+            </BotaoIcone>
+          )}
+        </div>
 
         <LogDaPartida eventos={jogo.eventos} mesa={mesa} />
       </aside>
@@ -255,6 +278,12 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
           parametros={visao.parametros}
           onFechar={() => setJanela(null)}
         />
+      )}
+      {janela === "cartas" && (
+        <Modal titulo="Minhas cartas e objetivo" estreito onFechar={() => setJanela(null)}>
+          <MinhasCartas visao={visao} geografia={geografia} marcadas={cartasMarcadas} />
+          <MeuObjetivo visao={visao} />
+        </Modal>
       )}
       {janela === "guia" && (
         <GuiaDeRegras
