@@ -119,9 +119,11 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
   if (erro) return <Aviso>{erro}</Aviso>;
   if (!visao || !mesa || !geografia || !jogo) return <Carregando texto="Carregando a partida…" />;
 
+  // Encerrada pelo administrador antes do fim: o tabuleiro fica como estava, sem ações.
+  const interrompida = lobby.status === "encerrada" && visao.fase !== "FIM";
   // Um clique que faz parte da interação escolhe o território; os outros só o mostram no painel.
   const clicar = (t: TerritorioId | null) => {
-    const efeito = t === null ? null : cliqueNoMapa(etapa, t);
+    const efeito = t === null || interrompida ? null : cliqueNoMapa(etapa, t);
     if (efeito === null) {
       selecionar(t === selecionado ? null : t);
       return;
@@ -237,6 +239,10 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
         {fim ? (
           <div className="mt-espaco-3">
             <Botao onClick={() => setVitoriaFechada(false)}>Ver resultado</Botao>
+          </div>
+        ) : interrompida ? (
+          <div className="mt-espaco-3">
+            <Aviso tipo="info">A partida foi encerrada pelo administrador, sem vencedor.</Aviso>
           </div>
         ) : (
           <PainelAcao

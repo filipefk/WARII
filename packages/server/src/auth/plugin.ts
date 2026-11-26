@@ -84,3 +84,12 @@ export async function registrarAutenticacao(app: FastifyInstance): Promise<void>
     await responderErro(resposta, 403, "ORIGEM_RECUSADA", "origem da requisição não permitida");
   });
 }
+
+// preHandler das rotas de administração, depois de `exigirSessao`.
+export async function exigirAdmin(
+  requisicao: FastifyRequest,
+  resposta: FastifyReply,
+): Promise<void> {
+  if (requisicao.sessao?.usuario.admin === true) return;
+  await responderErro(resposta, 403, "SOMENTE_ADMIN", "só o administrador pode fazer isso");
+}

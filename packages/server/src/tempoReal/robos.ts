@@ -10,6 +10,7 @@ import { config } from "../config.js";
 import { contarErroInterno } from "../metricas.js";
 import { rngCrypto } from "../partidas/rng.js";
 import { aplicarEGravar } from "./acoes.js";
+import { ErroDeTempoReal } from "./erros.js";
 import { naFila, partidaAtiva } from "./partidasAtivas.js";
 import type { ServidorIo } from "./tipos.js";
 
@@ -20,6 +21,8 @@ interface Piloto {
   readonly io: ServidorIo;
   readonly log: FastifyBaseLogger;
 }
+
+const PARTIDA_FORA_DE_JOGO = new Set(["PARTIDA_ENCERRADA", "PARTIDA_INEXISTENTE"]);
 
 let piloto: Piloto | null = null;
 const agendados = new Map<string, NodeJS.Timeout>();
@@ -37,6 +40,14 @@ export function pararRobos(): void {
   agendados.clear();
   contagens.clear();
   travadas.clear();
+}
+
+// Esquece a partida (encerrada ou apagada pelo administrador): cancela a jogada agendada.
+export function esquecerRobo(partidaId: string): void {
+  clearTimeout(agendados.get(partidaId));
+  agendados.delete(partidaId);
+  contagens.delete(partidaId);
+  travadas.delete(partidaId);
 }
 
 // Agenda a próxima jogada se a vez for de um robô. Pode ser chamada à vontade: há no máximo um
@@ -84,6 +95,8 @@ async function jogar(partidaId: string): Promise<void> {
       if (confirmacao.ok) return true;
       // O estado mudou por fora: foi recarregado, então tenta de novo.
       if (confirmacao.erro.codigo === "ESTADO_DESATUALIZADO") return true;
+      // Encerrada ou apagada pelo administrador: não há mais o que jogar.
+      if (PARTIDA_FORA_DE_JOGO.has(confirmacao.erro.codigo)) return false;
       travar(partidaId, "ação recusada", {
         roboId,
         acao: acao.tipo,
@@ -94,6 +107,8 @@ async function jogar(partidaId: string): Promise<void> {
     if (continuar) agendarRobo(partidaId);
     else contagens.delete(partidaId);
   } catch (erro) {
+    // Apagada pelo administrador entre o agendamento e a jogada.
+    if (erro instanceof ErroDeTempoReal && PARTIDA_FORA_DE_JOGO.has(erro.codigo)) return;
     log.error({ err: erro, partidaId }, "falha na jogada do robô");
     travar(partidaId, "erro na jogada");
   }

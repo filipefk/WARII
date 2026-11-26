@@ -40,6 +40,9 @@ export const usuarios = pgTable("usuarios", {
   nome: text("nome").notNull(),
   // Nulo até o usuário ativar a conta pelo link gerado pelo administrador.
   senhaHash: text("senha_hash"),
+  // Acesso às telas de administração (contas e partidas). O primeiro administrador é o seed da
+  // migration 0001 (admin@warii.local, com senha fixa: trocar depois do primeiro login).
+  admin: boolean("admin").notNull().default(false),
   // Jogador controlado pelo servidor (tempoReal/robos.ts). Nunca tem senha nem sessão; o grupo
   // fixo de robôs é criado sob demanda (partidas/robos.ts).
   robo: boolean("robo").notNull().default(false),

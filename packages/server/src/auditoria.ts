@@ -26,7 +26,15 @@ export type EventoDeAuditoria =
   | "partida_encerrada"
   | "partida_corrompida"
   | "robo_adicionado"
-  | "robo_travado";
+  | "robo_travado"
+  | "usuario_criado"
+  | "usuario_editado"
+  | "usuario_apagado"
+  | "link_senha_gerado"
+  | "senha_definida_pelo_admin"
+  | "partida_encerrada_pelo_admin"
+  | "partida_apagada"
+  | "admin_sem_senha";
 
 // Eventos que indicam ataque ou falha vão como `warn`; o resto como `info`.
 const ALERTAS = new Set<EventoDeAuditoria>([
@@ -39,6 +47,7 @@ const ALERTAS = new Set<EventoDeAuditoria>([
   "socket_excesso_de_mensagens",
   "partida_corrompida",
   "robo_travado",
+  "admin_sem_senha",
 ]);
 
 export function auditar(

@@ -16,7 +16,7 @@ import { mensagemDaEntradaInvalida } from "../erros.js";
 import { contarErroInterno } from "../metricas.js";
 import { ErroDeLobby, obterLobby } from "../partidas/lobby.js";
 import { processarAcao } from "./acoes.js";
-import { agendarRobo, iniciarRobos, pararRobos } from "./robos.js";
+import { agendarRobo, esquecerRobo, iniciarRobos, pararRobos } from "./robos.js";
 import { emitirEstado, emitirLobby, emitirPresenca } from "./emissao.js";
 import { ErroDeTempoReal, partidaInexistente } from "./erros.js";
 import { autenticarSocket } from "./handshake.js";
@@ -24,6 +24,7 @@ import { LimiteDeMensagens } from "./limite.js";
 import {
   agendarDespejo,
   cancelarDespejo,
+  descartarPartida,
   esquecerTodas,
   naFila,
   partidaAtiva,
@@ -45,6 +46,10 @@ export interface TempoReal {
   // Saiu por conta própria ou foi removido pelo anfitrião.
   saiuDoLobby(partidaId: string, usuarioId: string): void;
   partidaIniciada(partidaId: string): void;
+  // Encerrada ou cancelada pelo administrador (o status já foi gravado).
+  partidaEncerrada(partidaId: string): void;
+  // Apagada pelo administrador (já saiu do banco).
+  partidaApagada(partidaId: string): void;
   sessaoEncerrada(sessaoId: string): void;
   sessoesDoUsuarioEncerradas(usuarioId: string, exceto?: string): void;
 }
@@ -135,7 +140,7 @@ export function registrarTempoReal(app: FastifyInstance): void {
       }
       await emitirPresenca(io, partidaId);
       // Retoma a vez de um robô parada (ex.: o servidor reiniciou no meio dela).
-      if (partida !== null) agendarRobo(partidaId);
+      if (lobby.status === "em_andamento") agendarRobo(partidaId);
       return { ok: true };
     });
   }
@@ -233,6 +238,32 @@ export function registrarTempoReal(app: FastifyInstance): void {
           await emitirLobby(io, partidaId);
           emitirEstado(io, partidaId, await partidaAtiva(partidaId));
           agendarRobo(partidaId);
+        }),
+      );
+    },
+    partidaEncerrada(partidaId) {
+      emSegundoPlano("o encerramento da partida", () =>
+        naFila(partidaId, async () => {
+          esquecerRobo(partidaId);
+          descartarPartida(partidaId);
+          // Quem está na partida recebe o lobby com o novo status (o front deixa de aceitar ações).
+          await emitirLobby(io, partidaId);
+        }),
+      );
+    },
+    partidaApagada(partidaId) {
+      emSegundoPlano("a partida apagada", () =>
+        naFila(partidaId, async () => {
+          esquecerRobo(partidaId);
+          cancelarDespejo(partidaId);
+          descartarPartida(partidaId);
+          const sala = salaDaPartida(partidaId);
+          io.to(sala).emit("apagada", partidaId);
+          for (const s of await io.in(sala).fetchSockets()) {
+            for (const nome of s.rooms) {
+              if (nome === sala || nome.startsWith(`${sala}:u:`)) s.leave(nome);
+            }
+          }
         }),
       );
     },

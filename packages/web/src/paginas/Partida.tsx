@@ -16,7 +16,7 @@ function TelaDaPartida({ partidaId }: { partidaId: string }) {
   const usuarioId = useSessao((s) => s.usuario?.id ?? "");
   const gravarLobby = usePartidas((s) => s.gravarLobby);
   const esquecer = usePartidas((s) => s.esquecer);
-  const { lobby, presenca, jogo, removido } = useDadosPartida(partidaId);
+  const { lobby, presenca, jogo, removido, apagada } = useDadosPartida(partidaId);
   const erroSocket = useAcompanharPartida(partidaId);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -32,17 +32,20 @@ function TelaDaPartida({ partidaId }: { partidaId: string }) {
     };
   }, [partidaId, gravarLobby, esquecer]);
 
-  // Saída forçada: removido pelo anfitrião (ou saiu em outra aba) ou partida cancelada.
+  // Saída forçada: removido pelo anfitrião (ou saiu em outra aba), partida cancelada (pelo
+  // anfitrião ou pelo administrador) ou apagada pelo administrador.
   const cancelada = lobby?.status === "cancelada";
   useEffect(() => {
-    if (!removido && !cancelada) return;
+    if (!removido && !cancelada && !apagada) return;
     const estado: EstadoAviso = {
-      aviso: removido
-        ? "Você saiu ou foi removido da partida."
-        : "A partida foi cancelada pelo anfitrião.",
+      aviso: apagada
+        ? "A partida foi apagada pelo administrador."
+        : removido
+          ? "Você saiu ou foi removido da partida."
+          : "A partida foi cancelada.",
     };
     void navegar("/partidas", { replace: true, state: estado });
-  }, [removido, cancelada, navegar]);
+  }, [removido, cancelada, apagada, navegar]);
 
   const falha = erro ?? (lobby ? null : erroSocket?.mensagem);
   if (falha) {
@@ -55,7 +58,7 @@ function TelaDaPartida({ partidaId }: { partidaId: string }) {
       </div>
     );
   }
-  if (!lobby || cancelada || removido) return <Carregando />;
+  if (!lobby || cancelada || removido || apagada) return <Carregando />;
 
   if (lobby.status === "aguardando") {
     return <SalaDeEspera lobby={lobby} presenca={presenca} usuarioId={usuarioId} />;

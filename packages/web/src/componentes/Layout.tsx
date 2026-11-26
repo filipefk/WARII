@@ -72,6 +72,11 @@ export function Layout() {
               <NavLink to="/conta" className={classeAba}>
                 Conta
               </NavLink>
+              {usuario.admin && (
+                <NavLink to="/admin" className={classeAba}>
+                  Administração
+                </NavLink>
+              )}
             </nav>
           )}
           <div className="ml-auto flex items-center gap-espaco-5">

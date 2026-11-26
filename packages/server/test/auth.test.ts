@@ -91,6 +91,7 @@ describe("rotas /api/auth", { skip: motivoSemBanco, concurrency: false }, () => 
         id: conta.id,
         email: "ativa@teste.local",
         nome: "Ativa",
+        admin: false,
       });
       const cookie = resposta.cookies.find((c) => c.name === "warii_sessao");
       assert.ok(cookie);
@@ -192,7 +193,12 @@ describe("rotas /api/auth", { skip: motivoSemBanco, concurrency: false }, () => 
       const { id } = await criarContaAtiva(app, "login@teste.local", "Logado");
       const resposta = await login("login@teste.local", SENHA_PADRAO);
       assert.equal(resposta.statusCode, 200);
-      assert.deepEqual(resposta.json(), { id, email: "login@teste.local", nome: "Logado" });
+      assert.deepEqual(resposta.json(), {
+        id,
+        email: "login@teste.local",
+        nome: "Logado",
+        admin: false,
+      });
 
       const token = cookieDeSessao(resposta);
       assert.ok(token);
@@ -202,7 +208,12 @@ describe("rotas /api/auth", { skip: motivoSemBanco, concurrency: false }, () => 
 
       const quem = await eu(token);
       assert.equal(quem.statusCode, 200);
-      assert.deepEqual(quem.json(), { id, email: "login@teste.local", nome: "Logado" });
+      assert.deepEqual(quem.json(), {
+        id,
+        email: "login@teste.local",
+        nome: "Logado",
+        admin: false,
+      });
     });
 
     test("o e-mail do login não diferencia maiúsculas", async () => {

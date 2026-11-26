@@ -1,7 +1,8 @@
-// Contas de usuário. Não há cadastro público: o administrador cria a conta pela CLI (src/cli.ts),
-// que imprime um link de ativação; o próprio usuário define a senha por esse link. A recuperação
-// de senha usa o mesmo mecanismo (link de redefinição gerado pela CLI), sem envio de e-mail.
-import { and, eq, gt, isNull } from "drizzle-orm";
+// Contas de usuário. Não há cadastro público: o administrador cria a conta pela tela de usuários
+// (admin/usuarios.ts) ou pela CLI (src/cli.ts), que dão um link de ativação; o próprio usuário
+// define a senha por esse link. A recuperação de senha usa o mesmo mecanismo (link de
+// redefinição), sem envio de e-mail; o administrador também pode definir a senha direto.
+import { and, eq, gt, isNull, type SQL } from "drizzle-orm";
 import { config } from "../config.js";
 import { db } from "../db/index.js";
 import { type FinalidadeTokenSenha, tokensSenha, usuarios } from "../db/schema.js";
@@ -32,36 +33,70 @@ export interface Conta {
   id: string;
   email: string;
   nome: string;
+  admin: boolean;
 }
 
 // Domínio dos e-mails das contas-robô (partidas/robos.ts).
 export const DOMINIO_ROBOS = "@robos.invalid";
 
-export async function criarConta(email: string, nome: string): Promise<Conta> {
-  if (email.toLowerCase().endsWith(DOMINIO_ROBOS)) {
+export const COLUNAS_CONTA = {
+  id: usuarios.id,
+  email: usuarios.email,
+  nome: usuarios.nome,
+  admin: usuarios.admin,
+};
+
+export function emailReservado(email: string): boolean {
+  return email.toLowerCase().endsWith(DOMINIO_ROBOS);
+}
+
+export async function criarConta(email: string, nome: string, admin = false): Promise<Conta> {
+  if (emailReservado(email)) {
     throw new ErroDeConta("EMAIL_RESERVADO", `e-mails ${DOMINIO_ROBOS} são reservados aos robôs`);
   }
   const [criada] = await db
     .insert(usuarios)
-    .values({ email, nome })
+    .values({ email, nome, admin })
     .onConflictDoNothing({ target: usuarios.email })
-    .returning({ id: usuarios.id, email: usuarios.email, nome: usuarios.nome });
+    .returning(COLUNAS_CONTA);
   if (!criada) throw new ErroDeConta("EMAIL_EM_USO", `já existe uma conta com o e-mail ${email}`);
   return criada;
 }
 
+export interface LinkSenha {
+  link: string;
+  expiraEm: Date;
+  conta: Conta;
+  finalidade: FinalidadeTokenSenha;
+}
+
 // Gera um link de uso único e invalida os links anteriores ainda não usados do mesmo usuário.
-export async function gerarLinkSenha(
+// Sem finalidade: de ativação se a conta ainda não tem senha, senão de redefinição.
+export function gerarLinkSenha(
   email: string,
-  finalidade: FinalidadeTokenSenha,
-): Promise<{ link: string; expiraEm: Date; conta: Conta }> {
+  finalidade?: FinalidadeTokenSenha,
+): Promise<LinkSenha> {
+  return gerarLink(eq(usuarios.email, email), finalidade, `nenhuma conta com o e-mail ${email}`);
+}
+
+// Pela tela de administração: de ativação se a conta ainda não tem senha, senão de redefinição.
+export function gerarLinkSenhaPorId(usuarioId: string): Promise<LinkSenha> {
+  return gerarLink(eq(usuarios.id, usuarioId), undefined, "usuário inexistente");
+}
+
+async function gerarLink(
+  filtro: SQL,
+  pedida: FinalidadeTokenSenha | undefined,
+  inexistente: string,
+): Promise<LinkSenha> {
   const [linha] = await db
-    .select({ id: usuarios.id, email: usuarios.email, nome: usuarios.nome, robo: usuarios.robo })
+    .select({ ...COLUNAS_CONTA, robo: usuarios.robo, senhaHash: usuarios.senhaHash })
     .from(usuarios)
-    .where(eq(usuarios.email, email))
+    .where(filtro)
     .limit(1);
-  if (!linha) throw new ErroDeConta("CONTA_INEXISTENTE", `nenhuma conta com o e-mail ${email}`);
-  const { robo, ...conta } = linha;
+  if (!linha) throw new ErroDeConta("CONTA_INEXISTENTE", inexistente);
+  const { robo, senhaHash, ...conta } = linha;
+  const finalidade = pedida ?? (senhaHash === null ? "ativacao" : "redefinicao");
   if (robo) throw new ErroDeConta("CONTA_ROBO", "contas-robô não têm senha");
 
   const token = gerarToken();
@@ -77,7 +112,7 @@ export async function gerarLinkSenha(
       .values({ usuarioId: conta.id, tokenHash: hashDoToken(token), finalidade, expiraEm });
   });
   const link = `${config.URL_PUBLICA}${CAMINHO_DEFINIR_SENHA}#token=${token}`;
-  return { link, expiraEm, conta };
+  return { link, expiraEm, conta, finalidade };
 }
 
 // Consome o link (uma vez só), grava a nova senha, revoga todas as sessões anteriores e abre uma nova.
@@ -110,7 +145,7 @@ export async function definirSenhaComToken(
       .update(usuarios)
       .set({ senhaHash, atualizadoEm: agora })
       .where(eq(usuarios.id, usado.usuarioId))
-      .returning({ id: usuarios.id, email: usuarios.email, nome: usuarios.nome });
+      .returning(COLUNAS_CONTA);
     if (!conta) throw linkInvalido;
 
     await revogarSessoesDoUsuario(conta.id, undefined, tx);
@@ -123,19 +158,14 @@ export async function definirSenhaComToken(
 // ou não foi ativada), para o tempo de resposta não revelar se o e-mail tem conta.
 export async function autenticar(email: string, senha: string): Promise<Conta | undefined> {
   const [linha] = await db
-    .select({
-      id: usuarios.id,
-      email: usuarios.email,
-      nome: usuarios.nome,
-      senhaHash: usuarios.senhaHash,
-    })
+    .select({ ...COLUNAS_CONTA, senhaHash: usuarios.senhaHash })
     .from(usuarios)
     .where(eq(usuarios.email, email))
     .limit(1);
   const hash = linha?.senhaHash ?? (await obterHashFicticio());
   const confere = await verificarSenha(senha, hash);
   if (!linha?.senhaHash || !confere) return undefined;
-  return { id: linha.id, email: linha.email, nome: linha.nome };
+  return { id: linha.id, email: linha.email, nome: linha.nome, admin: linha.admin };
 }
 
 // Troca a senha de quem está logado e revoga as outras sessões (a atual continua).

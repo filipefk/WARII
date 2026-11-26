@@ -1,7 +1,9 @@
 import { fileURLToPath } from "node:url";
 import { conferirDados } from "@warii/engine";
+import { adminsSemSenha } from "./admin/usuarios.js";
 import { criarApp } from "./app.js";
 import { limparVencidas } from "./auth/sessoes.js";
+import { auditar, mascararEmail } from "./auditoria.js";
 import { config } from "./config.js";
 import { pool } from "./db/index.js";
 import { prepararBanco } from "./db/preparar.js";
@@ -48,6 +50,17 @@ app.addHook("onClose", async () => {
   await pool.end();
 });
 
+// Administrador sem senha (criado sem senha e ainda não ativado): lembra no log como entrar.
+async function avisarAdminSemSenha(): Promise<void> {
+  for (const email of await adminsSemSenha()) {
+    // E-mail mascarado, como em toda a auditoria (o do seed é admin@warii.local).
+    auditar(app.log, "admin_sem_senha", {
+      email: mascararEmail(email),
+      comando: "cli senha:link <e-mail do administrador>",
+    });
+  }
+}
+
 async function limparSessoes(): Promise<void> {
   try {
     const apagados = await limparVencidas();
@@ -86,6 +99,7 @@ try {
   }
   await prepararBanco(app.log, pastaDeMigrations);
   await app.listen({ port: config.PORT, host: config.HOST });
+  await avisarAdminSemSenha();
   await limparSessoes();
   setInterval(() => void limparSessoes(), INTERVALO_LIMPEZA_MS).unref();
   setInterval(() => {

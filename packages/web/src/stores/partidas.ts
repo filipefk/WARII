@@ -34,9 +34,17 @@ export interface DadosPartida {
   jogo: JogoRecebido | null;
   // O jogador saiu ou foi removido da sala de espera.
   removido: boolean;
+  // A partida foi apagada pelo administrador.
+  apagada: boolean;
 }
 
-const VAZIO: DadosPartida = { lobby: null, presenca: [], jogo: null, removido: false };
+const VAZIO: DadosPartida = {
+  lobby: null,
+  presenca: [],
+  jogo: null,
+  removido: false,
+  apagada: false,
+};
 
 interface EstadoPartidas {
   porId: Record<string, DadosPartida>;
@@ -51,6 +59,7 @@ interface EstadoPartidas {
     seq: number,
   ) => boolean;
   marcarRemovido: (partidaId: string) => void;
+  marcarApagada: (partidaId: string) => void;
   esquecer: (partidaId: string) => void;
   limpar: () => void;
 }
@@ -80,6 +89,7 @@ export const usePartidas = create<EstadoPartidas>()((set, get) => {
       return true;
     },
     marcarRemovido: (partidaId) => alterar(partidaId, { removido: true }),
+    marcarApagada: (partidaId) => alterar(partidaId, { apagada: true }),
     esquecer: (partidaId) =>
       set((s) => {
         const resto = { ...s.porId };

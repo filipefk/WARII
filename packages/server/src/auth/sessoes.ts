@@ -17,6 +17,7 @@ export interface UsuarioDaSessao {
   id: string;
   email: string;
   nome: string;
+  admin: boolean;
 }
 
 export interface SessaoValida {
@@ -58,6 +59,7 @@ export async function sessaoPorToken(token: string): Promise<SessaoValida | unde
       id: usuarios.id,
       email: usuarios.email,
       nome: usuarios.nome,
+      admin: usuarios.admin,
     })
     .from(sessoes)
     .innerJoin(usuarios, eq(usuarios.id, sessoes.usuarioId))
@@ -81,7 +83,7 @@ export async function sessaoPorToken(token: string): Promise<SessaoValida | unde
   }
   return {
     sessaoId: linha.sessaoId,
-    usuario: { id: linha.id, email: linha.email, nome: linha.nome },
+    usuario: { id: linha.id, email: linha.email, nome: linha.nome, admin: linha.admin },
     renovadaAte,
   };
 }

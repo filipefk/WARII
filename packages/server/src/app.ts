@@ -1,6 +1,7 @@
 // Montagem da aplicação HTTP (rotas, plugins e o Socket.IO), sem abrir porta nem preparar o banco.
 // O index.ts usa para subir o servidor; os testes usam com `app.inject`.
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from "fastify";
+import { rotasDeAdmin } from "./admin/rotas.js";
 import { registrarAutenticacao } from "./auth/plugin.js";
 import { rotasDeAutenticacao } from "./auth/rotas.js";
 import { config } from "./config.js";
@@ -40,6 +41,7 @@ export async function criarApp(
   registrarMetricas(app);
   await app.register(rotasDeAutenticacao, { prefix: "/api/auth" });
   await app.register(rotasDePartidas, { prefix: "/api/partidas" });
+  await app.register(rotasDeAdmin, { prefix: "/api/admin" });
 
   app.get("/api/health", async (_requisicao, resposta) => {
     resposta.header("cache-control", "no-store");

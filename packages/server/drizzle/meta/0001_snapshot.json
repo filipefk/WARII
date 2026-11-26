@@ -241,6 +241,13 @@
           "primaryKey": false,
           "notNull": false
         },
+        "admin": {
+          "name": "admin",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "criado_em": {
           "name": "criado_em",
           "type": "timestamp with time zone",

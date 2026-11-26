@@ -1,4 +1,5 @@
-// Comandos de administração das contas (não há cadastro público).
+// Comandos de administração das contas (não há cadastro público; o mesmo se faz pela tela de
+// usuários do administrador, em /admin/usuarios).
 // Em dev:      pnpm --filter @warii/server cli <comando> [argumentos]
 // Em produção: node dist/cli.js <comando> [argumentos]   (no terminal do container, no Dokploy)
 //
@@ -9,7 +10,8 @@ import { pool } from "./db/index.js";
 
 const AJUDA = `Uso:
   conta:criar <email> <nome>   cria a conta e mostra o link de ativação (válido por 72 h)
-  senha:link <email>           mostra um link de redefinição de senha (válido por 1 h)
+  senha:link <email>           mostra um link para definir a senha: de ativação (72 h) se a
+                               conta ainda não tem senha, senão de redefinição (1 h)
   contas:listar                lista as contas
 
 O link é de uso único e deve ser enviado só ao dono da conta.`;
@@ -55,8 +57,9 @@ async function executar(argumentos: string[]): Promise<void> {
     case "senha:link": {
       const email = lerEmail(resto[0]);
       await exigirBancoPreparado();
-      const { link, expiraEm, conta } = await gerarLinkSenha(email, "redefinicao");
-      console.log(`Link de redefinição para ${conta.nome} <${conta.email}>`);
+      const { link, expiraEm, conta, finalidade } = await gerarLinkSenha(email);
+      const tipo = finalidade === "ativacao" ? "ativação" : "redefinição";
+      console.log(`Link de ${tipo} para ${conta.nome} <${conta.email}>`);
       console.log(`(válido até ${formatarData(expiraEm)}; links anteriores foram invalidados):`);
       console.log(link);
       return;

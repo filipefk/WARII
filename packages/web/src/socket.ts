@@ -73,6 +73,7 @@ function ligarOuvintes(): void {
 
   socket.on("lobby", (_partidaId, lobby) => partidas.gravarLobby(lobby));
   socket.on("removido", (partidaId) => partidas.marcarRemovido(partidaId));
+  socket.on("apagada", (partidaId) => partidas.marcarApagada(partidaId));
   socket.on("presenca", (partidaId, conectados) => partidas.gravarPresenca(partidaId, conectados));
   socket.on("estado", (partidaId, visao, seq) => partidas.gravarEstado(partidaId, visao, seq));
   socket.on("eventos", (partidaId, eventos, visao, seq) => {

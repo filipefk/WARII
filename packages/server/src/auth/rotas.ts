@@ -35,8 +35,8 @@ const LIMITE_GERAL = { max: 120, timeWindow: "1 minute" };
 
 const CREDENCIAIS_INVALIDAS = "e-mail ou senha incorretos";
 
-function paraDto(usuario: { id: string; email: string; nome: string }): UsuarioDto {
-  return { id: usuario.id, email: usuario.email, nome: usuario.nome };
+function paraDto(usuario: UsuarioDto): UsuarioDto {
+  return { id: usuario.id, email: usuario.email, nome: usuario.nome, admin: usuario.admin };
 }
 
 export async function rotasDeAutenticacao(app: FastifyInstance): Promise<void> {

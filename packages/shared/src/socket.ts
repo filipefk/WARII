@@ -22,6 +22,8 @@ export interface ServerToClientEvents {
   lobby: (partidaId: string, lobby: PartidaLobbyDto) => void;
   // O jogador saiu ou foi removido da sala de espera: deixa de receber os eventos dela.
   removido: (partidaId: string) => void;
+  // A partida foi apagada pelo administrador: deixa de existir para todos.
+  apagada: (partidaId: string) => void;
   // Ids dos usuários com ao menos uma conexão acompanhando a partida.
   presenca: (partidaId: string, conectados: string[]) => void;
   erro: (erro: ErroApi) => void;

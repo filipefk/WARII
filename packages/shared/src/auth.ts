@@ -51,6 +51,8 @@ export interface UsuarioDto {
   id: string;
   email: string;
   nome: string;
+  // Vê as telas de administração (usuários e partidas).
+  admin: boolean;
 }
 
 // Corpo de toda resposta de erro da API.

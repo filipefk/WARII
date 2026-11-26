@@ -1,7 +1,11 @@
 // Rotas da SPA. O Nginx (produção) e o Vite (dev) devolvem o index.html para qualquer caminho.
 import { createBrowserRouter, Navigate } from "react-router";
+import { ExigirAdmin } from "./componentes/ExigirAdmin";
 import { ExigirLogin } from "./componentes/ExigirLogin";
 import { Layout } from "./componentes/Layout";
+import { Admin } from "./paginas/admin/Admin";
+import { AdminPartidas } from "./paginas/admin/AdminPartidas";
+import { AdminUsuarios } from "./paginas/admin/AdminUsuarios";
 import { Conta } from "./paginas/Conta";
 import { Convite } from "./paginas/Convite";
 import { DefinirSenha } from "./paginas/DefinirSenha";
@@ -24,6 +28,20 @@ export const roteador = createBrowserRouter([
           { path: "partidas", element: <Partidas /> },
           { path: "partidas/:id", element: <Partida /> },
           { path: "conta", element: <Conta /> },
+          {
+            element: <ExigirAdmin />,
+            children: [
+              {
+                path: "admin",
+                element: <Admin />,
+                children: [
+                  { index: true, element: <Navigate to="/admin/usuarios" replace /> },
+                  { path: "usuarios", element: <AdminUsuarios /> },
+                  { path: "partidas", element: <AdminPartidas /> },
+                ],
+              },
+            ],
+          },
         ],
       },
       { path: "*", element: <NaoEncontrada /> },

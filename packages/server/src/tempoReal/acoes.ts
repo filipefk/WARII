@@ -68,14 +68,17 @@ export async function aplicarEGravar(
   const comSnapshot = precisaDeSnapshot(atual.estado, novo, seq - atual.seqSnapshot);
   const terminou = novo.fase === "FIM";
 
-  const gravou = await db.transaction(async (tx) => {
+  const gravou = await db.transaction(async (tx): Promise<"ok" | "seq" | "status" | "sumiu"> => {
     const [linha] = await tx
       .select({ seq: partidas.seq, status: partidas.status })
       .from(partidas)
       .where(eq(partidas.id, partidaId))
       .for("update");
+    // Apagada ou encerrada pelo administrador (admin/partidas.ts).
+    if (!linha) return "sumiu";
+    if (linha.status !== "em_andamento") return "status";
     // Outro processo (ou um estado antigo na memória) mexeu na partida: não grava nada.
-    if (!linha || linha.seq !== atual.seq || linha.status !== "em_andamento") return false;
+    if (linha.seq !== atual.seq) return "seq";
     await tx
       .insert(acoesPartida)
       .values({ partidaId, seq, usuarioId, tipo: acao.tipo, acao, sorteios });
@@ -93,10 +96,20 @@ export async function aplicarEGravar(
         }),
       })
       .where(eq(partidas.id, partidaId));
-    return true;
+    return "ok";
   });
 
-  if (!gravou) {
+  if (gravou === "sumiu" || gravou === "status") {
+    descartarPartida(partidaId);
+    return {
+      ok: false,
+      erro:
+        gravou === "sumiu"
+          ? { codigo: "PARTIDA_INEXISTENTE", mensagem: "partida inexistente" }
+          : { codigo: "PARTIDA_ENCERRADA", mensagem: "a partida foi encerrada" },
+    };
+  }
+  if (gravou === "seq") {
     descartarPartida(partidaId);
     emitirEstado(io, partidaId, await partidaAtiva(partidaId));
     return {

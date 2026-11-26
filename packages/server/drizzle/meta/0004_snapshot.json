@@ -655,6 +655,13 @@
           "primaryKey": false,
           "notNull": false
         },
+        "admin": {
+          "name": "admin",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "robo": {
           "name": "robo",
           "type": "boolean",
