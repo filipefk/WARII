@@ -1,5 +1,7 @@
 // Mapa do jogo (componente Tabuleiro do sistema): moldura com radar, territórios, fronteiras, rotas
-// marítimas, rótulos e as 6 bases aéreas, com zoom pela roda e arraste. Território livre tem a cor
+// marítimas, rótulos e as 6 bases aéreas, com zoom pela roda e arraste. O mundo é uma fita
+// contínua no sentido leste–oeste (cópias a cada `geografia.periodo`); moldura e bases ficam
+// fixas na tela. Território livre tem a cor
 // do continente; ocupado, a do dono. Só desenha: o estado vem
 // da visão da partida e os cliques são repassados a quem usa.
 import {
@@ -95,18 +97,24 @@ interface Props {
 // Proporção (largura / altura) do recorte de `foco`; quem usa dá a mesma proporção à área.
 export const PROPORCAO_DO_FOCO = 1.45;
 
-// Recorte do mapa em volta dos territórios: a caixa deles com folga, um tamanho mínimo, na
-// proporção do foco e sem sair do tabuleiro.
-function caixaDoFoco(geografia: Geografia, ids: readonly TerritorioId[]): string {
+// Recorte do mapa em volta dos territórios: a caixa deles com folga, um tamanho mínimo e na
+// proporção do foco. Cada território entra pela cópia do mundo mais perto do primeiro (Alasca e
+// Vladivostok ficam lado a lado no estreito); na vertical, sem sair do tabuleiro.
+function caixaDoFoco(
+  geografia: Geografia,
+  ids: readonly TerritorioId[],
+): [x: number, y: number, w: number, h: number] {
+  const { altura, periodo } = geografia;
+  const referencia = ids[0] ? geografia.territorios[ids[0]].rotulo[0] : 0;
   let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
   for (const id of ids) {
     const { caixa, rotulo } = geografia.territorios[id];
-    x0 = Math.min(x0, caixa[0], rotulo[0]);
+    const d = Math.round((referencia - rotulo[0]) / periodo) * periodo;
+    x0 = Math.min(x0, caixa[0] + d, rotulo[0] + d);
     y0 = Math.min(y0, caixa[1], rotulo[1]);
-    x1 = Math.max(x1, caixa[2], rotulo[0]);
+    x1 = Math.max(x1, caixa[2] + d, rotulo[0] + d);
     y1 = Math.max(y1, caixa[3], rotulo[1]);
   }
-  const { largura, altura } = geografia;
   let w = Math.max((x1 - x0) * 1.6, 300);
   let h = Math.max((y1 - y0) * 1.6, 300 / PROPORCAO_DO_FOCO);
   if (w / h < PROPORCAO_DO_FOCO) w = h * PROPORCAO_DO_FOCO;
@@ -115,9 +123,9 @@ function caixaDoFoco(geografia: Geografia, ids: readonly TerritorioId[]): string
     h = altura;
     w = h * PROPORCAO_DO_FOCO;
   }
-  const x = Math.max(0, Math.min(largura - w, (x0 + x1) / 2 - w / 2));
+  const x = (x0 + x1) / 2 - w / 2;
   const y = Math.max(0, Math.min(altura - h, (y0 + y1) / 2 - h / 2));
-  return `${x} ${y} ${w} ${h}`;
+  return [x, y, w, h];
 }
 
 const POSICOES_BASES = (largura: number, altura: number): [number, number][] => [
@@ -159,6 +167,50 @@ function Radar({ largura, altura }: { largura: number; altura: number }) {
   );
 }
 
+// Cópias do mundo lado a lado (em múltiplos do período): com elas o arraste leste–oeste não tem
+// fim e o estreito de Bering fica contínuo.
+const COPIAS = [-1, 0, 1] as const;
+
+interface Transformacao {
+  k: number;
+  x: number;
+  y: number;
+}
+
+const IDENTIDADE: Transformacao = { k: 1, x: 0, y: 0 };
+
+// Leva o deslocamento horizontal para perto de zero, em múltiplos do período na escala atual: as
+// três cópias cobrem a tela qualquer que seja o arraste.
+function normalizar({ k, x, y }: Transformacao, periodo: number): Transformacao {
+  const volta = periodo * k;
+  return { k, x: x - volta * Math.round(x / volta), y };
+}
+
+const textoDaTransformacao = ({ k, x, y }: Transformacao) => `translate(${x},${y}) scale(${k})`;
+
+// Ponto do mundo na cópia mais próxima de `perto` (só no eixo x).
+function copiaMaisProxima(
+  ponto: readonly [number, number],
+  perto: number,
+  periodo: number,
+): [number, number] {
+  const n = Math.round((perto - ponto[0]) / periodo);
+  return [ponto[0] + n * periodo, ponto[1]];
+}
+
+// Camada do mundo repetida nas cópias.
+function Copias({ periodo, children }: { periodo: number; children: ReactNode }) {
+  return (
+    <>
+      {COPIAS.map((n) => (
+        <g key={n} transform={n === 0 ? undefined : `translate(${n * periodo} 0)`}>
+          {children}
+        </g>
+      ))}
+    </>
+  );
+}
+
 export function Tabuleiro({
   geografia,
   territorio,
@@ -173,33 +225,53 @@ export function Tabuleiro({
   cantoInferiorEsquerdo,
   foco = null,
 }: Props) {
-  const { largura, altura } = geografia;
+  const { largura, altura, periodo } = geografia;
   const svgRef = useRef<SVGSVGElement>(null);
-  const raizRef = useRef<SVGGElement>(null);
+  // Os grupos do mundo (abaixo e acima do acabamento e das bases) recebem o mesmo transform.
+  const raizesRef = useRef<(SVGGElement | null)[]>([]);
+  const transformacaoRef = useRef<Transformacao>(IDENTIDADE);
   // O painel do canto só aparece com o mapa inteiro à vista (zoom 1).
   const [semZoom, setSemZoom] = useState(true);
+  // Com um ataque aéreo à mostra, a esquadrilha (presa às bases, fixas na tela) acompanha o mapa:
+  // só então o arraste redesenha o componente.
+  const animando = voo !== null || volta !== null || explosoes !== null;
+  const animandoRef = useRef(animando);
+  const [transformacao, setTransformacao] = useState(IDENTIDADE);
+  useEffect(() => {
+    animandoRef.current = animando;
+    if (animando) setTransformacao(transformacaoRef.current);
+  }, [animando]);
 
   const comFoco = foco !== null && foco.length > 0;
   useEffect(() => {
     const svg = svgRef.current;
-    const raiz = raizRef.current;
-    if (!svg || !raiz || comFoco) return () => {};
+    if (!svg || comFoco) {
+      transformacaoRef.current = IDENTIDADE;
+      return () => {};
+    }
+    const aplicar = (t: Transformacao) => {
+      transformacaoRef.current = t;
+      const texto = textoDaTransformacao(t);
+      for (const raiz of raizesRef.current) raiz?.setAttribute("transform", texto);
+    };
     const comportamento = zoom<SVGSVGElement, unknown>()
       .scaleExtent([1, 8])
+      // Sem limite no sentido leste–oeste (o mundo se repete); de norte a sul, o tabuleiro.
       .translateExtent([
-        [0, 0],
-        [largura, altura],
+        [-Infinity, 0],
+        [Infinity, altura],
       ])
-      .on("zoom", (e: { transform: { k: number; toString(): string } }) => {
-        raiz.setAttribute("transform", e.transform.toString());
+      .on("zoom", (e: { transform: Transformacao }) => {
+        aplicar(normalizar(e.transform, periodo));
         setSemZoom(e.transform.k <= 1);
+        if (animandoRef.current) setTransformacao(transformacaoRef.current);
       });
     const selecao = select(svg);
     selecao.call(comportamento);
     return () => {
       selecao.on(".zoom", null);
     };
-  }, [largura, altura, comFoco]);
+  }, [altura, periodo, comFoco]);
 
   const cores = useMemo(
     () =>
@@ -236,10 +308,27 @@ export function Tabuleiro({
     onClicar(ehTerritorioId(id) ? id : null);
   };
 
+  const caixa = comFoco ? caixaDoFoco(geografia, foco) : null;
+  const t = comFoco ? IDENTIDADE : transformacao;
+  const raiz = (i: number) => (g: SVGGElement | null) => {
+    raizesRef.current[i] = g;
+  };
+  // No foco não há moldura: o recorte pode passar da borda do tabuleiro (Bering).
+  const recorte = comFoco ? undefined : "url(#tabuleiro-moldura)";
+  const posicoes = POSICOES_BASES(largura, altura);
+  // Alvo de uma esquadrilha na tela: a cópia do território mais perto da base de partida.
+  const naTela = (base: number, alvo: TerritorioId): [number, number] => {
+    const de = posicoes[base] ?? [largura / 2, 40];
+    const rotulo = geografia.territorios[alvo].rotulo;
+    if (comFoco) return [rotulo[0], rotulo[1]];
+    const [x, y] = copiaMaisProxima(rotulo, (de[0] - t.x) / t.k, periodo);
+    return [x * t.k + t.x, y * t.k + t.y];
+  };
+
   return (
     <svg
       ref={svgRef}
-      viewBox={comFoco ? caixaDoFoco(geografia, foco) : `0 0 ${largura} ${altura}`}
+      viewBox={caixa ? caixa.join(" ") : `0 0 ${largura} ${altura}`}
       preserveAspectRatio="xMidYMid meet"
       className="mapa block h-full w-full select-none"
       onClick={clicar}
@@ -290,83 +379,104 @@ export function Tabuleiro({
           <rect x={10} y={10} width={largura - 20} height={altura - 20} rx={14} />
         </clipPath>
       </defs>
-      <g ref={raizRef}>
+      {caixa ? (
         <rect
-          x={10}
-          y={10}
-          width={largura - 20}
-          height={altura - 20}
-          rx={14}
+          x={caixa[0]}
+          y={caixa[1]}
+          width={caixa[2]}
+          height={caixa[3]}
           fill="url(#tabuleiro-fundo)"
-          stroke="var(--color-board-frame)"
-          strokeWidth={4}
         />
-        {/* Chanfro da moldura: filete claro por dentro da borda escura. */}
-        <rect
-          x={13}
-          y={13}
-          width={largura - 26}
-          height={altura - 26}
-          rx={12}
-          fill="none"
-          stroke="#fff"
-          strokeOpacity={0.09}
-          strokeWidth={1.2}
-          pointerEvents="none"
-        />
-        <Radar largura={largura} altura={altura} />
+      ) : (
+        <>
+          <rect
+            x={10}
+            y={10}
+            width={largura - 20}
+            height={altura - 20}
+            rx={14}
+            fill="url(#tabuleiro-fundo)"
+            stroke="var(--color-board-frame)"
+            strokeWidth={4}
+          />
+          {/* Chanfro da moldura: filete claro por dentro da borda escura. */}
+          <rect
+            x={13}
+            y={13}
+            width={largura - 26}
+            height={altura - 26}
+            rx={12}
+            fill="none"
+            stroke="#fff"
+            strokeOpacity={0.09}
+            strokeWidth={1.2}
+            pointerEvents="none"
+          />
+          <Radar largura={largura} altura={altura} />
+        </>
+      )}
 
-        {/* Terra opaca sob os territórios: o esmaecido (opacidade) clareia sobre ela em vez de
-            deixar o tabuleiro aparecer, o que faria o território preto sumir no fundo. */}
-        <g className="mapa-terra" aria-hidden="true">
-          {TERRITORIOS.map((t) =>
-            geografia.territorios[t.id].partes.map((parte, i) => (
-              <UsoDaParte key={`${t.id}-${i}`} territorio={t.id} indice={i} parte={parte} />
-            )),
-          )}
+      <g clipPath={recorte}>
+        <g ref={raiz(0)}>
+          <Copias periodo={periodo}>
+            {/* Terra opaca sob os territórios: o esmaecido (opacidade) clareia sobre ela em vez de
+                deixar o tabuleiro aparecer, o que faria o território preto sumir no fundo. */}
+            <g className="mapa-terra" aria-hidden="true">
+              {TERRITORIOS.map((te) =>
+                geografia.territorios[te.id].partes.map((parte, i) => (
+                  <UsoDaParte key={`${te.id}-${i}`} territorio={te.id} indice={i} parte={parte} />
+                )),
+              )}
+            </g>
+
+            <g>
+              {TERRITORIOS.map((te) => {
+                const geo = geografia.territorios[te.id];
+                const { dono } = territorio(te.id);
+                const esmaecido = opcoes !== null && !opcoes.has(te.id) && !realcados.has(te.id);
+                const classes = ["mapa-territorio"];
+                if (realcados.has(te.id)) classes.push("realcado");
+                if (esmaecido) classes.push("esmaecido");
+                if (opcoes?.has(te.id)) classes.push("opcao");
+                return (
+                  <g
+                    key={te.id}
+                    data-territorio={te.id}
+                    className={classes.join(" ")}
+                    fill={dono ? TONS[dono].fundo : cores.get(te.id)}
+                  >
+                    <title>{te.nome}</title>
+                    {geo.partes.map((parte, i) => (
+                      <UsoDaParte key={i} territorio={te.id} indice={i} parte={parte} />
+                    ))}
+                  </g>
+                );
+              })}
+            </g>
+
+            <g className="mapa-fronteiras">
+              {geografia.fronteiras.map((f, i) => {
+                const caminho = (
+                  <path
+                    d={f.d}
+                    clipPath={f.recorte ? `url(#${idRecorteFronteira(i)})` : undefined}
+                  />
+                );
+                return f.recortePais ? (
+                  <g key={i} clipPath={`url(#${idContornoPais(f.recortePais)})`}>
+                    {caminho}
+                  </g>
+                ) : (
+                  <g key={i}>{caminho}</g>
+                );
+              })}
+            </g>
+          </Copias>
         </g>
+      </g>
 
-        <g>
-          {TERRITORIOS.map((t) => {
-            const geo = geografia.territorios[t.id];
-            const { dono } = territorio(t.id);
-            const esmaecido = opcoes !== null && !opcoes.has(t.id) && !realcados.has(t.id);
-            const classes = ["mapa-territorio"];
-            if (realcados.has(t.id)) classes.push("realcado");
-            if (esmaecido) classes.push("esmaecido");
-            if (opcoes?.has(t.id)) classes.push("opcao");
-            return (
-              <g
-                key={t.id}
-                data-territorio={t.id}
-                className={classes.join(" ")}
-                fill={dono ? TONS[dono].fundo : cores.get(t.id)}
-              >
-                <title>{t.nome}</title>
-                {geo.partes.map((parte, i) => (
-                  <UsoDaParte key={i} territorio={t.id} indice={i} parte={parte} />
-                ))}
-              </g>
-            );
-          })}
-        </g>
-
-        <g className="mapa-fronteiras">
-          {geografia.fronteiras.map((f, i) => {
-            const caminho = (
-              <path d={f.d} clipPath={f.recorte ? `url(#${idRecorteFronteira(i)})` : undefined} />
-            );
-            return f.recortePais ? (
-              <g key={i} clipPath={`url(#${idContornoPais(f.recortePais)})`}>
-                {caminho}
-              </g>
-            ) : (
-              <g key={i}>{caminho}</g>
-            );
-          })}
-        </g>
-
-        {/* Acabamento de tabuleiro físico: grão do papelão e o vinco da dobra no meio. */}
+      {/* Acabamento de tabuleiro físico, fixo na tela: grão do papelão e o vinco da dobra. */}
+      {!caixa && (
         <g className="mapa-acabamento" aria-hidden="true" clipPath="url(#tabuleiro-moldura)">
           <rect
             className="mapa-grao"
@@ -395,101 +505,118 @@ export function Tabuleiro({
             strokeWidth={1.2}
           />
         </g>
+      )}
 
-        <g className="mapa-rotas">
-          {rotas.map(({ a, b, rota }) => {
-            const destacada = realcados.has(a) || realcados.has(b);
-            return (
-              <g key={`${a}|${b}`} className={destacada ? "destacada" : undefined}>
-                <path d={rota.d} />
-                {rota.pontas.map(([x, y], i) => (
-                  <circle key={i} cx={x} cy={y} r={2.6} />
-                ))}
-              </g>
-            );
-          })}
+      <g clipPath={recorte}>
+        <g ref={raiz(1)}>
+          <Copias periodo={periodo}>
+            <g className="mapa-rotas">
+              {rotas.map(({ a, b, rota }) => {
+                const destacada = realcados.has(a) || realcados.has(b);
+                return (
+                  <g key={`${a}|${b}`} className={destacada ? "destacada" : undefined}>
+                    <path d={rota.d} />
+                    {rota.pontas.map(([x, y], i) => (
+                      <circle key={i} cx={x} cy={y} r={2.6} />
+                    ))}
+                  </g>
+                );
+              })}
+            </g>
+
+            <g>
+              {geografia.oceanos.map((o, i) => (
+                <text key={i} className="mapa-oceano" x={o.ponto[0]} y={o.ponto[1]}>
+                  {o.texto}
+                </text>
+              ))}
+              {IDS_CONTINENTES.map((c) => {
+                const [x, y] = geografia.continentes[c];
+                return (
+                  <text
+                    key={c}
+                    className="mapa-continente"
+                    x={x}
+                    y={y}
+                    fill={coresContinentes.get(c)}
+                  >
+                    {CONTINENTES[c].nome}
+                  </text>
+                );
+              })}
+            </g>
+          </Copias>
         </g>
-
-        <g>
-          {geografia.oceanos.map((o, i) => (
-            <text key={i} className="mapa-oceano" x={o.ponto[0]} y={o.ponto[1]}>
-              {o.texto}
-            </text>
-          ))}
-          {IDS_CONTINENTES.map((c) => {
-            const [x, y] = geografia.continentes[c];
-            return (
-              <text key={c} className="mapa-continente" x={x} y={y} fill={coresContinentes.get(c)}>
-                {CONTINENTES[c].nome}
-              </text>
-            );
-          })}
-        </g>
-
-        <g>
-          {POSICOES_BASES(largura, altura).map(([x, y], i) => {
-            const base = bases[i] ?? null;
-            return (
-              <BaseAerea
-                key={i}
-                x={x}
-                y={y}
-                dono={base?.dono ?? null}
-                bombardeiros={base?.bombardeiros ?? 0}
-              />
-            );
-          })}
-        </g>
-
-        <g>
-          {TERRITORIOS.map((t) => {
-            const geo = geografia.territorios[t.id];
-            const estado = territorio(t.id);
-            return (
-              <MarcadorTerritorio
-                key={t.id}
-                id={t.id}
-                ponto={geo.rotulo}
-                nome={t.nome}
-                sub={geo.sub}
-                centro={t.centroEstrategico}
-                dono={estado.dono}
-                exercitos={estado.exercitos}
-              />
-            );
-          })}
-        </g>
-
-        {voo && voo.bombardeiros > 0 && (
-          <Esquadrilha
-            key={`${voo.base}:${voo.alvo}`}
-            de={POSICOES_BASES(largura, altura)[voo.base] ?? [largura / 2, 40]}
-            para={geografia.territorios[voo.alvo].rotulo}
-            cor={TONS[voo.cor].fundo}
-            bombardeiros={voo.bombardeiros}
-            abatidos={voo.abatidosNaChegada ?? 0}
-          />
-        )}
-        {!voo && volta && volta.bombardeiros > 0 && (
-          <Esquadrilha
-            key={`volta:${volta.seq}`}
-            de={POSICOES_BASES(largura, altura)[volta.base] ?? [largura / 2, 40]}
-            para={geografia.territorios[volta.alvo].rotulo}
-            cor={TONS[volta.cor].fundo}
-            bombardeiros={volta.bombardeiros}
-            saida={volta.saida}
-            volta
-          />
-        )}
-        {explosoes && (
-          <Explosoes
-            key={`explosoes:${explosoes.seq}`}
-            de={POSICOES_BASES(largura, altura)[explosoes.base] ?? [largura / 2, 40]}
-            para={geografia.territorios[explosoes.alvo].rotulo}
-            explosoes={explosoes}
-          />
-        )}
       </g>
+
+      {/* Bases aéreas fixas na tela: são da moldura do tabuleiro, não do mundo. */}
+      <g>
+        {posicoes.map(([x, y], i) => {
+          const base = bases[i] ?? null;
+          return (
+            <BaseAerea
+              key={i}
+              x={x}
+              y={y}
+              dono={base?.dono ?? null}
+              bombardeiros={base?.bombardeiros ?? 0}
+            />
+          );
+        })}
+      </g>
+
+      <g clipPath={recorte}>
+        <g ref={raiz(2)}>
+          <Copias periodo={periodo}>
+            {TERRITORIOS.map((te) => {
+              const geo = geografia.territorios[te.id];
+              const estado = territorio(te.id);
+              return (
+                <MarcadorTerritorio
+                  key={te.id}
+                  id={te.id}
+                  ponto={geo.rotulo}
+                  nome={te.nome}
+                  sub={geo.sub}
+                  centro={te.centroEstrategico}
+                  dono={estado.dono}
+                  exercitos={estado.exercitos}
+                />
+              );
+            })}
+          </Copias>
+        </g>
+      </g>
+
+      {voo && voo.bombardeiros > 0 && (
+        <Esquadrilha
+          key={`${voo.base}:${voo.alvo}`}
+          de={posicoes[voo.base] ?? [largura / 2, 40]}
+          para={naTela(voo.base, voo.alvo)}
+          cor={TONS[voo.cor].fundo}
+          bombardeiros={voo.bombardeiros}
+          abatidos={voo.abatidosNaChegada ?? 0}
+        />
+      )}
+      {!voo && volta && volta.bombardeiros > 0 && (
+        <Esquadrilha
+          key={`volta:${volta.seq}`}
+          de={posicoes[volta.base] ?? [largura / 2, 40]}
+          para={naTela(volta.base, volta.alvo)}
+          cor={TONS[volta.cor].fundo}
+          bombardeiros={volta.bombardeiros}
+          saida={volta.saida}
+          volta
+        />
+      )}
+      {explosoes && (
+        <Explosoes
+          key={`explosoes:${explosoes.seq}`}
+          de={posicoes[explosoes.base] ?? [largura / 2, 40]}
+          para={naTela(explosoes.base, explosoes.alvo)}
+          explosoes={explosoes}
+        />
+      )}
       {cantoInferiorEsquerdo && semZoom && !comFoco && (
         // Entre a costa do Pacífico e a base aérea de baixo; o conteúdo se apoia no pé da área.
         <foreignObject x={28} y={540} width={390} height={altura - 34 - 22 - 540 - 8}>

@@ -49,6 +49,9 @@ export interface RotaMaritima {
 export interface Geografia {
   readonly largura: number;
   readonly altura: number;
+  // Uma volta ao mundo em px: o mapa se repete a cada `periodo` no sentido leste–oeste (o
+  // tabuleiro desenha cópias lado a lado; a rota de volta cruza para a cópia vizinha).
+  readonly periodo: number;
   readonly territorios: Readonly<Record<TerritorioId, GeografiaTerritorio>>;
   readonly paisesDivididos: Readonly<Record<string, string>>;
   readonly fronteiras: readonly TracoFronteira[];
@@ -68,6 +71,7 @@ function ehGeografia(valor: unknown): valor is Geografia {
   if (typeof valor !== "object" || valor === null) return false;
   const g = valor as Partial<Record<keyof Geografia, unknown>>;
   if (typeof g.largura !== "number" || typeof g.altura !== "number") return false;
+  if (typeof g.periodo !== "number" || g.periodo <= 0) return false;
   if (typeof g.territorios !== "object" || g.territorios === null) return false;
   const territorios = g.territorios as Partial<Record<TerritorioId, Partial<GeografiaTerritorio>>>;
   return IDS_TERRITORIOS.every((id) => {

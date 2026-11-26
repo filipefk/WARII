@@ -3,6 +3,7 @@
 // o id da partida, pois um mesmo socket pode acompanhar várias (uma sala de espera e um jogo).
 import type { Acao, Evento, VisaoPartida } from "@warii/engine";
 import type { ErroApi } from "./auth.js";
+import type { Escolha } from "./escolha.js";
 import type { PartidaLobbyDto } from "./partidas.js";
 
 // Maior mensagem aceita pelo servidor (bytes); acima disso a conexão é derrubada.
@@ -26,6 +27,8 @@ export interface ServerToClientEvents {
   apagada: (partidaId: string) => void;
   // Ids dos usuários com ao menos uma conexão acompanhando a partida.
   presenca: (partidaId: string, conectados: string[]) => void;
+  // Escolhas em andamento do jogador que deve agir (efêmeras; valem só no seq indicado).
+  escolha: (partidaId: string, escolha: Escolha) => void;
   erro: (erro: ErroApi) => void;
 }
 
@@ -36,4 +39,7 @@ export interface ClientToServerEvents {
   deixarPartida: (partidaId: string) => void;
   // O servidor valida o formato com esquemaAcao e a regra com o engine.
   acao: (partidaId: string, acao: Acao, confirmar: (resposta: Confirmacao) => void) => void;
+  // Escolhas em andamento de quem deve agir, para a mesa acompanhar. Sem resposta: o servidor
+  // ignora em silêncio a de quem não deve agir ou de um seq que já passou.
+  escolha: (partidaId: string, escolha: Escolha) => void;
 }

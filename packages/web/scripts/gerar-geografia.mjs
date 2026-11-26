@@ -756,9 +756,14 @@ function dentro(t, x, y) {
   return t.partes.some((p) => polygonContains(p.poligonoTela, [x, y]) && geoContains(p.feicao, ll));
 }
 
+// Uma volta ao mundo (360°) em px: o mapa se repete a cada `periodo` no sentido leste–oeste. Na
+// Miller, x = λ × escala.
+const PERIODO = r1(2 * Math.PI * projecao.scale());
+
 const saida = {
   largura: W,
   altura: H,
+  periodo: PERIODO,
   territorios: {},
   paisesDivididos: {},
   fronteiras: [],
@@ -902,11 +907,11 @@ for (const [a, b, tipo] of FRONTEIRAS) {
   const [A, B] = (tipo === "volta" ? pontasDeVolta(a, b) : pontasMaritimas(a, b)).map(ponto);
   let caminhoRota;
   if (tipo === "volta") {
-    // Dois arcos, cada um saindo de uma ponta até a borda do tabuleiro.
+    // O mapa se repete a cada PERIODO: um arco curto pelo estreito, da ponta da esquerda até a
+    // da direita na cópia anterior do mundo (o tabuleiro desenha as cópias lado a lado).
     const [E, D] = A[0] < B[0] ? [A, B] : [B, A];
-    caminhoRota =
-      `M${E[0]},${E[1]} Q${(E[0] + 14) / 2},${E[1] - 40} 14,${E[1] - 30} ` +
-      `M${D[0]},${D[1]} Q${(D[0] + W - 14) / 2},${D[1] - 40} ${W - 14},${D[1] - 30}`;
+    const Dx = r1(D[0] - PERIODO);
+    caminhoRota = `M${E[0]},${E[1]} Q${r1((E[0] + Dx) / 2)},${Math.min(E[1], D[1]) - 24} ${Dx},${D[1]}`;
   } else {
     const mx = (A[0] + B[0]) / 2;
     const my = (A[1] + B[1]) / 2;

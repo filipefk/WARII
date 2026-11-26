@@ -22,6 +22,8 @@ teste-b4e06f174ef0d377
 
 O banco foi recriado em 26/11/2026: contas de jogadores criadas antes disso (Ana, Bia, Caio, Duda) não existem mais.
 
+Conta criada depois (pela CLI, senha acima): `bia@warii.test` ("Bia Teste"), usada no teste das pendências em 26/11/2026.
+
 Cada navegador guarda uma sessão só: para jogar com várias contas ao mesmo tempo, use navegadores diferentes ou janelas anônimas.
 
 ## Como criar

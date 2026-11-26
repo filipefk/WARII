@@ -273,8 +273,8 @@ export function maximoTransportar(
   }));
 }
 
-// A mão passou do limite (herança de cartas): só valem usar ou descartar cartas.
+// A mão passou do limite (herança de cartas): só valem usar ou descartar cartas. Usa a contagem
+// pública, que também vale na visão de fora (ver interacao.ts).
 export function maoAcimaDoLimite(visao: VisaoPartida): boolean {
-  const minhas = eu(visao)?.cartas?.length ?? 0;
-  return minhas > visao.parametros.limiteMao;
+  return (eu(visao)?.quantidadeCartas ?? 0) > visao.parametros.limiteMao;
 }

@@ -6,6 +6,7 @@ import type { Acao, Evento, VisaoPartida } from "@warii/engine";
 import type {
   ClientToServerEvents,
   ErroApi,
+  Escolha,
   PartidaLobbyDto,
   ServerToClientEvents,
 } from "@warii/shared";
@@ -107,6 +108,7 @@ export type Mensagem =
   | { nome: "lobby"; partidaId: string; lobby: PartidaLobbyDto }
   | { nome: "removido"; partidaId: string }
   | { nome: "presenca"; partidaId: string; conectados: string[] }
+  | { nome: "escolha"; partidaId: string; escolha: Escolha }
   | { nome: "erro"; erro: ErroApi };
 
 // Guarda, em ordem, tudo o que o cliente recebe, e permite esperar uma mensagem específica.
@@ -125,6 +127,9 @@ export class Escuta {
     cliente.on("removido", (partidaId) => this.registrar({ nome: "removido", partidaId }));
     cliente.on("presenca", (partidaId, conectados) =>
       this.registrar({ nome: "presenca", partidaId, conectados }),
+    );
+    cliente.on("escolha", (partidaId, escolha) =>
+      this.registrar({ nome: "escolha", partidaId, escolha }),
     );
     cliente.on("erro", (erro) => this.registrar({ nome: "erro", erro }));
   }
@@ -184,6 +189,19 @@ export class Escuta {
       desde,
     );
     return m.lobby;
+  }
+
+  async esperarEscolha(partidaId: string, desde = 0): Promise<Escolha> {
+    const m = await this.esperar(
+      (x): x is Extract<Mensagem, { nome: "escolha" }> =>
+        x.nome === "escolha" && x.partidaId === partidaId,
+      desde,
+    );
+    return m.escolha;
+  }
+
+  escolhas(): Escolha[] {
+    return this.mensagens.flatMap((m) => (m.nome === "escolha" ? [m.escolha] : []));
   }
 
   async esperarRemovido(partidaId: string): Promise<void> {

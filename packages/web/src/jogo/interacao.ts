@@ -20,6 +20,7 @@ import {
   type TerritorioId,
   type VisaoPartida,
 } from "@warii/engine";
+import type { Escolha } from "@warii/shared";
 import type { Interacao } from "../stores/jogo";
 import {
   alvosAereos,
@@ -189,7 +190,7 @@ function receber(visao: VisaoPartida, i: Interacao): Etapa {
   );
   const r = visao.turno.recebimento;
   const pendente = r ? pendenteDeRecebimento(r) : 0;
-  const temCartas = (eu(visao)?.cartas?.length ?? 0) > 0;
+  const temCartas = (eu(visao)?.quantidadeCartas ?? 0) > 0;
   const continente = r
     ? (IDS_CONTINENTES.find((c) => (r.porContinente[c] ?? 0) > 0) ?? null)
     : null;
@@ -230,10 +231,10 @@ export function temAvioes(visao: VisaoPartida): boolean {
   const meu = eu(visao);
   if (!meu) return false;
   if (meu.bombardeirosBase > 0) return true;
-  return (
-    meu.bombardeirosCaixa > 0 &&
-    (meu.cartas ?? []).some((c) => cartaDeTroca(c)?.tipo !== "numerica")
-  );
+  if (meu.bombardeirosCaixa === 0) return false;
+  // Na visão de fora a mão é oculta: basta ter cartas.
+  if (meu.cartas === null) return meu.quantidadeCartas > 0;
+  return meu.cartas.some((c) => cartaDeTroca(c)?.tipo !== "numerica");
 }
 
 function terrestre(visao: VisaoPartida, i: Interacao): Etapa {
@@ -405,7 +406,7 @@ export function derivarEtapa(visao: VisaoPartida, i: Interacao): Etapa {
   if (maoAcimaDoLimite(visao)) {
     return {
       tipo: "maoCheia",
-      quantidade: eu(visao)?.cartas?.length ?? 0,
+      quantidade: eu(visao)?.quantidadeCartas ?? 0,
       limite: visao.parametros.limiteMao,
     };
   }
@@ -413,6 +414,56 @@ export function derivarEtapa(visao: VisaoPartida, i: Interacao): Etapa {
   if (visao.fase === "ATACAR")
     return i.modo === "ataqueAereo" && temAvioes(visao) ? aereo(visao, i) : terrestre(visao, i);
   return deslocar(visao, i);
+}
+
+// ---- Painel de fora (quem acompanha a vez de outro jogador) ----
+
+// A visão de quem assiste, "vestida" como a do jogador que age: as consultas de previa.ts passam a
+// responder por ele. A mão dele continua oculta (cartas: null); o resto é público.
+const visoesDeFora = new WeakMap<VisaoPartida, VisaoPartida>();
+
+export function visaoDeFora(visao: VisaoPartida): VisaoPartida | null {
+  if (visao.fase === "FIM") return null;
+  const quem = jogadorQueAge(visao);
+  if (quem === visao.voce || visao.jogadores[visao.vez]?.id !== quem) return null;
+  let deFora = visoesDeFora.get(visao);
+  if (!deFora) {
+    deFora = { ...visao, voce: quem };
+    visoesDeFora.set(visao, deFora);
+  }
+  return deFora;
+}
+
+// Interação do jogador da vez a partir da escolha que ele transmitiu (sem as cartas, que são
+// ocultas; só a contagem segue em `escolha.cartasMarcadas`).
+export function interacaoDaEscolha(escolha: Escolha | null): Interacao {
+  return {
+    modo: escolha?.modo ?? "nenhum",
+    origem: escolha?.origem ?? null,
+    destino: escolha?.destino ?? null,
+    cartas: [],
+    daBase: escolha?.daBase ?? null,
+  };
+}
+
+// Etapa do jogador da vez como quem assiste a vê. Nos usos de cartas (reforço, transporte,
+// descarte) as opções dependem da mão oculta: o painel mostra só a escolha transmitida.
+export function derivarEtapaDeFora(deFora: VisaoPartida, escolha: Escolha | null): Etapa {
+  const i = interacaoDaEscolha(escolha);
+  if (i.modo === "reforco" || i.modo === "transporte" || i.modo === "descarte") {
+    return { tipo: "espera" };
+  }
+  return derivarEtapa(deFora, i);
+}
+
+// Destaques do mapa para quem assiste: os da etapa ou, nos usos de cartas, os territórios
+// escolhidos.
+export function destaquesDeFora(etapa: Etapa, escolha: Escolha | null): DestaquesDoMapa {
+  const modo = escolha?.modo;
+  if (modo === "reforco" || modo === "transporte" || modo === "descarte") {
+    return { opcoes: null, marcados: marcar(escolha?.origem ?? null, escolha?.destino ?? null) };
+  }
+  return destaquesDoMapa(etapa);
 }
 
 // ---- Mapa ----

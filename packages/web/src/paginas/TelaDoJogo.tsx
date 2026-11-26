@@ -21,28 +21,35 @@ import {
   etapaDoCombate,
   JanelaDeCombate,
 } from "../componentes/jogo/JanelaDeCombate";
-import { CartasRecebidas, useCartasRecebidas } from "../componentes/jogo/CartasRecebidas";
+import { AvioesRecebidos } from "../componentes/jogo/AvioesRecebidos";
+import { useAvisoUnico } from "../componentes/jogo/avisoUnico";
+import { CartasRecebidas } from "../componentes/jogo/CartasRecebidas";
+import { CartasUsadas } from "../componentes/jogo/CartasUsadas";
 import { Orientacao, useOrientacao } from "../componentes/jogo/Orientacao";
-import { PainelAcao } from "../componentes/jogo/PainelAcao";
+import { PainelAcao, PainelDeFora } from "../componentes/jogo/PainelAcao";
 import { TelaDeVitoria } from "../componentes/jogo/TelaDeVitoria";
 import { Galeria } from "../componentes/guia/Galeria";
 import { GuiaDeRegras } from "../componentes/guia/GuiaDeRegras";
 import { DefsDoJogo } from "../componentes/tabuleiro/DefsDoJogo";
 import { Tabuleiro } from "../componentes/tabuleiro/Tabuleiro";
 import { useEnviarAcao } from "../jogo/enviarAcao";
+import { useTransmitirEscolha } from "../jogo/escolhaAoVivo";
 import { eu } from "../jogo/previa";
 import {
   cliqueInvalido,
   parCompleto,
   cliqueNoMapa,
   derivarEtapa,
+  derivarEtapaDeFora,
+  destaquesDeFora,
   destaquesDoMapa,
   type Etapa,
+  visaoDeFora,
 } from "../jogo/interacao";
 import { montarMesa } from "../jogo/mesa";
 import { carregarGeografia, type Geografia } from "../mapa/geografia";
 import { chaveDaFase, useJogo } from "../stores/jogo";
-import type { JogoRecebido } from "../stores/partidas";
+import { type JogoRecebido, usePartidas } from "../stores/partidas";
 
 function useGeografia(): { geografia: Geografia | null; erro: string | null } {
   const [geografia, setGeografia] = useState<Geografia | null>(null);
@@ -132,9 +139,28 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
         : { tipo: "espera" },
     [visao, modo, origem, destino, cartasMarcadas, daBase],
   );
-  const destaques = useMemo(() => destaquesDoMapa(etapa), [etapa]);
+  useTransmitirEscolha(partidaId, visao, seq);
+  // Quem não age acompanha o painel de quem joga a vez (robôs não transmitem escolhas: só a
+  // espera). A escolha transmitida só vale no seq em que foi feita.
+  const escolhaRecebida = usePartidas((s) => s.porId[partidaId]?.escolha ?? null);
+  const escolha = escolhaRecebida !== null && escolhaRecebida.seq === seq ? escolhaRecebida : null;
+  const deFora = useMemo(() => {
+    if (!visao || !mesa || etapa.tipo !== "espera") return null;
+    const v = visaoDeFora(visao);
+    return v && !mesa.robo(v.voce) ? v : null;
+  }, [visao, mesa, etapa]);
+  const etapaDeFora = useMemo(
+    () => (deFora ? derivarEtapaDeFora(deFora, escolha) : null),
+    [deFora, escolha],
+  );
+  const destaques = useMemo(
+    () => (etapaDeFora ? destaquesDeFora(etapaDeFora, escolha) : destaquesDoMapa(etapa)),
+    [etapa, etapaDeFora, escolha],
+  );
   const orientacao = useOrientacao(partidaId, visao, etapa, lobby.status === "em_andamento");
-  const cartasRecebidas = useCartasRecebidas(partidaId, jogo?.fimDaVez);
+  const cartasRecebidas = useAvisoUnico("fimDaVez", partidaId, jogo?.fimDaVez);
+  const avioes = useAvisoUnico("inicioDaVez", partidaId, jogo?.inicioDaVez);
+  const cartasUsadas = useAvisoUnico("cartasUsadas", partidaId, jogo?.cartasUsadas);
 
   if (erro) return <Aviso>{erro}</Aviso>;
   if (!visao || !mesa || !geografia || !jogo) return <Carregando texto="Carregando a partida…" />;
@@ -282,6 +308,14 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
           <div className="mt-espaco-3">
             <Aviso tipo="info">A partida foi encerrada pelo administrador, sem vencedor.</Aviso>
           </div>
+        ) : deFora && etapaDeFora ? (
+          <PainelDeFora
+            visao={deFora}
+            mesa={mesa}
+            geografia={geografia}
+            etapa={etapaDeFora}
+            escolha={escolha}
+          />
         ) : (
           <PainelAcao
             visao={visao}
@@ -360,12 +394,28 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
           onOcultar={() => setCombateOculto(combate.chave)}
         />
       )}
-      {orientacao.mensagem && !fim && !combateVisivel && (
+      {cartasUsadas.aviso && !fim && !combateVisivel && (
+        <CartasUsadas
+          aviso={cartasUsadas.aviso}
+          mesa={mesa}
+          geografia={geografia}
+          onFechar={cartasUsadas.fechar}
+        />
+      )}
+      {avioes.aviso && !cartasUsadas.aviso && !fim && !combateVisivel && (
+        <AvioesRecebidos aviso={avioes.aviso} onFechar={avioes.fechar} />
+      )}
+      {orientacao.mensagem && !avioes.aviso && !cartasUsadas.aviso && !fim && !combateVisivel && (
         <Orientacao mensagem={orientacao.mensagem} onFechar={orientacao.fechar} />
       )}
-      {cartasRecebidas.aviso && !orientacao.mensagem && !fim && !combateVisivel && (
-        <CartasRecebidas aviso={cartasRecebidas.aviso} onFechar={cartasRecebidas.fechar} />
-      )}
+      {cartasRecebidas.aviso &&
+        !avioes.aviso &&
+        !cartasUsadas.aviso &&
+        !orientacao.mensagem &&
+        !fim &&
+        !combateVisivel && (
+          <CartasRecebidas aviso={cartasRecebidas.aviso} onFechar={cartasRecebidas.fechar} />
+        )}
       {fim && !vitoriaFechada && (
         <TelaDeVitoria visao={visao} mesa={mesa} onFechar={() => setVitoriaFechada(true)} />
       )}

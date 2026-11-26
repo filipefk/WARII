@@ -7,6 +7,7 @@ import "./zod.js";
 export * from "./acoes.js";
 export * from "./admin.js";
 export * from "./auth.js";
+export * from "./escolha.js";
 export * from "./parametros.js";
 export * from "./partidas.js";
 export * from "./socket.js";

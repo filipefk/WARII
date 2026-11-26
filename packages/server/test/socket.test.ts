@@ -15,7 +15,7 @@ import {
   rngComSemente,
   visaoDoJogador,
 } from "@warii/engine";
-import type { Confirmacao } from "@warii/shared";
+import type { Confirmacao, Escolha } from "@warii/shared";
 import { asc, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 
@@ -78,6 +78,17 @@ const verPartida = (partidaId: string): Promise<PartidaAtiva> =>
   naFila(partidaId, () => partidaAtiva(partidaId));
 
 // Quem deve agir: o da vez, ou o defensor quando é ele quem rola.
+const escolhaDeTeste = (origem: "brasil" | "argentina" | "peru", seq = 0) => ({
+  seq,
+  modo: "nenhum" as const,
+  origem,
+  destino: null,
+  quantidade: null,
+  daBase: null,
+  dados: null,
+  cartasMarcadas: 1,
+});
+
 function daVez(estado: EstadoPartida, jogadores: readonly Jogador[]): Jogador {
   const id = jogadorQueAge(estado);
   return obter(
@@ -237,6 +248,44 @@ describe("servidor de partida (Socket.IO)", { skip: motivoSemBanco, concurrency:
     assert.deepEqual(log.rows, [{ usuario_id: daVezAgora.conta.id, tipo: acao.tipo }]);
     for (const j of jogadores) assert.ok((await j.escuta.esperarEventos(partidaId, 1)).length > 0);
     assert.equal(semEntrar.escuta.mensagens.filter((m) => m.nome === "eventos").length, 0);
+  });
+
+  test("escolhas em andamento: só de quem age, no seq atual, sem ids de cartas", async () => {
+    const { partidaId, jogadores } = await partidaEmJogo(3);
+    const { estado } = await verPartida(partidaId);
+    const quemAge = daVez(estado, jogadores);
+    const outros = jogadores.filter((j) => j !== quemAge);
+    // De quem não age e com ids de cartas: ignoradas.
+    obter(outros[0], "outro").cliente.emit("escolha", partidaId, escolhaDeTeste("argentina"));
+    const comCartas: Escolha = JSON.parse(
+      JSON.stringify({ ...escolhaDeTeste("peru"), cartas: ["alasca"] }),
+    );
+    quemAge.cliente.emit("escolha", partidaId, comCartas);
+    quemAge.cliente.emit("escolha", partidaId, escolhaDeTeste("brasil"));
+    for (const j of outros) {
+      assert.equal((await j.escuta.esperarEscolha(partidaId)).origem, "brasil");
+      assert.deepEqual(
+        j.escuta.escolhas().map((e) => e.origem),
+        ["brasil"],
+      );
+    }
+    assert.equal(quemAge.escuta.escolhas().length, 0, "não volta para quem escolheu");
+
+    // Quem entra no meio da vez recebe a última escolha.
+    const outraAba = await conectarJogador(obter(outros[0], "outro").conta, partidaId);
+    assert.equal((await outraAba.escuta.esperarEscolha(partidaId)).origem, "brasil");
+
+    // Depois de uma ação, a escolha do seq anterior não vale mais.
+    assert.deepEqual(
+      await agir(quemAge.cliente, partidaId, escolherAcao(estado, rngComSemente(7))),
+      {
+        ok: true,
+      },
+    );
+    quemAge.cliente.emit("escolha", partidaId, escolhaDeTeste("peru", 0));
+    const depois = await conectarJogador(obter(outros[1], "outro").conta, partidaId);
+    await depois.escuta.esperarEstado(partidaId);
+    assert.equal(depois.escuta.escolhas().length, 0, "nada de escolha velha");
   });
 
   test("ações simultâneas são serializadas, sem buraco no log", async () => {

@@ -38,7 +38,7 @@ export interface Parametros {
   readonly objetivoSubstitutoDestruir: boolean;
   // Quem fica com 1 território passa a ter o objetivo "3 CE", de forma definitiva (manual, §10.2).
   readonly objetivoTresCentros: boolean;
-  // ⚠ Exércitos que entraram por conquista podem se mover na fase de deslocamento (§8.3).
+  // Exércitos que entraram por conquista podem se mover na fase de deslocamento (§8.3; padrão: sim).
   readonly exercitosDaConquistaPodemDeslocar: boolean;
   // ⚠ Exércitos transportados por cartas contam para a regra de movimento único (§9.3 C).
   readonly transporteCartasContaMovimento: boolean;
@@ -74,7 +74,7 @@ export const PARAMETROS_PADRAO: Parametros = {
   interromperAtaqueAereo: true,
   objetivoSubstitutoDestruir: true,
   objetivoTresCentros: false,
-  exercitosDaConquistaPodemDeslocar: false,
+  exercitosDaConquistaPodemDeslocar: true,
   transporteCartasContaMovimento: true,
   vitoriaAQualquerMomento: true,
   centroInformacoes: false,

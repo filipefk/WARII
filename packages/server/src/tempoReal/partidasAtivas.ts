@@ -2,6 +2,7 @@
 // altera o estado dela (ações, entradas, avisos do lobby). O banco continua a fonte de verdade:
 // a partida é carregada do último snapshot + repetição do log, e cada gravação confere o seq.
 // Pressupõe uma única instância do servidor (com várias, seria preciso um adapter compartilhado).
+import type { Escolha } from "@warii/shared";
 import {
   type Acao,
   aplicarAcao,
@@ -31,6 +32,8 @@ type LinhaAcao = typeof acoesPartida.$inferSelect;
 export const ESPERA_DESPEJO_MS = 5 * 60 * 1000;
 
 const ativas = new Map<string, PartidaAtiva>();
+// Última escolha em andamento repassada em cada partida (para quem entra no meio da vez).
+const escolhas = new Map<string, Escolha>();
 const filas = new Map<string, Promise<void>>();
 const despejos = new Map<string, NodeJS.Timeout>();
 
@@ -69,6 +72,17 @@ export function guardarPartida(partidaId: string, partida: PartidaAtiva): void {
 
 export function descartarPartida(partidaId: string): void {
   ativas.delete(partidaId);
+  escolhas.delete(partidaId);
+}
+
+export function guardarEscolha(partidaId: string, escolha: Escolha): void {
+  escolhas.set(partidaId, escolha);
+}
+
+// A escolha guardada, se ainda for do seq atual.
+export function escolhaAtual(partidaId: string, seq: number): Escolha | null {
+  const escolha = escolhas.get(partidaId);
+  return escolha?.seq === seq ? escolha : null;
 }
 
 export async function carregarDoBanco(partidaId: string): Promise<PartidaAtiva> {
@@ -194,4 +208,5 @@ export function esquecerTodas(): void {
   for (const temporizador of despejos.values()) clearTimeout(temporizador);
   despejos.clear();
   ativas.clear();
+  escolhas.clear();
 }

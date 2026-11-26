@@ -1121,7 +1121,8 @@ const RULES = () => {
     </ul>
     <div class="box warn"><b>Cada exército se move uma vez só por turno</b>
       <div class="chain"><span class="t">Brasil</span><span class="good">→ ok</span><span class="t">Venezuela</span><span class="bad">→ ✗ os mesmos exércitos não seguem</span><span class="t">México</span></div>
-      Também não vale combinar: voar de um CE para outro e depois andar por terra, ou o contrário.</div>`],
+      Também não vale combinar: voar de um CE para outro e depois andar por terra, ou o contrário.</div>
+    <p>Os exércitos que entraram num território por <b>conquista</b> também podem se deslocar. Ex.: a China conquista a Índia e move 3 exércitos para lá; no deslocamento, 2 deles podem seguir para o Oriente Médio.</p>`],
   ["cartas", "10. Cartas de troca", `
     <h4>Comprando</h4>
     <p>No <b>fim do turno</b>, se você <b>conquistou pelo menos 1 território</b>, compre <b>3 cartas</b>, sem passar de <b>5 na mão</b>. Sem conquista, não compra. As cartas são secretas até serem usadas.</p>
@@ -1134,7 +1135,7 @@ const RULES = () => {
       Os sobreviventes vão para a sua base aérea.</div>
     <div class="box ex"><b>C) Transporte: dois territórios seus</b>
       <div class="ill">${tradeCardSVG(cardByName("Brasil"))}<span class="op">+</span>${tradeCardSVG(cardByName("Japão"))}<span class="op">=</span><span class="res">leve quantos exércitos quiser<br>do Brasil para o Japão (ou o contrário)</span></div></div>
-    <p>As cartas usadas vão para o descarte. Quando ele chega a 10 cartas, é embaralhado de volta no monte.</p>`],
+    <p>As cartas usadas vão para o descarte. Quando ele chega a 10 cartas, é embaralhado de volta no monte. O monte nunca acaba: se esvaziar antes disso, o descarte volta a ele na hora.</p>`],
   ["objetivos", "11. Objetivos e vitória", `
     <p>Cada jogador tem um objetivo secreto. Quem cumprir o seu mostra a carta e <b>vence na hora</b>.</p>
     <div class="ill"><div class="ocard"><span class="onum">1</span><div>${OBJECTIVES()[0]}</div></div><div class="ocard"><span class="onum">12</span><div>${OBJECTIVES()[11]}</div></div><div class="ocard"><span class="onum">19</span><div>${OBJECTIVES()[18]}</div></div></div>

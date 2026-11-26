@@ -1,10 +1,11 @@
 // Servidor de partida em tempo real (Socket.IO sobre o mesmo servidor HTTP do Fastify).
-// Pedidos do cliente: entrarNaPartida, deixarPartida e acao. As rotas REST avisam por
+// Pedidos do cliente: entrarNaPartida, deixarPartida, acao e escolha. As rotas REST avisam por
 // `app.tempoReal` o que mudou no lobby e quais sessões foram encerradas.
-import { visaoDoJogador } from "@warii/engine";
+import { jogadorQueAge, visaoDoJogador } from "@warii/engine";
 import {
   type Confirmacao,
   esquemaAcao,
+  esquemaEscolha,
   esquemaIdPartida,
   TAMANHO_MAXIMO_MENSAGEM,
 } from "@warii/shared";
@@ -25,7 +26,9 @@ import {
   agendarDespejo,
   cancelarDespejo,
   descartarPartida,
+  escolhaAtual,
   esquecerTodas,
+  guardarEscolha,
   naFila,
   partidaAtiva,
 } from "./partidasAtivas.js";
@@ -108,6 +111,29 @@ function idDaPartida(bruto: unknown): string {
   return id.data;
 }
 
+// Repassa à mesa a escolha em andamento de quem deve agir. Sem resposta: o que não vale (formato,
+// fora da partida, outro jogador, seq passado, partida fora da memória) é ignorado.
+async function escolher(
+  socket: SocketDoJogo,
+  brutoId: unknown,
+  brutoEscolha: unknown,
+): Promise<void> {
+  const id = esquemaIdPartida.safeParse(brutoId);
+  const escolha = esquemaEscolha.safeParse(brutoEscolha);
+  if (!id.success || !escolha.success) return;
+  const partidaId = id.data;
+  const { usuarioId } = socket.data;
+  if (!socket.rooms.has(salaDoJogador(partidaId, usuarioId))) return;
+  await exigirSessaoAtiva(socket);
+  await naFila(partidaId, async () => {
+    const partida = await partidaAtiva(partidaId);
+    if (partida.estado.fase === "FIM" || partida.seq !== escolha.data.seq) return;
+    if (jogadorQueAge(partida.estado) !== usuarioId) return;
+    guardarEscolha(partidaId, escolha.data);
+    socket.to(salaDaPartida(partidaId)).emit("escolha", partidaId, escolha.data);
+  });
+}
+
 export function registrarTempoReal(app: FastifyInstance): void {
   const log = app.log;
   const io: ServidorIo = new Server(app.server, {
@@ -137,6 +163,8 @@ export function registrarTempoReal(app: FastifyInstance): void {
       if (partida === null) socket.emit("lobby", partidaId, lobby);
       else {
         socket.emit("estado", partidaId, visaoDoJogador(partida.estado, usuarioId), partida.seq);
+        const escolha = escolhaAtual(partidaId, partida.seq);
+        if (escolha) socket.emit("escolha", partidaId, escolha);
       }
       await emitirPresenca(io, partidaId);
       // Retoma a vez de um robô parada (ex.: o servidor reiniciou no meio dela).
@@ -195,6 +223,10 @@ export function registrarTempoReal(app: FastifyInstance): void {
 
     socket.on("acao", (partidaId: unknown, acao: unknown, confirmar: unknown) => {
       responderPedido(log, confirmar, () => agir(socket, partidaId, acao));
+    });
+
+    socket.on("escolha", (partidaId: unknown, escolha: unknown) => {
+      escolher(socket, partidaId, escolha).catch(() => undefined);
     });
 
     socket.on("deixarPartida", (bruto: unknown) => {

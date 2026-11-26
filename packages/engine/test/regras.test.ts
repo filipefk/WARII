@@ -104,6 +104,22 @@ const compra = (mao: CartaId[]) => {
   return rodar(e, "A", { tipo: "encerrarJogada" });
 };
 
+// China conquista a Índia com 3 dados, move os 3 e encerra os ataques (§8.3).
+const vezChinaIndia = (podem: boolean) => {
+  const e0 = montar({
+    donos: { china: ["A", 4], india: ["B", 1], orientemedio: ["A", 1], japao: ["B", 1] },
+    parametros: { exercitosDaConquistaPodemDeslocar: podem },
+  });
+  let e = rodar(
+    e0,
+    "A",
+    { tipo: "atacar", origem: "china", alvo: "india", dados: 3 },
+    d6(6, 5, 4, 1),
+  ).estado;
+  e = rodar(e, "A", { tipo: "moverAposConquista", quantidade: 3 }).estado;
+  return rodar(e, "A", { tipo: "encerrarAtaques" }).estado;
+};
+
 const EU: TerritorioId[] = [
   "islandia",
   "inglaterra",
@@ -342,7 +358,24 @@ describe("Ataque terrestre e conquista (§7.1–7.2)", () => {
       "depois do movimento",
     );
     igual(e.turno.conquistou, true, "conquistou no turno");
-    igual(e.territorios.novayork.chegaramNoTurno, 3, "não se movem no deslocamento (padrão)");
+    igual(e.territorios.novayork.chegaramNoTurno, 0, "podem se mover no deslocamento (padrão)");
+  });
+
+  test("Exércitos da conquista se deslocam no fim da vez: China → Índia → Oriente Médio", () => {
+    const desloca: Acao = {
+      tipo: "deslocar",
+      origem: "india",
+      destino: "orientemedio",
+      quantidade: 2,
+    };
+    const antes = vezChinaIndia(true);
+    const r = rodar(antes, "A", desloca);
+    igual(
+      [r.estado.territorios.india.exercitos, r.estado.territorios.orientemedio.exercitos],
+      [1, antes.territorios.orientemedio.exercitos + 2],
+      "2 dos 3 seguiram para o Oriente Médio",
+    );
+    recusa(vezChinaIndia(false), "A", desloca, "EXERCITOS_INSUFICIENTES");
   });
 
   test("Conquista com 1 dado move 1 exército sem perguntar", () => {
@@ -758,6 +791,17 @@ describe("Cartas (§9)", () => {
     if (!r.ok) throw new Error(r.erro.mensagem);
     igual([r.estado.descarte.length, r.estado.monte.length], [0, antes + 10], "monte e descarte");
     igual(eventos(r, "descarteReembaralhado")[0]?.quantidade, 10, "evento");
+  });
+
+  test("Monte vazio na compra: o descarte volta mesmo abaixo de 10 (§9.4)", () => {
+    const descarte = CARTAS_DE_TROCA.slice(30, 32).map((c) => c.id);
+    const e = montar({ donos: { japao: ["B", 1] }, resto: "A", fase: "DESLOCAR", descarte });
+    e.monte = [];
+    e.turno.conquistou = true;
+    const r = aplicarAcao(e, "A", { tipo: "encerrarJogada" }, rngComSemente(1));
+    if (!r.ok) throw new Error(r.erro.mensagem);
+    igual(eventos(r, "descarteReembaralhado")[0]?.quantidade, 2, "reembaralhou");
+    igual(jog(r.estado, "A").cartas.length, 2, "comprou as 2 do descarte");
   });
 });
 

@@ -493,7 +493,8 @@ function Aereo({ ctx }: { ctx: Contexto }) {
   );
 }
 
-function Deslocar() {
+function Deslocar({ ctx }: { ctx: Contexto }) {
+  const conquistaDesloca = ctx.visao.parametros.exercitosDaConquistaPodemDeslocar;
   return (
     <>
       <p>
@@ -518,6 +519,18 @@ function Deslocar() {
         />
         Também não vale combinar: voar de um CE para outro e depois andar por terra, ou o contrário.
       </Caixa>
+      {conquistaDesloca ? (
+        <p>
+          Os exércitos que entraram num território por <b>conquista</b> também podem se deslocar.
+          Ex.: a China conquista a Índia e move 3 exércitos para lá; no deslocamento, 2 deles podem
+          seguir para o Oriente Médio.
+        </p>
+      ) : (
+        <p>
+          Nesta partida, os exércitos que entraram num território por <b>conquista</b> ficam nele
+          até a próxima vez.
+        </p>
+      )}
     </>
   );
 }
@@ -582,7 +595,8 @@ function Cartas({ ctx }: { ctx: Contexto }) {
       </Caixa>
       <p>
         As cartas usadas vão para o descarte. Quando ele chega a {p.tamanhoDescarteReembaralhar}{" "}
-        cartas, é embaralhado de volta no monte.
+        cartas, é embaralhado de volta no monte. O monte nunca acaba: se esvaziar antes disso, o
+        descarte volta a ele na hora.
       </p>
     </>
   );
@@ -653,7 +667,7 @@ const SECOES: readonly (SecaoDoGuia & { conteudo: (ctx: Contexto) => ReactNode }
   { id: "receber", titulo: "6. Recebendo reforços", conteudo: (ctx) => <Receber ctx={ctx} /> },
   { id: "terrestre", titulo: "7. Ataque terrestre", conteudo: () => <Terrestre /> },
   { id: "aereo", titulo: "8. Ataque aéreo", conteudo: (ctx) => <Aereo ctx={ctx} /> },
-  { id: "deslocar", titulo: "9. Deslocamento", conteudo: () => <Deslocar /> },
+  { id: "deslocar", titulo: "9. Deslocamento", conteudo: (ctx) => <Deslocar ctx={ctx} /> },
   { id: "cartas", titulo: "10. Cartas de troca", conteudo: (ctx) => <Cartas ctx={ctx} /> },
   {
     id: "objetivos",

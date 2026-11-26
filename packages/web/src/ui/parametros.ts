@@ -93,7 +93,7 @@ export const CAMPOS_PARAMETROS = {
     tipo: "booleano",
     rotulo: "Exércitos da conquista podem deslocar",
     descricao:
-      "⚠ A confirmar: exércitos que entraram por conquista podem se mover no deslocamento (§8.3).",
+      "Exércitos que entraram por conquista podem se mover no deslocamento do fim da vez (§8.3).",
   },
   transporteCartasContaMovimento: {
     tipo: "booleano",

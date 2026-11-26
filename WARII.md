@@ -366,7 +366,9 @@ Depois de encerrar os ataques, o jogador pode reposicionar seus exércitos.
   - território → CE adjacente e depois CE → outro CE: proibido.
 - Implementação: controle por turno, em cada território, quantos exércitos "chegaram", e só permita mover `exercitos − chegados − 1`.
 
-> ⚠ A CONFIRMAR: se exércitos que entraram num território por conquista (seção 7.2) podem se mover na fase de deslocamento. O manual não fala disso. No War clássico não podem.
+- **Exércitos que entraram por conquista (seção 7.2) podem se mover na fase de deslocamento** da mesma vez: eles não contam como "chegados". Exemplo: a China ataca a Índia, vence e move 3 exércitos de ocupação; no deslocamento, 2 desses 3 podem seguir da Índia para o Oriente Médio (1 fica de ocupação).
+
+> ⚠ Decisão do grupo: o manual não fala disso e no War clássico eles não podem. Fica como parâmetro da partida (padrão: podem).
 
 ---
 
@@ -447,6 +449,7 @@ Uma carta numérica **não pode** ser usada sozinha: ela sempre acompanha uma ca
 ### 9.4 Descarte
 - As cartas usadas vão para um **monte de descarte**, separado.
 - Quando o descarte chega a **10 cartas ou mais**, ele volta para o monte de compra e é **reembaralhado**.
+- **O monte nunca acaba:** se o monte de compra esvaziar durante uma compra, o descarte volta a ele e é reembaralhado na hora, mesmo com menos de 10 cartas.
 
 ---
 
@@ -588,7 +591,7 @@ SETUP_COLORS → SETUP_DEALER → SETUP_STRATEGIC_CENTERS → [SETUP_5P_CHOICE]
 | Interromper ataque aéreo entre ciclos | sim (manual: não) |
 | Objetivo substituto de "destruir cor" | conquistar 24 territórios (ligado) |
 | Objetivo de quem fica com 1 território (manual) | conquistar 3 CE (desligado); a troca é definitiva (§10.2 ⚠) |
-| Exércitos que entraram por conquista podem se deslocar (§8.3 ⚠) | não |
+| Exércitos que entraram por conquista podem se deslocar (§8.3 ⚠) | sim (War clássico: não) |
 | Transporte por cartas conta para o movimento único (§9.3 ⚠) | sim |
 | Vitória a qualquer momento, inclusive na vez de outro (§10.3 ⚠) | sim (empate: prioridade ao jogador da vez, depois a ordem da mesa) |
 | Variante Centro de Informações | desligada |

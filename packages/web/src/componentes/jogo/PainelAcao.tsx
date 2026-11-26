@@ -1,5 +1,5 @@
-// Bloco "Ação" do painel da partida: os controles da etapa atual (ver jogo/interacao.ts). Só o
-// jogador da vez vê controles; os demais veem quem está jogando. Os cliques no mapa são tratados
+// Bloco "Ação" do painel da partida: os controles da etapa atual (ver jogo/interacao.ts). Só quem
+// age tem controles; os demais acompanham o painel do jogador da vez, sem poder mexer (PainelDeFora). Os cliques no mapa são tratados
 // pela tela (TelaDoJogo); aqui ficam quantidades, cartas e os botões de envio. Os controles do
 // combate (rolar ataque, defesa e antiaérea, mover após a conquista) ficam na janela de combate,
 // que os importa daqui.
@@ -13,7 +13,8 @@ import {
   type TerritorioId,
   type VisaoPartida,
 } from "@warii/engine";
-import { type ReactNode, useState } from "react";
+import type { Escolha } from "@warii/shared";
+import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 import { type Etapa, temAvioes } from "../../jogo/interacao";
 import type { Mesa } from "../../jogo/mesa";
 import { eu } from "../../jogo/previa";
@@ -92,17 +93,58 @@ export function Quantidade({
   );
 }
 
-// Quantidade com estado local que começa no máximo (a chave de quem usa a reinicia).
+// Painel de quem só acompanha a vez de outro jogador: a escolha que ele transmitiu (null = ainda
+// nenhuma). Fora do espelho (undefined), o painel é o do próprio jogador.
+const Espelho = createContext<Escolha | null | undefined>(undefined);
+
+// Quantidade com estado local que começa no máximo (a chave de quem usa a reinicia). O valor na
+// tela é publicado na store para a mesa acompanhar; no espelho, vem da escolha transmitida.
 export function useQuantidade(maximo: number): [number, (n: number) => void] {
+  const espelho = useContext(Espelho);
   const [valor, setValor] = useState(maximo);
-  return [Math.min(valor, maximo), setValor];
+  const mostrarQuantidade = useJogo((s) => s.mostrarQuantidade);
+  const mostrado = Math.min(valor, maximo);
+  useEffect(() => {
+    if (espelho !== undefined) return undefined;
+    mostrarQuantidade(mostrado);
+    return () => mostrarQuantidade(null);
+  }, [espelho, mostrado, mostrarQuantidade]);
+  if (espelho !== undefined) {
+    return [Math.max(0, Math.min(espelho?.quantidade ?? maximo, maximo)), () => {}];
+  }
+  return [mostrado, setValor];
 }
 
-// Mão do jogador com as cartas marcáveis, para as etapas que usam cartas.
+function VersoDeCarta() {
+  return (
+    <div
+      aria-label="Carta oculta"
+      role="img"
+      className="flex h-[84px] w-[56px] items-center justify-center rounded-raio-sm border border-accent bg-panel-2 text-etiqueta text-muted shadow-sombra-carta"
+    >
+      ?
+    </div>
+  );
+}
+
+// Mão do jogador com as cartas marcáveis, para as etapas que usam cartas. No espelho, só os versos
+// das cartas que ele marcou.
 function SeletorDeCartas({ ctx }: { ctx: Contexto }) {
+  const espelho = useContext(Espelho);
   const marcadas = useJogo((s) => s.cartas);
   const alternarCarta = useJogo((s) => s.alternarCarta);
   const cartas = eu(ctx.visao)?.cartas ?? [];
+  if (espelho !== undefined) {
+    const n = espelho?.cartasMarcadas ?? 0;
+    if (n === 0) return <Dica>Nenhuma carta marcada.</Dica>;
+    return (
+      <div className="mt-espaco-3 flex flex-wrap gap-espaco-2">
+        {Array.from({ length: n }, (_, k) => (
+          <VersoDeCarta key={k} />
+        ))}
+      </div>
+    );
+  }
   if (cartas.length === 0) return <Dica>Você não tem cartas.</Dica>;
   return (
     <div className="mt-espaco-3 flex flex-wrap gap-espaco-2">
@@ -714,7 +756,11 @@ function Deslocar({ ctx, etapa }: { ctx: Contexto; etapa: Extract<Etapa, { tipo:
           aereo={etapa.aereo}
         />
       )}
-      <Dica>Cada exército só se move uma vez por vez; quem chegou nesta vez fica.</Dica>
+      <Dica>
+        {ctx.visao.parametros.exercitosDaConquistaPodemDeslocar
+          ? "Cada exército só se move uma vez por vez; quem chegou por deslocamento nesta vez fica (os da conquista podem seguir)."
+          : "Cada exército só se move uma vez por vez; quem chegou nesta vez, inclusive por conquista, fica."}
+      </Dica>
       <Linha>
         <Botao disabled={ctx.ocupado} onClick={() => ctx.mandar({ tipo: "encerrarJogada" })}>
           Encerrar jogada
@@ -883,6 +929,11 @@ export function ConflitoTerrestre({
   const maximo = etapa.maximoDados;
   const [escolha, setEscolha] = useState(3);
   const dados = Math.max(1, Math.min(escolha, maximo));
+  const mostrarDados = useJogo((s) => s.mostrarDados);
+  useEffect(() => {
+    mostrarDados(dados);
+    return () => mostrarDados(null);
+  }, [dados, mostrarDados]);
   const conquistado = ctx.visao.territorios[alvo].dono === ctx.visao.voce;
   const encerrar = () => ctx.mandar({ tipo: "encerrarAtaqueTerrestre" });
   if (maximo === 0) {
@@ -1038,6 +1089,79 @@ export function PainelAcao({ visao, mesa, geografia, etapa, envio }: Props) {
           <Aviso>{erro}</Aviso>
         </div>
       )}
+    </Bloco>
+  );
+}
+
+// Uso de cartas visto de fora: a mão é oculta, então só a escolha transmitida (quantas cartas
+// marcadas e os territórios).
+function UsoDeCartasDeFora({ ctx, escolha }: { ctx: Contexto; escolha: Escolha }) {
+  const { modo, origem, destino } = escolha;
+  const titulo =
+    modo === "reforco"
+      ? "Reforço com cartas"
+      : modo === "transporte"
+        ? "Transporte com cartas"
+        : "Descarte de cartas";
+  return (
+    <>
+      <p>
+        <b>{titulo}</b>
+      </p>
+      <SeletorDeCartas ctx={ctx} />
+      {modo === "reforco" && (
+        <p className="mt-espaco-3">
+          Território: {destino ? <b>{nomeT(destino)}</b> : <span className="text-muted">—</span>}
+        </p>
+      )}
+      {modo === "transporte" && (
+        <div className="secao mt-espaco-3">
+          <p>Origem: {origem ? <b>{nomeT(origem)}</b> : <span className="text-muted">—</span>}</p>
+          <p>
+            Destino: {destino ? <b>{nomeT(destino)}</b> : <span className="text-muted">—</span>}
+          </p>
+          {escolha.quantidade !== null && origem && destino && (
+            <p>Exércitos: {escolha.quantidade}</p>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+// Painel do jogador da vez para quem só acompanha: o mesmo painel, com a visão "vestida" como a
+// dele (interacao.ts, visaoDeFora) e as escolhas que ele transmitiu, sem nada clicável.
+export function PainelDeFora({
+  visao,
+  mesa,
+  geografia,
+  etapa,
+  escolha,
+}: {
+  visao: VisaoPartida;
+  mesa: Mesa;
+  geografia: Geografia;
+  etapa: Etapa;
+  escolha: Escolha | null;
+}) {
+  const ctx: Contexto = { visao, mesa, geografia, ocupado: true, mandar: () => {} };
+  const modo = escolha?.modo;
+  const usoDeCartas = modo === "reforco" || modo === "transporte" || modo === "descarte";
+  return (
+    <Bloco titulo="Ação">
+      <p className="mb-espaco-2">
+        Vez de <b>{mesa.nome(visao.voce)}</b>: <b>{NOMES_FASES[visao.fase]}</b>.
+      </p>
+      <p className="dica mb-espaco-2">Você acompanha as escolhas da vez, sem poder mexer.</p>
+      <Espelho.Provider value={escolha}>
+        <fieldset disabled className="m-0 min-w-0 border-0 p-0">
+          {usoDeCartas && escolha ? (
+            <UsoDeCartasDeFora ctx={ctx} escolha={escolha} />
+          ) : (
+            <Corpo ctx={ctx} etapa={etapa} />
+          )}
+        </fieldset>
+      </Espelho.Provider>
     </Bloco>
   );
 }

@@ -2,8 +2,9 @@
 // A visão do jogo chega inteira (no `estado` e junto de cada lote de `eventos`); os eventos servem
 // para o log e para as animações do tabuleiro.
 import type { Evento, VisaoPartida } from "@warii/engine";
-import type { PartidaLobbyDto } from "@warii/shared";
+import type { Escolha, PartidaLobbyDto } from "@warii/shared";
 import { create } from "zustand";
+import { type AvioesRecebidos, avioesRecebidos } from "../jogo/avioesRecebidos";
 import { type CartasDoFimDaVez, cartasDoFimDaVez } from "../jogo/cartasDoFimDaVez";
 
 const MAXIMO_EVENTOS_GUARDADOS = 100;
@@ -23,7 +24,19 @@ export interface JogoRecebido {
   combate: { seq: number; eventos: Evento[] } | null;
   // Cartas recebidas (ou não) no fim da última jogada encerrada pelo próprio jogador.
   fimDaVez: CartasDoFimDaVez | null;
+  // Bombardeiros recebidos pelo próprio jogador no início da vez mais recente dele.
+  inicioDaVez: AvioesRecebidos | null;
+  // Último lote em que alguém usou cartas (reforço, transporte, descarte ou bombardeiros), para o
+  // aviso que toda a mesa vê.
+  cartasUsadas: { seq: number; eventos: Evento[] } | null;
 }
+
+// Usos de cartas (as cartas usadas são públicas — §9.3).
+export const USOU_CARTAS = (e: Evento): boolean =>
+  e.tipo === "reforcoComCartas" ||
+  e.tipo === "transporteComCartas" ||
+  e.tipo === "cartasDescartadas" ||
+  (e.tipo === "ataqueAereoIniciado" && e.cartas.length > 0);
 
 // O início de um combate também troca o lote: a janela do combate novo começa sem dados.
 const TEM_COMBATE = (e: Evento) =>
@@ -42,6 +55,8 @@ export interface DadosPartida {
   removido: boolean;
   // A partida foi apagada pelo administrador.
   apagada: boolean;
+  // Escolhas em andamento de quem age (valem só se `escolha.seq` for o seq do jogo).
+  escolha: Escolha | null;
 }
 
 const VAZIO: DadosPartida = {
@@ -50,12 +65,14 @@ const VAZIO: DadosPartida = {
   jogo: null,
   removido: false,
   apagada: false,
+  escolha: null,
 };
 
 interface EstadoPartidas {
   porId: Record<string, DadosPartida>;
   gravarLobby: (lobby: PartidaLobbyDto) => void;
   gravarPresenca: (partidaId: string, conectados: string[]) => void;
+  gravarEscolha: (partidaId: string, escolha: Escolha) => void;
   gravarEstado: (partidaId: string, visao: VisaoPartida, seq: number) => void;
   // Devolve false se houve buraco na sequência (quem chamou pede o estado de novo).
   gravarEventos: (
@@ -80,6 +97,7 @@ export const usePartidas = create<EstadoPartidas>()((set, get) => {
     porId: {},
     gravarLobby: (lobby) => alterar(lobby.id, { lobby }),
     gravarPresenca: (partidaId, presenca) => alterar(partidaId, { presenca }),
+    gravarEscolha: (partidaId, escolha) => alterar(partidaId, { escolha }),
     gravarEstado: (partidaId, visao, seq) =>
       alterar(partidaId, {
         jogo: {
@@ -90,6 +108,8 @@ export const usePartidas = create<EstadoPartidas>()((set, get) => {
           ultimos: [],
           combate: null,
           fimDaVez: null,
+          inicioDaVez: null,
+          cartasUsadas: null,
         },
       }),
     gravarEventos(partidaId, eventos, visao, seq) {
@@ -98,8 +118,20 @@ export const usePartidas = create<EstadoPartidas>()((set, get) => {
       const todos = [...jogo.eventos, ...eventos].slice(-MAXIMO_EVENTOS_GUARDADOS);
       const combate = eventos.some(TEM_COMBATE) ? { seq, eventos } : jogo.combate;
       const fimDaVez = cartasDoFimDaVez(jogo.visao, eventos, seq) ?? jogo.fimDaVez;
+      const inicioDaVez = avioesRecebidos(visao, eventos, seq) ?? jogo.inicioDaVez;
+      const cartasUsadas = eventos.some(USOU_CARTAS) ? { seq, eventos } : jogo.cartasUsadas;
       alterar(partidaId, {
-        jogo: { visao, seq, eventos: todos, seqEventos: seq, ultimos: eventos, combate, fimDaVez },
+        jogo: {
+          visao,
+          seq,
+          eventos: todos,
+          seqEventos: seq,
+          ultimos: eventos,
+          combate,
+          fimDaVez,
+          inicioDaVez,
+          cartasUsadas,
+        },
       });
       return true;
     },

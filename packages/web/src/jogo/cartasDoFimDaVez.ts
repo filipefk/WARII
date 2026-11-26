@@ -46,12 +46,10 @@ export function textoDasCartasDoFimDaVez(c: CartasDoFimDaVez): string {
   if (!c.conquistou) return "Você não conquistou nenhum território, então não recebe cartas.";
   const peloLimite = Math.min(c.porConquista, Math.max(0, c.limite - c.tinha));
   const motivoLimite = `O máximo de cartas é ${c.limite} e você já tem ${c.tinha}.`;
-  if (c.recebidas === 0) {
-    return peloLimite === 0
-      ? `Você não recebeu cartas. ${motivoLimite}`
-      : "Você não recebeu cartas: o monte acabou.";
+  // O monte nunca acaba (§9.4): menos cartas que o devido só pelo limite da mão.
+  if (c.recebidas === 0) return `Você não recebeu cartas. ${motivoLimite}`;
+  if (c.recebidas < c.porConquista && c.recebidas === peloLimite) {
+    return `Você recebeu ${cartas(c.recebidas)}. ${motivoLimite}`;
   }
-  if (c.recebidas === c.porConquista) return `Você recebeu ${cartas(c.recebidas)}.`;
-  if (c.recebidas === peloLimite) return `Você recebeu ${cartas(c.recebidas)}. ${motivoLimite}`;
-  return `Você recebeu ${cartas(c.recebidas)}: o monte acabou.`;
+  return `Você recebeu ${cartas(c.recebidas)}.`;
 }
