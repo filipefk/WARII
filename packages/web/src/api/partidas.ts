@@ -1,6 +1,11 @@
 // Rotas /api/partidas (lobby).
 import type { CorId } from "@warii/engine";
-import type { ParametrosParciaisEntrada, PartidaLobbyDto, PartidaResumoDto } from "@warii/shared";
+import type {
+  LogDetalhadoDto,
+  ParametrosParciaisEntrada,
+  PartidaLobbyDto,
+  PartidaResumoDto,
+} from "@warii/shared";
 import { requisitar } from "./cliente";
 
 const caminho = (id: string, resto = "") => `/partidas/${encodeURIComponent(id)}${resto}`;
@@ -30,5 +35,6 @@ export const apiPartidas = {
       caminho(id, `/participantes/${encodeURIComponent(usuarioId)}`),
     ),
   cancelar: (id: string) => requisitar<void>("POST", caminho(id, "/cancelar")),
+  logDetalhado: (id: string) => requisitar<LogDetalhadoDto>("GET", caminho(id, "/log-detalhado")),
   iniciar: (id: string) => requisitar<PartidaLobbyDto>("POST", caminho(id, "/iniciar")),
 };

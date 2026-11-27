@@ -65,3 +65,9 @@ export interface PartidaLobbyDto extends PartidaResumoDto {
   // Link de convite: só para o anfitrião e só enquanto a partida aguarda jogadores.
   convite: string | null;
 }
+
+// GET /api/partidas/:id/log-detalhado: o log da partida em texto, para baixar como .txt.
+export interface LogDetalhadoDto {
+  nomeArquivo: string;
+  texto: string;
+}

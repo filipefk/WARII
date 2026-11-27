@@ -49,6 +49,8 @@ interface EstadoJogo extends Interacao {
   chaveDaVez: string | null;
   // Seq do último lote de eventos já animado.
   seqAnimado: number;
+  // Seq em que o atacante fechou a janela com o resultado do ataque aéreo (segue para a mesa).
+  combateFechadoNoSeq: number | null;
 
   abrirPartida: (partidaId: string, seqAtual: number) => void;
   sincronizarVez: (chave: string) => void;
@@ -65,6 +67,7 @@ interface EstadoJogo extends Interacao {
   limparEscolha: () => void;
   cancelar: () => void;
   marcarAnimado: (seq: number) => void;
+  fecharCombate: (seq: number) => void;
 }
 
 export const useJogo = create<EstadoJogo>()((set, get) => ({
@@ -75,11 +78,19 @@ export const useJogo = create<EstadoJogo>()((set, get) => ({
   seqAnimado: 0,
   quantidadeMostrada: null,
   dadosMostrados: null,
+  combateFechadoNoSeq: null,
 
   // Ao abrir (ou trocar de) partida, o que já aconteceu não é animado de novo.
   abrirPartida(partidaId, seqAtual) {
     if (get().partidaId === partidaId) return;
-    set({ ...SEM_INTERACAO, partidaId, selecionado: null, chaveDaVez: null, seqAnimado: seqAtual });
+    set({
+      ...SEM_INTERACAO,
+      partidaId,
+      selecionado: null,
+      chaveDaVez: null,
+      seqAnimado: seqAtual,
+      combateFechadoNoSeq: null,
+    });
   },
   sincronizarVez(chave) {
     if (get().chaveDaVez !== chave) set({ ...SEM_INTERACAO, chaveDaVez: chave });
@@ -99,6 +110,7 @@ export const useJogo = create<EstadoJogo>()((set, get) => ({
   limparEscolha: () => set({ origem: null, destino: null, invalido: null, selecionado: null }),
   cancelar: () => set(SEM_INTERACAO),
   marcarAnimado: (seq) => set((s) => ({ seqAnimado: Math.max(s.seqAnimado, seq) })),
+  fecharCombate: (combateFechadoNoSeq) => set({ combateFechadoNoSeq }),
 }));
 
 export function chaveDaVez(rodada: number, vez: number, etapa: 1 | 2 | null): string {

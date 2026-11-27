@@ -1,7 +1,8 @@
 // Janela de combate: aberta para toda a mesa enquanto há um ataque em curso (o terrestre declarado
 // com "Iniciar ataque" ou o aéreo). À esquerda, o mapa ampliado no local do conflito; à direita,
 // atacante e defensor, os dados e os controles de quem deve agir (rolar o ataque, a defesa ou a
-// antiaérea, mover após a conquista, encerrar). Quem não tem nada a fazer pode ocultá-la.
+// antiaérea, mover após a conquista, encerrar). Só o atacante a fecha (encerrando o ataque
+// terrestre ou fechando o resultado do aéreo); os outros só assistem, e ela some para todos.
 import {
   type Evento,
   type JogadorId,
@@ -50,7 +51,7 @@ export type CombateNaTela =
       alvo: TerritorioId;
       atacante: JogadorId | null;
       defensor: JogadorId | null;
-      // O ataque acabou no último lote: a janela fica com o resultado até cada um fechá-la.
+      // O ataque acabou no último lote: a janela fica com o resultado até o atacante fechá-la.
       encerrado: De<"ataqueAereoEncerrado"> | null;
     };
 
@@ -108,7 +109,7 @@ export function combateNaTela(visao: VisaoPartida, jogo: JogoRecebido): CombateN
   };
 }
 
-// Etapas cujos controles ficam na janela: quem está nelas não pode ocultá-la.
+// Etapas cujos controles ficam na janela.
 export function etapaDoCombate(etapa: Etapa): boolean {
   return (
     etapa.tipo === "conflito" ||
@@ -192,7 +193,8 @@ interface Props {
   etapa: Etapa;
   envio: Envio;
   animacoes: AnimacoesDoMapa;
-  onOcultar: () => void;
+  // Só para o atacante, com o resultado do ataque aéreo na tela.
+  onFechar?: () => void;
 }
 
 export function JanelaDeCombate({
@@ -204,7 +206,7 @@ export function JanelaDeCombate({
   etapa,
   envio,
   animacoes,
-  onOcultar,
+  onFechar,
 }: Props) {
   const ctx = criarContexto(visao, mesa, geografia, envio);
   const deveAgir = etapaDoCombate(etapa);
@@ -222,7 +224,7 @@ export function JanelaDeCombate({
       titulo={titulo}
       largura="max-w-[960px]"
       fundo="bg-panel"
-      onEsc={deveAgir ? () => {} : onOcultar}
+      onEsc={!deveAgir && onFechar ? onFechar : () => {}}
     >
       <div className="grid gap-espaco-7 min-[760px]:grid-cols-[minmax(0,1fr)_290px]">
         <div className="aspect-[29/20] w-full self-start overflow-hidden rounded-raio-tabuleiro border border-border bg-bg">
@@ -288,11 +290,18 @@ export function JanelaDeCombate({
             ) : (
               <>
                 {espera && <p className="dica">{espera}</p>}
-                <div className="mt-espaco-3 flex flex-wrap gap-espaco-2">
-                  <Botao onClick={onOcultar}>
-                    {combate.tipo === "aereo" && combate.encerrado ? "Fechar" : "Ocultar janela"}
-                  </Botao>
-                </div>
+                {onFechar ? (
+                  <div className="mt-espaco-3 flex flex-wrap gap-espaco-2">
+                    <Botao onClick={onFechar}>Fechar</Botao>
+                  </div>
+                ) : (
+                  combate.tipo === "aereo" &&
+                  combate.encerrado && (
+                    <p className="dica">
+                      Aguardando {mesa.nome(combate.atacante)} fechar a janela.
+                    </p>
+                  )
+                )}
               </>
             )}
             {envio.erro && (

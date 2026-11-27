@@ -180,7 +180,7 @@ export function alvosAereos(
   }));
 }
 
-function candidatosDeDestino(origem: TerritorioId): Set<TerritorioId> {
+export function candidatosDeDestino(origem: TerritorioId): Set<TerritorioId> {
   const r = new Set(vizinhos(origem));
   if (CENTROS_ESTRATEGICOS.includes(origem)) {
     for (const ce of CENTROS_ESTRATEGICOS) if (ce !== origem) r.add(ce);

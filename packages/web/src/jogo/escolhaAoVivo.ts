@@ -22,6 +22,7 @@ export function useTransmitirEscolha(
   const cartas = useJogo((s) => s.cartas.length);
   const quantidade = useJogo((s) => s.quantidadeMostrada);
   const dados = useJogo((s) => s.dadosMostrados);
+  const fechadoNoSeq = useJogo((s) => s.combateFechadoNoSeq);
   const ultima = useRef<string | null>(null);
 
   const ativo =
@@ -42,6 +43,7 @@ export function useTransmitirEscolha(
       daBase,
       dados,
       cartasMarcadas: cartas,
+      combateFechado: fechadoNoSeq === seq,
     };
     const texto = JSON.stringify(escolha);
     if (texto === ultima.current) return undefined;
@@ -51,5 +53,17 @@ export function useTransmitirEscolha(
       socket.emit("escolha", partidaId, escolha);
     }, INTERVALO_MS);
     return () => clearTimeout(temporizador);
-  }, [ativo, partidaId, seq, modo, origem, destino, quantidade, daBase, dados, cartas]);
+  }, [
+    ativo,
+    partidaId,
+    seq,
+    modo,
+    origem,
+    destino,
+    quantidade,
+    daBase,
+    dados,
+    cartas,
+    fechadoNoSeq,
+  ]);
 }

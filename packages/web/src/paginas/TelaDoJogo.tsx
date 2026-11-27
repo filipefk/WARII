@@ -18,7 +18,6 @@ import {
 import {
   type AnimacoesDoMapa,
   combateNaTela,
-  etapaDoCombate,
   JanelaDeCombate,
 } from "../componentes/jogo/JanelaDeCombate";
 import { AvioesRecebidos } from "../componentes/jogo/AvioesRecebidos";
@@ -77,8 +76,8 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
   const { ocupado, erro: erroAcao, enviar, limparErro } = useEnviarAcao(partidaId);
   const [vitoriaFechada, setVitoriaFechada] = useState(false);
   const [janela, setJanela] = useState<"galeria" | "guia" | "cartas" | null>(null);
-  // Combate cuja janela foi ocultada (por quem não tinha nada a fazer nele).
-  const [combateOculto, setCombateOculto] = useState<string | null>(null);
+  const combateFechadoNoSeq = useJogo((s) => s.combateFechadoNoSeq);
+  const fecharCombate = useJogo((s) => s.fecharCombate);
 
   const visao = jogo?.visao;
   const seq = jogo?.seq;
@@ -236,8 +235,14 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
     explosoes,
   };
   const combate = interrompida ? null : combateNaTela(visao, jogo);
-  const combateVisivel =
-    combate !== null && (combate.chave !== combateOculto || etapaDoCombate(etapa));
+  // Só o atacante fecha a janela: o terrestre ao encerrar o ataque (ação), o aéreo ao fechar o
+  // resultado — que segue na escolha transmitida e some para toda a mesa.
+  const souAtacante = combate !== null && combate.atacante === visao.voce;
+  const aereoEncerrado = combate?.tipo === "aereo" && combate.encerrado !== null;
+  const combateFechado =
+    aereoEncerrado &&
+    (souAtacante ? combateFechadoNoSeq === seq : escolha?.combateFechado === true);
+  const combateVisivel = combate !== null && !combateFechado;
 
   return (
     // No desktop a tela ocupa a altura da janela (menos o cabeçalho de ~60px e o respiro do
@@ -296,15 +301,6 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
           />
         )}
 
-        {combate && !combateVisivel && (
-          <Bloco titulo="Combate">
-            <p className="dica">Há um combate em andamento.</p>
-            <div className="mt-espaco-3">
-              <Botao onClick={() => setCombateOculto(null)}>Ver o combate</Botao>
-            </div>
-          </Bloco>
-        )}
-
         <PainelRecebimento visao={visao} />
 
         <Bloco titulo="Território">
@@ -325,7 +321,7 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
           )}
         </div>
 
-        <LogDaPartida eventos={jogo.eventos} mesa={mesa} />
+        <LogDaPartida eventos={jogo.eventos} mesa={mesa} partidaId={partidaId} />
       </aside>
       {janela === "galeria" && (
         <Galeria
@@ -361,7 +357,11 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
           etapa={etapa}
           envio={{ ocupado, erro: erroAcao, enviar }}
           animacoes={animacoes}
-          onOcultar={() => setCombateOculto(combate.chave)}
+          onFechar={
+            souAtacante && aereoEncerrado && seq !== undefined
+              ? () => fecharCombate(seq)
+              : undefined
+          }
         />
       )}
       {herdadas.aviso && !fim && !combateVisivel && (

@@ -15,7 +15,12 @@ import {
 } from "@warii/engine";
 import type { Escolha } from "@warii/shared";
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
-import { type Etapa, temAvioes, temCartaDeTerritorio } from "../../jogo/interacao";
+import {
+  type Etapa,
+  explicarInvalido,
+  temAvioes,
+  temCartaDeTerritorio,
+} from "../../jogo/interacao";
 import type { Mesa } from "../../jogo/mesa";
 import { eu, maoAcimaDoLimite } from "../../jogo/previa";
 import type { Geografia } from "../../mapa/geografia";
@@ -546,12 +551,36 @@ export function Antiaereo({
   );
 }
 
+// Texto recusado com a explicação ao passar o mouse (ou ao focar pelo teclado).
+function ComExplicacao({ texto, explicacao }: { texto: string; explicacao: string }) {
+  return (
+    <span className="group relative inline-block">
+      <span
+        tabIndex={0}
+        className="cursor-help text-bad underline decoration-dotted underline-offset-2"
+      >
+        {texto}
+      </span>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute top-full left-0 z-10 mt-espaco-1 hidden w-64 rounded-raio-md border border-border bg-panel-2 px-espaco-4 py-espaco-3 text-dica font-normal tracking-normal text-text normal-case group-focus-within:block group-hover:block"
+      >
+        {explicacao}
+      </span>
+    </span>
+  );
+}
+
 // Orientação das etapas de origem e destino: o que já foi escolhido, o que falta e o último clique
 // recusado. "Limpar seleção" desfaz a origem e o destino.
 function OrigemEDestino({
+  ctx,
+  etapa,
   origem,
   destino,
 }: {
+  ctx: Contexto;
+  etapa: Etapa;
   origem: TerritorioId | null;
   destino: TerritorioId | null;
 }) {
@@ -561,10 +590,12 @@ function OrigemEDestino({
     const rotulo = papel === "origem" ? "Origem" : "Destino";
     if (escolhido !== null) return <b>{nomeT(escolhido)}</b>;
     if (invalido?.papel === papel) {
-      return (
-        <span className="text-bad">
-          {rotulo} {nomeT(invalido.territorio)} {papel === "origem" ? "inválida" : "inválido"}
-        </span>
+      const texto = `${rotulo} ${nomeT(invalido.territorio)} ${papel === "origem" ? "inválida" : "inválido"}`;
+      const porque = explicarInvalido(ctx.visao, etapa, invalido.territorio, papel, ctx.mesa.nome);
+      return porque ? (
+        <ComExplicacao texto={texto} explicacao={porque} />
+      ) : (
+        <span className="text-bad">{texto}</span>
       );
     }
     return <span className="text-muted">Aguardando seleção</span>;
@@ -605,7 +636,9 @@ function Terrestre({
   return (
     <>
       <AbasDeAtaque ctx={ctx} aereo={false} />
-      {etapa.origens.size > 0 && <OrigemEDestino origem={origem} destino={alvo} />}
+      {etapa.origens.size > 0 && (
+        <OrigemEDestino ctx={ctx} etapa={etapa} origem={origem} destino={alvo} />
+      )}
       {origem === null ? (
         <Dica>
           {etapa.origens.size > 0
@@ -741,7 +774,9 @@ function Deslocar({ ctx, etapa }: { ctx: Contexto; etapa: Extract<Etapa, { tipo:
   const { origem, destino } = etapa;
   return (
     <>
-      {etapa.origens.size > 0 && <OrigemEDestino origem={origem} destino={destino} />}
+      {etapa.origens.size > 0 && (
+        <OrigemEDestino ctx={ctx} etapa={etapa} origem={origem} destino={destino} />
+      )}
       {origem === null ? (
         <Dica>
           {etapa.origens.size > 0
@@ -871,7 +906,7 @@ function Transporte({
       </p>
       <SeletorDeCartas ctx={ctx} />
       {!etapa.problema && etapa.origens.size > 0 && (
-        <OrigemEDestino origem={origem} destino={destino} />
+        <OrigemEDestino ctx={ctx} etapa={etapa} origem={origem} destino={destino} />
       )}
       {etapa.problema ? (
         <Dica>{etapa.problema}</Dica>

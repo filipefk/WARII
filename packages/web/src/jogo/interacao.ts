@@ -13,18 +13,22 @@ import {
   type ConflitoTerrestre,
   type ConquistaPendente,
   type ContinenteId,
+  type ErroRegra,
   IDS_CONTINENTES,
   jogadorQueAge,
   pendenteDeRecebimento,
   territorio as dadosDoTerritorio,
+  territoriosDaCarta,
   type TerritorioId,
   type VisaoPartida,
+  vizinhos,
 } from "@warii/engine";
 import type { Escolha } from "@warii/shared";
 import type { Interacao } from "../stores/jogo";
 import {
   alvosAereos,
   alvosTerrestres,
+  candidatosDeDestino,
   type CartasDoAtaqueAereo,
   destinosDeDeslocamento,
   ehAerotransporte,
@@ -43,6 +47,7 @@ import {
   territoriosOcupaveis,
   territoriosParaReforco,
   territoriosPosicionaveis,
+  validar,
 } from "./previa";
 
 type T = TerritorioId;
@@ -618,6 +623,152 @@ export function cliqueInvalido(etapa: Etapa, t: T): PapelDaEscolha | null {
   if (e === null || t === e.origem || t === e.destino) return null;
   if (e.origem === null || e.destino !== null) return e.origens.has(t) ? null : "origem";
   return e.opcoes.has(t) || e.origens.has(t) ? null : "destino";
+}
+
+// ---- Por que a escolha foi recusada ----
+
+// Recusas que não dependem do território (a fase, uma pendência, a mão acima do limite).
+const RECUSAS_GERAIS: ReadonlySet<ErroRegra["codigo"]> = new Set([
+  "NAO_E_SUA_VEZ",
+  "FASE_ERRADA",
+  "ACAO_BLOQUEADA",
+  "RECEBIMENTO_PENDENTE",
+  "PARTIDA_ENCERRADA",
+]);
+
+const minuscula = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
+const nomeT = (t: T) => dadosDoTerritorio(t).nome;
+
+function recusa(visao: VisaoPartida, acao: Acao): ErroRegra | null {
+  const v = validar(visao, acao);
+  return v.tipo === "recusada" ? v.erro : null;
+}
+
+// Por que nenhum exército sai de `t` nesta vez (sempre fica 1; os que chegaram ficam).
+function semExercitosParaSair(visao: VisaoPartida, t: T, contaChegados: boolean): string {
+  const { exercitos, chegaramNoTurno } = visao.territorios[t];
+  const chegaram =
+    contaChegados && chegaramNoTurno > 0
+      ? ` e ${chegaramNoTurno} ${chegaramNoTurno === 1 ? "chegou" : "chegaram"} nesta vez e não se ${chegaramNoTurno === 1 ? "move" : "movem"} de novo`
+      : "";
+  return `Nenhum exército de ${nomeT(t)} pode sair nesta vez: tem ${exercitos}, 1 fica de ocupação${chegaram}.`;
+}
+
+// Resume as recusas do engine para todos os destinos possíveis de uma origem recusada.
+function explicarOrigem(
+  visao: VisaoPartida,
+  t: T,
+  tipo: "ataque" | "deslocamento" | "transporte",
+  erros: readonly ErroRegra[],
+  nomeDoJogador: (id: string | null) => string,
+): string {
+  const geral = erros.find((e) => RECUSAS_GERAIS.has(e.codigo));
+  if (geral) return `${geral.mensagem}.`;
+  if (erros.some((e) => e.codigo === "NAO_E_SEU" && e.mensagem.startsWith("Origem"))) {
+    const dono = visao.territorios[t].dono;
+    const de = dono === null ? "está vago" : `é de ${nomeDoJogador(dono)}`;
+    const acao =
+      tipo === "ataque"
+        ? "o ataque sai"
+        : tipo === "deslocamento"
+          ? "o deslocamento sai"
+          : "o transporte sai";
+    return `${nomeT(t)} não é seu (${de}): ${acao} de um território seu.`;
+  }
+  if (erros.some((e) => e.codigo === "EXERCITOS_INSUFICIENTES")) {
+    if (tipo === "ataque") {
+      return `${nomeT(t)} tem só ${visao.territorios[t].exercitos} exército: para atacar, a origem precisa de pelo menos 2 (1 fica de ocupação).`;
+    }
+    const contaChegados =
+      tipo === "deslocamento" || visao.parametros.transporteCartasContaMovimento;
+    return semExercitosParaSair(visao, t, contaChegados);
+  }
+  if (tipo === "ataque" && erros.length > 0 && erros.every((e) => e.codigo === "ALVO_INVALIDO")) {
+    return `Todos os vizinhos de ${nomeT(t)} são seus: não há adversário para atacar daí.`;
+  }
+  if (tipo === "deslocamento" && erros.length > 0 && erros.every((e) => e.codigo === "NAO_E_SEU")) {
+    const ce = dadosDoTerritorio(t).centroEstrategico
+      ? " nem há outro CE seu para aerotransporte"
+      : "";
+    return `Nenhum vizinho de ${nomeT(t)} é seu${ce}: não há para onde deslocar.`;
+  }
+  const mensagens = [...new Set(erros.map((e) => e.mensagem))];
+  return mensagens.length > 0
+    ? `${nomeT(t)} não serve de origem: ${mensagens.map(minuscula).join("; ")}.`
+    : `${nomeT(t)} não serve de origem agora.`;
+}
+
+// Explicação de um clique recusado (`cliqueInvalido`), a partir das recusas do engine.
+export function explicarInvalido(
+  visao: VisaoPartida,
+  etapa: Etapa,
+  t: T,
+  papel: PapelDaEscolha,
+  nomeDoJogador: (id: string | null) => string,
+): string | null {
+  const e = escolhaDaEtapa(etapa);
+  if (e === null) return null;
+  if (papel === "destino") {
+    const o = e.origem;
+    if (o === null) return null;
+    let acao: Acao;
+    let verbo: string;
+    if (etapa.tipo === "terrestre") {
+      acao = { tipo: "atacar", origem: o, alvo: t, dados: 1 };
+      verbo = `atacar ${nomeT(t)} a partir de ${nomeT(o)}`;
+    } else if (etapa.tipo === "deslocar") {
+      acao = { tipo: "deslocar", origem: o, destino: t, quantidade: 1 };
+      verbo = `deslocar de ${nomeT(o)} para ${nomeT(t)}`;
+    } else if (etapa.tipo === "transporte" && etapa.cartas) {
+      acao = {
+        tipo: "transportarComCartas",
+        cartas: etapa.cartas,
+        origem: o,
+        destino: t,
+        quantidade: 1,
+      };
+      verbo = `transportar de ${nomeT(o)} para ${nomeT(t)}`;
+    } else return null;
+    const erro = recusa(visao, acao);
+    return erro ? `Não dá para ${verbo}: ${minuscula(erro.mensagem)}.` : null;
+  }
+  if (etapa.tipo === "terrestre") {
+    const erros = [...vizinhos(t)].flatMap((alvo) => {
+      const erro = recusa(visao, { tipo: "atacar", origem: t, alvo, dados: 1 });
+      return erro ? [erro] : [];
+    });
+    return explicarOrigem(visao, t, "ataque", erros, nomeDoJogador);
+  }
+  if (etapa.tipo === "deslocar") {
+    const erros = [...candidatosDeDestino(t)].flatMap((destino) => {
+      const erro = recusa(visao, { tipo: "deslocar", origem: t, destino, quantidade: 1 });
+      return erro ? [erro] : [];
+    });
+    return explicarOrigem(visao, t, "deslocamento", erros, nomeDoJogador);
+  }
+  if (etapa.tipo === "transporte" && etapa.cartas) {
+    const cartas = etapa.cartas;
+    const [a, b] = cartas.map((id) => {
+      const carta = cartaDeTroca(id);
+      return carta ? territoriosDaCarta(carta) : [];
+    });
+    const naA = a?.includes(t) ?? false;
+    const naB = b?.includes(t) ?? false;
+    if (!naA && !naB) return `${nomeT(t)} não está em nenhuma das 2 cartas marcadas.`;
+    const destinos = [...(naA ? (b ?? []) : []), ...(naB ? (a ?? []) : [])].filter((d) => d !== t);
+    const erros = destinos.flatMap((destino) => {
+      const erro = recusa(visao, {
+        tipo: "transportarComCartas",
+        cartas,
+        origem: t,
+        destino,
+        quantidade: 1,
+      });
+      return erro ? [erro] : [];
+    });
+    return explicarOrigem(visao, t, "transporte", erros, nomeDoJogador);
+  }
+  return null;
 }
 
 // Origem e destino já escolhidos numa etapa de dois cliques.

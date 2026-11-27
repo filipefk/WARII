@@ -27,10 +27,13 @@ import {
   renovarConvite,
   sairDaPartida,
 } from "./lobby.js";
+import { gerarLogDetalhado } from "./logDetalhado.js";
 
 const LIMITE_CORPO = 8 * 1024;
 const LIMITE_LEITURA = { max: 240, timeWindow: "1 minute" };
 const LIMITE_ESCRITA = { max: 60, timeWindow: "1 minute" };
+// O log detalhado repete a partida inteira: poucos pedidos por minuto.
+const LIMITE_LOG = { max: 10, timeWindow: "1 minute" };
 const LIMITE_ENTRAR = { max: 20, timeWindow: "15 minutes" };
 
 const ParametroPartida = z.object({ id: esquemaIdPartida });
@@ -109,6 +112,21 @@ export async function rotasDePartidas(app: FastifyInstance): Promise<void> {
     const usuarioId = sessaoDa(requisicao).usuario.id;
     return responder(resposta, () => obterLobby(params.data.id, usuarioId));
   });
+
+  // Log detalhado (texto) para baixar: completo para o administrador ou com a partida encerrada;
+  // senão, na visão de quem pede.
+  app.get(
+    "/:id/log-detalhado",
+    { config: { rateLimit: LIMITE_LOG } },
+    async (requisicao, resposta) => {
+      const params = ParametroPartida.safeParse(requisicao.params);
+      if (!params.success) return partidaInexistente(resposta);
+      const { usuario } = sessaoDa(requisicao);
+      return responder(resposta, () =>
+        gerarLogDetalhado(params.data.id, usuario.id, usuario.admin),
+      );
+    },
+  );
 
   app.put("/:id/cor", escrita, async (requisicao, resposta) => {
     const params = ParametroPartida.safeParse(requisicao.params);

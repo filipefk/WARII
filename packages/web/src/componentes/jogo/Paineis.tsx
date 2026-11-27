@@ -9,7 +9,7 @@ import {
   pendenteDeRecebimento,
   type VisaoPartida,
 } from "@warii/engine";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { eu } from "../../jogo/previa";
 import { type Mesa, totaisPorJogador } from "../../jogo/mesa";
 import type { Geografia } from "../../mapa/geografia";
@@ -18,6 +18,7 @@ import { CorJogador, Presenca } from "../basicos";
 import { CartaAmpliavel } from "../tabuleiro/CartaAmpliavel";
 import { CartaObjetivo } from "../tabuleiro/CartaObjetivo";
 import { CartaTroca } from "../tabuleiro/CartaTroca";
+import { LogDetalhado } from "./LogDetalhado";
 
 // Bloco do painel: título `secao` com 20px acima e 8px abaixo.
 export function Bloco({ titulo, children }: { titulo: string; children: ReactNode }) {
@@ -262,7 +263,16 @@ export function MeuObjetivo({ visao }: { visao: VisaoPartida }) {
   );
 }
 
-export function LogDaPartida({ eventos, mesa }: { eventos: readonly Evento[]; mesa: Mesa }) {
+export function LogDaPartida({
+  eventos,
+  mesa,
+  partidaId,
+}: {
+  eventos: readonly Evento[];
+  mesa: Mesa;
+  partidaId: string;
+}) {
+  const [detalhado, setDetalhado] = useState(false);
   return (
     <Bloco titulo="Log da partida">
       {eventos.length === 0 ? (
@@ -279,6 +289,12 @@ export function LogDaPartida({ eventos, mesa }: { eventos: readonly Evento[]; me
             ))}
         </ol>
       )}
+      <p className="mt-espaco-3">
+        <button type="button" className="link" onClick={() => setDetalhado(true)}>
+          Log detalhado (para baixar em .txt)
+        </button>
+      </p>
+      {detalhado && <LogDetalhado partidaId={partidaId} onFechar={() => setDetalhado(false)} />}
     </Bloco>
   );
 }

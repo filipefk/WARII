@@ -33,6 +33,8 @@ export const esquemaEscolha = z.strictObject({
   // Dados escolhidos no ataque terrestre.
   dados: inteiro(1, 3).nullable(),
   cartasMarcadas: inteiro(0, CARTAS_DE_TROCA.length),
+  // O atacante fechou a janela com o resultado do ataque aéreo: ela some para toda a mesa.
+  combateFechado: z.boolean().optional(),
 });
 
 export type Escolha = z.infer<typeof esquemaEscolha>;
