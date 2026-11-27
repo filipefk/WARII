@@ -201,3 +201,35 @@ export const snapshots = pgTable(
   },
   (tabela) => [primaryKey({ columns: [tabela.partidaId, tabela.seq] })],
 );
+
+export const TIPOS_LOG_USUARIO = ["login", "partida_criada", "partida_iniciada"] as const;
+export type TipoLogUsuario = (typeof TIPOS_LOG_USUARIO)[number];
+
+// Log simples por jogador, visto pelo administrador (admin/log.ts): quando entrou (cada sessão
+// criada, pelo login ou pelo link de senha), quando criou uma partida e quando jogou (uma linha
+// por jogador humano ao iniciar a partida, com os adversários). Nome da partida e adversários
+// ficam copiados aqui: a linha continua legível mesmo se a partida for apagada.
+export const logUsuarios = pgTable(
+  "log_usuarios",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    usuarioId: uuid("usuario_id")
+      .notNull()
+      .references(() => usuarios.id, { onDelete: "cascade" }),
+    tipo: text("tipo", { enum: TIPOS_LOG_USUARIO }).notNull(),
+    partidaId: uuid("partida_id").references(() => partidas.id, { onDelete: "set null" }),
+    partidaNome: text("partida_nome"),
+    adversarios: jsonb("adversarios").$type<{ nome: string; robo: boolean }[]>(),
+    ip: text("ip"),
+    criadoEm: instante("criado_em").notNull().defaultNow(),
+  },
+  (tabela) => [
+    index("log_usuarios_usuario_criado_idx").on(tabela.usuarioId, tabela.criadoEm),
+    check(
+      "log_usuarios_tipo_check",
+      sql`${tabela.tipo} in ('login', 'partida_criada', 'partida_iniciada')`,
+    ),
+  ],
+);

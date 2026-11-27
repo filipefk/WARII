@@ -1,5 +1,6 @@
 // Caixa do território selecionado (componente InfoTerritorio do sistema): nome, CE, países
-// incluídos, continente, dono e vizinhos. Só informação pública da visão.
+// incluídos, continente, dono e vizinhos. Só informação pública da visão. Sem `mesa` (o tabuleiro
+// de ambientação, sem partida), a linha do dono não aparece.
 import {
   CONTINENTES,
   FRONTEIRAS,
@@ -33,7 +34,7 @@ export function InfoTerritorio({
 }: {
   territorio: TerritorioId | null;
   visao: VisaoPartida;
-  mesa: Mesa;
+  mesa?: Mesa;
 }) {
   if (!territorio) {
     return (
@@ -62,17 +63,19 @@ export function InfoTerritorio({
         />
         {continente.nome}
       </p>
-      <p className="flex items-center gap-espaco-2">
-        {estado.dono ? (
-          <>
-            <CorJogador cor={mesa.cor(estado.dono)} />
-            {mesa.nome(estado.dono)} · {estado.exercitos}{" "}
-            {estado.exercitos === 1 ? "exército" : "exércitos"}
-          </>
-        ) : (
-          <span className="dica">Sem dono</span>
-        )}
-      </p>
+      {mesa && (
+        <p className="flex items-center gap-espaco-2">
+          {estado.dono ? (
+            <>
+              <CorJogador cor={mesa.cor(estado.dono)} />
+              {mesa.nome(estado.dono)} · {estado.exercitos}{" "}
+              {estado.exercitos === 1 ? "exército" : "exércitos"}
+            </>
+          ) : (
+            <span className="dica">Sem dono</span>
+          )}
+        </p>
+      )}
       <p className="dica">Vizinhos: {vizinhos.map((v) => v.nome + SUFIXO[v.tipo]).join(", ")}</p>
     </div>
   );

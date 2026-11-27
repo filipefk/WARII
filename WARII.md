@@ -497,7 +497,8 @@ Transcritas da ajuda online do gametrack.com.br (imagens `obj_01` a `obj_20`).
 
 ## 11. Eliminação de jogadores
 - Um jogador sem nenhum território é eliminado.
-- Se a eliminação não era o objetivo de quem eliminou (nesse caso ele já teria vencido), o eliminador **recebe as cartas de troca** do eliminado. Pode usá-las na hora, sozinhas ou com as suas, ou guardá-las, desde que **não fique com mais de 5 cartas** na mão (descarta o excesso).
+- Se a eliminação não era o objetivo de quem eliminou (nesse caso ele já teria vencido), o eliminador **recebe as cartas de troca** do eliminado, sem passar de **5 cartas** na mão. Se não couberem todas, as que ele recebe são **sorteadas** entre as do eliminado e as demais vão para o **monte de descarte**; com 5 cartas na mão, não recebe nenhuma. As recebidas podem ser usadas na hora, sozinhas ou com as suas, ou guardadas.
+  > 📘 Regra da casa (parâmetro "herança de cartas por sorteio", ligado por padrão). O manual manda receber todas e descartar o excesso à escolha do jogador; com o parâmetro desligado, vale o manual (o jogador usa ou descarta cartas até ficar com 5 antes de qualquer outra ação, exceto fechar o combate).
 - Bombardeiros, CI e objetivo do eliminado saem do jogo.
 
 ---
@@ -584,6 +585,7 @@ SETUP_COLORS → SETUP_DEALER → SETUP_STRATEGIC_CENTERS → [SETUP_5P_CHOICE]
 | Bombardeiros por jogador | 10 |
 | Cartas compradas por conquista | 3 |
 | Limite de cartas na mão | 5 |
+| Herança de cartas por sorteio ao eliminar (§11, regra da casa) | sim (manual: herda todas e descarta o excesso) |
 | Tamanho do descarte para reembaralhar | 10 |
 | 5 jogadores: após 3 escolhas (b), só resta (a) (manual) | desligado |
 | Sobreviventes do ataque aéreo voltam para | base aérea (manual: caixa) |

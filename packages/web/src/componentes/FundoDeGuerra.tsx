@@ -88,7 +88,7 @@ type Variante = keyof typeof COMPOSICOES;
 function varianteDaRota(caminho: string): Variante {
   if (/^\/(entrar|definir-senha|convite)/.test(caminho)) return "abertura";
   if (caminho === "/partidas" || caminho === "/") return "lobby";
-  if (caminho.startsWith("/partidas/")) return "partida";
+  if (caminho.startsWith("/partidas/") || caminho === "/tabuleiro") return "partida";
   return "outras";
 }
 

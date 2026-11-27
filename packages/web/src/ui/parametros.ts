@@ -101,6 +101,12 @@ export const CAMPOS_PARAMETROS = {
     descricao:
       "⚠ A confirmar: exércitos transportados por cartas contam para o movimento único (§9.3 C).",
   },
+  herancaLimitadaPorSorteio: {
+    tipo: "booleano",
+    rotulo: "Herança de cartas por sorteio",
+    descricao:
+      "Ao eliminar um jogador, herda por sorteio só as cartas que cabem no limite da mão; as outras vão para o descarte. Desligado: herda todas e usa ou descarta o excesso (§11).",
+  },
   vitoriaAQualquerMomento: {
     tipo: "booleano",
     rotulo: "Vitória a qualquer momento",

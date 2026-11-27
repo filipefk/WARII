@@ -100,8 +100,12 @@ function exigirSemPendencias(estado: EstadoPartida, tipo: TipoAcao): void {
   }
   if (DA_VEZ.includes(estado.fase)) {
     const limite = estado.parametros.limiteMao;
+    // Fechar o combate aberto também vale: herdar cartas ao eliminar alguém deixa a mão cheia
+    // com o combate ainda aberto, e ele precisa ser fechado para as cartas serem usadas na tela.
     exigir(
-      jogadorDaVez(estado).cartas.length <= limite || USO_DE_CARTAS.includes(tipo),
+      jogadorDaVez(estado).cartas.length <= limite ||
+        USO_DE_CARTAS.includes(tipo) ||
+        tipo === "encerrarAtaqueTerrestre",
       "ACAO_BLOQUEADA",
       `Use ou descarte cartas até ficar com no máximo ${limite} na mão`,
     );

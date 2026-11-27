@@ -4,6 +4,7 @@ import { ExigirAdmin } from "./componentes/ExigirAdmin";
 import { ExigirLogin } from "./componentes/ExigirLogin";
 import { Layout } from "./componentes/Layout";
 import { Admin } from "./paginas/admin/Admin";
+import { AdminLog } from "./paginas/admin/AdminLog";
 import { AdminPartidas } from "./paginas/admin/AdminPartidas";
 import { AdminUsuarios } from "./paginas/admin/AdminUsuarios";
 import { Conta } from "./paginas/Conta";
@@ -13,6 +14,7 @@ import { Entrar } from "./paginas/Entrar";
 import { NaoEncontrada } from "./paginas/NaoEncontrada";
 import { Partida } from "./paginas/Partida";
 import { Partidas } from "./paginas/Partidas";
+import { TabuleiroLivre } from "./paginas/TabuleiroLivre";
 
 export const roteador = createBrowserRouter([
   {
@@ -27,6 +29,7 @@ export const roteador = createBrowserRouter([
           { path: "convite", element: <Convite /> },
           { path: "partidas", element: <Partidas /> },
           { path: "partidas/:id", element: <Partida /> },
+          { path: "tabuleiro", element: <TabuleiroLivre /> },
           { path: "conta", element: <Conta /> },
           {
             element: <ExigirAdmin />,
@@ -38,6 +41,7 @@ export const roteador = createBrowserRouter([
                   { index: true, element: <Navigate to="/admin/usuarios" replace /> },
                   { path: "usuarios", element: <AdminUsuarios /> },
                   { path: "partidas", element: <AdminPartidas /> },
+                  { path: "log", element: <AdminLog /> },
                 ],
               },
             ],

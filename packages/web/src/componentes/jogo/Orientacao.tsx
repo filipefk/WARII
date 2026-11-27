@@ -50,8 +50,10 @@ function mensagemPara(visao: VisaoPartida, etapa: Etapa): Mensagem | null {
         <>
           <p>Todos os exércitos foram colocados.</p>
           <p className="mt-espaco-3">
-            Você tem {plural(cartas, "carta", "cartas")}. Pode usá-las agora para reforçar,
-            transportar ou descartar, no painel ao lado.
+            Você tem {plural(cartas, "carta", "cartas")}.{" "}
+            {etapa.usaCartas
+              ? "Pode usá-las agora para reforçar, transportar ou descartar, no painel ao lado."
+              : "Pode descartá-las agora, no painel ao lado."}
           </p>
         </>
       ),

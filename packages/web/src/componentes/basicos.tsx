@@ -113,3 +113,20 @@ export function CorJogador({ cor, tamanho = "w-4 h-4" }: { cor: CorId | null; ta
     />
   );
 }
+
+// Botão só com o ícone: o nome vai na dica (title) e no rótulo para leitores de tela.
+export function BotaoIcone({
+  dica,
+  onClick,
+  children,
+}: {
+  dica: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button type="button" className="botao" title={dica} aria-label={dica} onClick={onClick}>
+      {children}
+    </button>
+  );
+}

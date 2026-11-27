@@ -24,6 +24,7 @@ import { gerarToken } from "../auth/tokens.js";
 import { config } from "../config.js";
 import { db, type Executor, type Transacao } from "../db/index.js";
 import { acoesPartida, partidas, participantes, snapshots, usuarios } from "../db/schema.js";
+import { registrarPartidaCriada, registrarPartidaIniciada } from "../logUsuarios.js";
 import { type AcaoCriacao, montarPartida, TIPO_ACAO_CRIACAO } from "./inicio.js";
 import { ehRobo, garantirRobos } from "./robos.js";
 import { rngCrypto } from "./rng.js";
@@ -43,6 +44,11 @@ export class ErroDeLobby extends Error {
     super(mensagem);
     this.name = "ErroDeLobby";
   }
+}
+
+// Parâmetros gravados no lobby completados com os padrões dos que foram criados depois.
+function parametrosAtuais(gravados: Parametros): Parametros {
+  return { ...PARAMETROS_PADRAO, ...gravados };
 }
 
 const partidaInexistente = () => new ErroDeLobby(404, "PARTIDA_INEXISTENTE", "partida inexistente");
@@ -159,7 +165,9 @@ async function montarLobby(
       }))
       // Depois de iniciar, na ordem da mesa; antes, na ordem de entrada.
       .toSorted((a, b) => (a.assento ?? 0) - (b.assento ?? 0)),
-    parametros: partida.parametros,
+    // Depois de iniciar, os que a partida usa (os antigos não têm os parâmetros criados depois).
+    parametros:
+      partida.status === "aguardando" ? parametrosAtuais(partida.parametros) : partida.parametros,
     convite:
       ehAnfitriao && partida.status === "aguardando" && partida.convite
         ? linkDoConvite(partida.convite)
@@ -235,6 +243,7 @@ export async function criarPartidaNoLobby(
       .returning({ id: partidas.id });
     if (!criada) throw new Error("INSERT da partida não devolveu linha");
     await tx.insert(participantes).values({ partidaId: criada.id, usuarioId: anfitriaoId });
+    await registrarPartidaCriada(anfitriaoId, { id: criada.id, nome }, tx);
     return montarLobby(tx, criada.id, anfitriaoId);
   });
 }
@@ -340,7 +349,10 @@ export async function configurarParametros(
     const travada = await travarComoParticipante(tx, partidaId, usuarioId);
     exigirAnfitriao(travada, usuarioId);
     exigirAguardando(travada);
-    const juntos = esquemaParametros.safeParse({ ...travada.partida.parametros, ...alteracoes });
+    const juntos = esquemaParametros.safeParse({
+      ...parametrosAtuais(travada.partida.parametros),
+      ...alteracoes,
+    });
     const erros = juntos.success
       ? validarParametros(juntos.data)
       : juntos.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
@@ -458,7 +470,10 @@ export async function iniciarPartida(
       comCor.push({ id: p.usuarioId, cor: p.cor });
     }
 
-    const criacao: AcaoCriacao = { participantes: comCor, parametros: travada.partida.parametros };
+    const criacao: AcaoCriacao = {
+      participantes: comCor,
+      parametros: parametrosAtuais(travada.partida.parametros),
+    };
     const { rng, sorteios } = gravarRng(rngCrypto());
     const { jogadores, resultado } = montarPartida(criacao, rng);
     if (!resultado.ok) {
@@ -493,6 +508,11 @@ export async function iniciarPartida(
         atualizadaEm: agora,
       })
       .where(eq(partidas.id, partidaId));
+    await registrarPartidaIniciada(
+      { id: partidaId, nome: travada.partida.nome },
+      jogadores.map((j) => j.id),
+      tx,
+    );
     return montarLobby(tx, partidaId, usuarioId);
   });
 }

@@ -2,8 +2,8 @@
 // Tabuleiro e InfoTerritorio do sistema). A visão vem do socket; a interação fica em useJogo.
 import type { TerritorioId } from "@warii/engine";
 import type { PartidaLobbyDto } from "@warii/shared";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { Aviso, Botao, Carregando } from "../componentes/basicos";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Aviso, Botao, BotaoIcone, Carregando } from "../componentes/basicos";
 import { Modal } from "../componentes/Modal";
 import { InfoTerritorio } from "../componentes/jogo/InfoTerritorio";
 import {
@@ -23,6 +23,7 @@ import {
 } from "../componentes/jogo/JanelaDeCombate";
 import { AvioesRecebidos } from "../componentes/jogo/AvioesRecebidos";
 import { useAvisoUnico } from "../componentes/jogo/avisoUnico";
+import { AvisoCartasHerdadas } from "../componentes/jogo/CartasHerdadas";
 import { CartasRecebidas } from "../componentes/jogo/CartasRecebidas";
 import { CartasUsadas } from "../componentes/jogo/CartasUsadas";
 import { Orientacao, useOrientacao } from "../componentes/jogo/Orientacao";
@@ -47,41 +48,9 @@ import {
   visaoDeFora,
 } from "../jogo/interacao";
 import { montarMesa } from "../jogo/mesa";
-import { carregarGeografia, type Geografia } from "../mapa/geografia";
+import { useGeografia } from "../mapa/useGeografia";
 import { chaveDaFase, useJogo } from "../stores/jogo";
 import { type JogoRecebido, usePartidas } from "../stores/partidas";
-
-function useGeografia(): { geografia: Geografia | null; erro: string | null } {
-  const [geografia, setGeografia] = useState<Geografia | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
-  useEffect(() => {
-    let ativo = true;
-    carregarGeografia()
-      .then((g) => ativo && setGeografia(g))
-      .catch(() => ativo && setErro("Não foi possível carregar o mapa. Recarregue a página."));
-    return () => {
-      ativo = false;
-    };
-  }, []);
-  return { geografia, erro };
-}
-
-// Botão só com o ícone: o nome vai na dica (title) e no rótulo para leitores de tela.
-function BotaoIcone({
-  dica,
-  onClick,
-  children,
-}: {
-  dica: string;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button type="button" className="botao" title={dica} aria-label={dica} onClick={onClick}>
-      {children}
-    </button>
-  );
-}
 
 interface Props {
   partidaId: string;
@@ -161,6 +130,7 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
   const cartasRecebidas = useAvisoUnico("fimDaVez", partidaId, jogo?.fimDaVez);
   const avioes = useAvisoUnico("inicioDaVez", partidaId, jogo?.inicioDaVez);
   const cartasUsadas = useAvisoUnico("cartasUsadas", partidaId, jogo?.cartasUsadas);
+  const herdadas = useAvisoUnico("herdadas", partidaId, jogo?.herdadas);
 
   if (erro) return <Aviso>{erro}</Aviso>;
   if (!visao || !mesa || !geografia || !jogo) return <Carregando texto="Carregando a partida…" />;
@@ -394,7 +364,10 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
           onOcultar={() => setCombateOculto(combate.chave)}
         />
       )}
-      {cartasUsadas.aviso && !fim && !combateVisivel && (
+      {herdadas.aviso && !fim && !combateVisivel && (
+        <AvisoCartasHerdadas aviso={herdadas.aviso} onFechar={herdadas.fechar} />
+      )}
+      {cartasUsadas.aviso && !herdadas.aviso && !fim && !combateVisivel && (
         <CartasUsadas
           aviso={cartasUsadas.aviso}
           mesa={mesa}
@@ -402,13 +375,19 @@ export function TelaDoJogo({ partidaId, lobby, presenca, jogo }: Props) {
           onFechar={cartasUsadas.fechar}
         />
       )}
-      {avioes.aviso && !cartasUsadas.aviso && !fim && !combateVisivel && (
+      {avioes.aviso && !herdadas.aviso && !cartasUsadas.aviso && !fim && !combateVisivel && (
         <AvioesRecebidos aviso={avioes.aviso} onFechar={avioes.fechar} />
       )}
-      {orientacao.mensagem && !avioes.aviso && !cartasUsadas.aviso && !fim && !combateVisivel && (
-        <Orientacao mensagem={orientacao.mensagem} onFechar={orientacao.fechar} />
-      )}
+      {orientacao.mensagem &&
+        !herdadas.aviso &&
+        !avioes.aviso &&
+        !cartasUsadas.aviso &&
+        !fim &&
+        !combateVisivel && (
+          <Orientacao mensagem={orientacao.mensagem} onFechar={orientacao.fechar} />
+        )}
       {cartasRecebidas.aviso &&
+        !herdadas.aviso &&
         !avioes.aviso &&
         !cartasUsadas.aviso &&
         !orientacao.mensagem &&

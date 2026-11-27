@@ -66,7 +66,10 @@ export type Etapa =
       territorio: T | null;
       maximo: number;
       pendente: number;
+      // Há cartas na mão (o descarte fica sempre disponível).
       temCartas: boolean;
+      // Há carta de território ou continente: dá para reforçar e transportar.
+      usaCartas: boolean;
       opcoes: Conjunto;
     }
   | { tipo: "conquista"; conquista: ConquistaPendente }
@@ -190,7 +193,9 @@ function receber(visao: VisaoPartida, i: Interacao): Etapa {
   );
   const r = visao.turno.recebimento;
   const pendente = r ? pendenteDeRecebimento(r) : 0;
+  // Qualquer carta permite o descarte; reforço e transporte pedem carta de território.
   const temCartas = (eu(visao)?.quantidadeCartas ?? 0) > 0;
+  const usaCartas = temCartaDeTerritorio(visao);
   const continente = r
     ? (IDS_CONTINENTES.find((c) => (r.porContinente[c] ?? 0) > 0) ?? null)
     : null;
@@ -221,6 +226,7 @@ function receber(visao: VisaoPartida, i: Interacao): Etapa {
     maximo: territorio ? Math.min(maximoPosicionar(visao, territorio), doPasso) : 0,
     pendente,
     temCartas,
+    usaCartas,
     opcoes,
   };
 }
@@ -232,6 +238,15 @@ export function temAvioes(visao: VisaoPartida): boolean {
   if (!meu) return false;
   if (meu.bombardeirosBase > 0) return true;
   if (meu.bombardeirosCaixa === 0) return false;
+  // Na visão de fora a mão é oculta: basta ter cartas.
+  return temCartaDeTerritorio(visao);
+}
+
+// Há na mão ao menos uma carta de território ou de continente: sem ela não dá para reforçar nem
+// transportar (a numérica nunca vai sozinha, §9.3), só descartar.
+export function temCartaDeTerritorio(visao: VisaoPartida): boolean {
+  const meu = eu(visao);
+  if (!meu) return false;
   // Na visão de fora a mão é oculta: basta ter cartas.
   if (meu.cartas === null) return meu.quantidadeCartas > 0;
   return meu.cartas.some((c) => cartaDeTroca(c)?.tipo !== "numerica");
@@ -395,7 +410,8 @@ export function derivarEtapa(visao: VisaoPartida, i: Interacao): Etapa {
     return {
       tipo: "conflito",
       conflito: turno.conflitoTerrestre,
-      maximoDados: maximoDados(visao, origem, alvo),
+      // Mão acima do limite (cartas herdadas): só resta fechar o combate e usar as cartas.
+      maximoDados: maoAcimaDoLimite(visao) ? 0 : maximoDados(visao, origem, alvo),
     };
   }
 

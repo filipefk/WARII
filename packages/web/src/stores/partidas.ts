@@ -6,6 +6,7 @@ import type { Escolha, PartidaLobbyDto } from "@warii/shared";
 import { create } from "zustand";
 import { type AvioesRecebidos, avioesRecebidos } from "../jogo/avioesRecebidos";
 import { type CartasDoFimDaVez, cartasDoFimDaVez } from "../jogo/cartasDoFimDaVez";
+import { type CartasHerdadas, cartasHerdadas } from "../jogo/cartasHerdadas";
 
 const MAXIMO_EVENTOS_GUARDADOS = 100;
 
@@ -26,6 +27,8 @@ export interface JogoRecebido {
   fimDaVez: CartasDoFimDaVez | null;
   // Bombardeiros recebidos pelo próprio jogador no início da vez mais recente dele.
   inicioDaVez: AvioesRecebidos | null;
+  // Cartas herdadas pelo próprio jogador na eliminação mais recente que ele fez.
+  herdadas: CartasHerdadas | null;
   // Último lote em que alguém usou cartas (reforço, transporte, descarte ou bombardeiros), para o
   // aviso que toda a mesa vê.
   cartasUsadas: { seq: number; eventos: Evento[] } | null;
@@ -109,6 +112,7 @@ export const usePartidas = create<EstadoPartidas>()((set, get) => {
           combate: null,
           fimDaVez: null,
           inicioDaVez: null,
+          herdadas: null,
           cartasUsadas: null,
         },
       }),
@@ -119,6 +123,7 @@ export const usePartidas = create<EstadoPartidas>()((set, get) => {
       const combate = eventos.some(TEM_COMBATE) ? { seq, eventos } : jogo.combate;
       const fimDaVez = cartasDoFimDaVez(jogo.visao, eventos, seq) ?? jogo.fimDaVez;
       const inicioDaVez = avioesRecebidos(visao, eventos, seq) ?? jogo.inicioDaVez;
+      const herdadas = cartasHerdadas(visao, eventos, seq) ?? jogo.herdadas;
       const cartasUsadas = eventos.some(USOU_CARTAS) ? { seq, eventos } : jogo.cartasUsadas;
       alterar(partidaId, {
         jogo: {
@@ -130,6 +135,7 @@ export const usePartidas = create<EstadoPartidas>()((set, get) => {
           combate,
           fimDaVez,
           inicioDaVez,
+          herdadas,
           cartasUsadas,
         },
       });

@@ -142,10 +142,19 @@ export function textoDoEvento(e: Evento, nome: (jogadorId: string) => string): s
       return `O descarte (${e.quantidade}) voltou embaralhado ao monte.`;
     case "jogadorEliminado":
       return `${nome(e.jogador)} foi eliminado por ${nome(e.por)}.`;
-    case "cartasHerdadas":
+    case "cartasHerdadas": {
+      // As que passaram do limite da mão foram sorteadas para fora, para o descarte.
+      const sobra =
+        e.doAdversario > e.quantidade
+          ? ` (${e.quantidade} de ${e.doAdversario}, por sorteio; o resto foi para o descarte)`
+          : "";
+      if (e.quantidade === 0) {
+        return `${nome(e.jogador)} não herdou cartas de ${nome(e.de)}: já tinha o limite da mão (${plural(e.doAdversario, "carta foi", "cartas foram")} para o descarte).`;
+      }
       return e.cartas.length
-        ? `${nome(e.jogador)} herdou de ${nome(e.de)}: ${listaCartas(e.cartas)}.`
-        : `${nome(e.jogador)} herdou ${plural(e.quantidade, "carta", "cartas")} de ${nome(e.de)}.`;
+        ? `${nome(e.jogador)} herdou de ${nome(e.de)}${sobra}: ${listaCartas(e.cartas)}.`
+        : `${nome(e.jogador)} herdou ${plural(e.quantidade, "carta", "cartas")} de ${nome(e.de)}${sobra}.`;
+    }
     case "objetivoAlterado":
       return `Seu objetivo mudou ${
         e.motivo === "corEliminadaPorOutro"

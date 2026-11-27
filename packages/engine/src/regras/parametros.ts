@@ -24,6 +24,11 @@ export interface Parametros {
   readonly cartasPorConquista: number;
   // Limite de cartas na mão (§9.2 e §11).
   readonly limiteMao: number;
+  // Ao eliminar alguém, herdar só as cartas que cabem no limite da mão, sorteadas; as outras vão
+  // para o descarte (§11). Desligado, herda todas e precisa usar ou descartar o excesso.
+  // Partidas criadas antes deste parâmetro não o têm (undefined): seguem a regra antiga, para o
+  // log delas continuar se repetindo igual.
+  readonly herancaLimitadaPorSorteio: boolean;
   // Tamanho do descarte que o faz voltar, embaralhado, ao monte de compra (§9.4).
   readonly tamanhoDescarteReembaralhar: number;
   // 5 jogadores: depois de 3 escolhas (b), só resta a (a) (regra do manual, §4.3).
@@ -67,6 +72,7 @@ export const PARAMETROS_PADRAO: Parametros = {
   bombardeirosPorJogador: 10,
   cartasPorConquista: 3,
   limiteMao: 5,
+  herancaLimitadaPorSorteio: true,
   tamanhoDescarteReembaralhar: 10,
   cincoJogadoresRestricaoManual: false,
   sobreviventesAereoVoltamParaBase: true,
@@ -118,6 +124,7 @@ export function validarParametros(p: Parametros): string[] {
     if (!ehInteiro(p[chave], minimo)) erros.push(`${chave}: deve ser inteiro ≥ ${minimo}`);
   }
   const booleanos: (keyof Parametros)[] = [
+    "herancaLimitadaPorSorteio",
     "cincoJogadoresRestricaoManual",
     "sobreviventesAereoVoltamParaBase",
     "somarBaseECaixa",

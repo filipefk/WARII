@@ -119,6 +119,17 @@ export function Partidas() {
     <div className="space-y-espaco-8">
       {aviso && <Aviso tipo="info">{aviso}</Aviso>}
       <NovaPartida />
+      <Cartao titulo="Tabuleiro">
+        <div className="flex flex-col gap-espaco-5 sm:flex-row sm:items-center">
+          <p className="flex-1">
+            Conheça o mapa, confira as fronteiras de cada território e leia as regras, as cartas e
+            os dados antes de jogar.
+          </p>
+          <Link to="/tabuleiro" className="botao">
+            Ver o tabuleiro
+          </Link>
+        </div>
+      </Cartao>
       {erro && <Aviso>{erro}</Aviso>}
       {!lista && !erro && <Carregando />}
       {lista && lista.length === 0 && (

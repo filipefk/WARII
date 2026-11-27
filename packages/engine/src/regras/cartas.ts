@@ -51,6 +51,11 @@ export function idsDaCombinacao(c: Combinacao): CartaId[] {
 export function descartarCartas(ctx: Contexto, ids: readonly CartaId[]): void {
   const j = daVez(ctx);
   j.cartas = j.cartas.filter((c) => !ids.includes(c));
+  porNoDescarte(ctx, ids);
+}
+
+// Põe cartas (já fora de qualquer mão) no descarte; com o descarte cheio, ele volta ao monte.
+export function porNoDescarte(ctx: Contexto, ids: readonly CartaId[]): void {
   ctx.estado.descarte.push(...ids);
   if (ctx.estado.descarte.length >= ctx.estado.parametros.tamanhoDescarteReembaralhar) {
     reembaralharDescarte(ctx);

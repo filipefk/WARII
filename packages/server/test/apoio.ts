@@ -28,7 +28,7 @@ export async function encerrarAppDeTeste(app: FastifyInstance): Promise<void> {
 
 export async function limparBanco(): Promise<void> {
   await pool.query(
-    "TRUNCATE usuarios, sessoes, tokens_senha, partidas, participantes, acoes_partida, snapshots",
+    "TRUNCATE usuarios, sessoes, tokens_senha, partidas, participantes, acoes_partida, snapshots, log_usuarios",
   );
 }
 

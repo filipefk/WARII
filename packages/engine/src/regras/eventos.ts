@@ -207,6 +207,8 @@ export type Evento =
       readonly de: JogadorId;
       readonly cartas: readonly CartaId[];
       readonly quantidade: number;
+      // Cartas que o eliminado tinha; as que passaram do limite foram para o descarte.
+      readonly doAdversario: number;
     }
   // Privado: só o próprio jogador vê.
   | {

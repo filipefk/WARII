@@ -27,12 +27,14 @@ function IndicadorConexao() {
 // A navegação é uma linha de abas: a da tela atual fica ativa.
 const classeAba = ({ isActive }: { isActive: boolean }) => `botao ${isActive ? "ativo" : ""}`;
 
-// A partida em jogo (ou encerrada) ocupa a largura toda; as demais telas ficam centralizadas.
+// A partida em jogo (ou encerrada) e o tabuleiro de ambientação ocupam a largura toda; as demais
+// telas ficam centralizadas.
 function useTelaLarga(): boolean {
+  const tabuleiro = useMatch("/tabuleiro");
   const rota = useMatch("/partidas/:id");
   const id = rota?.params.id;
   const status = usePartidas((s) => (id ? s.porId[id]?.lobby?.status : undefined));
-  return status === "em_andamento" || status === "encerrada";
+  return tabuleiro !== null || status === "em_andamento" || status === "encerrada";
 }
 
 export function Layout() {

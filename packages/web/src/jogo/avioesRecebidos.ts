@@ -24,11 +24,13 @@ const avioes = (n: number) => `${n} ${n === 1 ? "avião" : "aviões"}`;
 
 export function textoDosAvioesRecebidos(a: AvioesRecebidos): string {
   if (a.centros === 0) return "Você não recebeu aviões pois não tem nenhum centro estratégico.";
+  // Cada CE também recebe 1 exército automático (§6.5), mesmo com a base cheia.
+  const exercitos = `${a.centros} ${a.centros === 1 ? "exército" : "exércitos"}`;
   if (a.recebidos >= a.centros) {
     return a.centros === 1
-      ? "Você recebeu 1 avião pelo seu centro estratégico."
-      : `Você recebeu ${avioes(a.recebidos)}, um por centro estratégico.`;
+      ? "Você recebeu 1 avião e 1 exército pelo seu centro estratégico."
+      : `Você recebeu ${avioes(a.recebidos)} e ${exercitos}, um por centro estratégico.`;
   }
   const centros = `${a.centros} ${a.centros === 1 ? "centro estratégico" : "centros estratégicos"}`;
-  return `Você tem ${centros} mas só recebeu ${avioes(a.recebidos)}, pois sua base aérea está cheia.`;
+  return `Você tem ${centros} e recebeu ${exercitos}, um por centro, mas só ${avioes(a.recebidos)}, pois sua base aérea está cheia.`;
 }

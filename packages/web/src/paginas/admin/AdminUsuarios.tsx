@@ -9,6 +9,7 @@ import {
   type UsuarioAdminDto,
 } from "@warii/shared";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { Link } from "react-router";
 import { apiAdmin } from "../../api/admin";
 import { mensagemDoErro } from "../../api/cliente";
 import { Aviso, Botao, Campo, Carregando, Cartao } from "../../componentes/basicos";
@@ -351,6 +352,9 @@ function LinhaUsuario({
           {usuario.ativa ? "Gerar link de nova senha" : "Gerar link de ativação"}
         </Botao>
         <Botao onClick={() => abrir({ tipo: "senha", usuario })}>Definir senha</Botao>
+        <Link to={`/admin/log?usuario=${encodeURIComponent(usuario.id)}`} className="botao">
+          Ver log
+        </Link>
         {!proprio && <Botao onClick={() => abrir({ tipo: "apagar", usuario })}>Apagar</Botao>}
       </div>
       {erro && (

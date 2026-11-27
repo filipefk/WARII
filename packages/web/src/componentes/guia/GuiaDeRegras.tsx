@@ -625,7 +625,16 @@ function Objetivos({ ctx }: { ctx: Contexto }) {
       <h4>Eliminação</h4>
       <p>
         Quem fica sem territórios sai do jogo. Quem o eliminou <b>herda as cartas de troca</b> dele
-        (descartando o que passar de {p.limiteMao}).
+        {/* `=== true`: partidas antigas não têm o parâmetro e seguem a regra anterior. */}
+        {/* oxlint-disable-next-line typescript/no-unnecessary-boolean-literal-compare -- pode ser undefined */}
+        {p.herancaLimitadaPorSorteio === true ? (
+          <>
+            , sem passar de {p.limiteMao} na mão: se não couberem todas, as que ele recebe são{" "}
+            <b>sorteadas</b> e as outras vão para o descarte.
+          </>
+        ) : (
+          <> (descartando o que passar de {p.limiteMao}).</>
+        )}
       </p>
     </>
   );

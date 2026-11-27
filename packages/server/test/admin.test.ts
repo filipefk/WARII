@@ -7,6 +7,7 @@ import { after, before, beforeEach, describe, test } from "node:test";
 import type {
   ErroApi,
   LinkSenhaDto,
+  LogUsuarioDto,
   PartidaAdminDto,
   PartidaLobbyDto,
   UsuarioAdminDto,
@@ -336,6 +337,51 @@ describe("rotas /api/admin", { skip: motivoSemBanco, concurrency: false }, () =>
     assert.equal(
       await codigoDoErro(pedir(admin.sessao, "GET", `/api/partidas/${emJogo}`), 404),
       "PARTIDA_INEXISTENTE",
+    );
+  });
+
+  test("log do jogador: entradas, partidas criadas e jogadas, mesmo depois de apagada", async () => {
+    const emJogo = await partidaComRobos(true);
+    await partidaComRobos(false);
+    const r = await pedir(admin.sessao, "GET", `/api/admin/usuarios/${admin.id}/log`);
+    assert.equal(r.statusCode, 200, r.body);
+    const log = r.json<LogUsuarioDto[]>();
+    assert.deepEqual(
+      log.map((l) => l.tipo),
+      ["partida_criada", "partida_iniciada", "partida_criada", "login"],
+    );
+    const jogou = log.find((l) => l.tipo === "partida_iniciada");
+    assert.deepEqual(jogou?.partida, { id: emJogo, nome: "Teste" });
+    assert.equal(jogou?.adversarios.length, 2);
+    assert.ok(jogou?.adversarios.every((a) => a.robo));
+
+    await pedir(admin.sessao, "DELETE", `/api/admin/partidas/${emJogo}`);
+    const depois = (await pedir(admin.sessao, "GET", `/api/admin/usuarios/${admin.id}/log`)).json<
+      LogUsuarioDto[]
+    >();
+    assert.deepEqual(depois.find((l) => l.tipo === "partida_iniciada")?.partida, {
+      id: null,
+      nome: "Teste",
+    });
+
+    // Robôs não têm log; só o administrador o vê.
+    const { rows } = await pool.query<{ total: string }>(
+      "SELECT count(*) AS total FROM log_usuarios l JOIN usuarios u ON u.id = l.usuario_id WHERE u.robo",
+    );
+    assert.equal(rows[0]?.total, "0");
+    const comum = await criarUsuario("comum@teste.local", "Comum");
+    assert.equal(
+      await codigoDoErro(
+        pedir(admin.sessao, "GET", "/api/admin/usuarios/00000000-0000-4000-8000-000000000000/log"),
+        404,
+      ),
+      "USUARIO_INEXISTENTE",
+    );
+    assert.equal(
+      (await pedir(admin.sessao, "GET", `/api/admin/usuarios/${comum.id}/log`)).json<
+        LogUsuarioDto[]
+      >().length,
+      0,
     );
   });
 });

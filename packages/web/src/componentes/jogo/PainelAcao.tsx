@@ -15,9 +15,9 @@ import {
 } from "@warii/engine";
 import type { Escolha } from "@warii/shared";
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
-import { type Etapa, temAvioes } from "../../jogo/interacao";
+import { type Etapa, temAvioes, temCartaDeTerritorio } from "../../jogo/interacao";
 import type { Mesa } from "../../jogo/mesa";
-import { eu } from "../../jogo/previa";
+import { eu, maoAcimaDoLimite } from "../../jogo/previa";
 import type { Geografia } from "../../mapa/geografia";
 import { useJogo } from "../../stores/jogo";
 import { NOMES_FASES } from "../../ui/textosEventos";
@@ -168,13 +168,14 @@ function SeletorDeCartas({ ctx }: { ctx: Contexto }) {
 
 function BotoesDeCartas({ ctx }: { ctx: Contexto }) {
   const iniciar = useJogo((s) => s.iniciar);
-  if ((eu(ctx.visao)?.cartas?.length ?? 0) === 0) return null;
+  if ((eu(ctx.visao)?.quantidadeCartas ?? 0) === 0) return null;
+  const usaCartas = temCartaDeTerritorio(ctx.visao);
   return (
     <div className="mt-espaco-5 border-t border-border pt-espaco-3">
       <p className="dica">Cartas</p>
       <Linha>
-        <Botao onClick={() => iniciar("reforco")}>Reforçar com cartas</Botao>
-        <Botao onClick={() => iniciar("transporte")}>Transportar com cartas</Botao>
+        {usaCartas && <Botao onClick={() => iniciar("reforco")}>Reforçar com cartas</Botao>}
+        {usaCartas && <Botao onClick={() => iniciar("transporte")}>Transportar com cartas</Botao>}
         <Botao onClick={() => iniciar("descarte")}>Descartar cartas</Botao>
       </Linha>
     </div>
@@ -387,11 +388,16 @@ function Receber({ ctx, etapa }: { ctx: Contexto; etapa: Extract<Etapa, { tipo: 
           {etapa.temCartas ? (
             <>
               <p className="mt-espaco-3">
-                Você tem {plural(cartas, "carta", "cartas")}. Quer usá-las agora?
+                Você tem {plural(cartas, "carta", "cartas")}.{" "}
+                {etapa.usaCartas ? "Quer usá-las agora?" : "Quer descartá-las agora?"}
               </p>
               <Linha>
-                <Botao onClick={() => iniciar("reforco")}>Reforçar com cartas</Botao>
-                <Botao onClick={() => iniciar("transporte")}>Transportar com cartas</Botao>
+                {etapa.usaCartas && (
+                  <Botao onClick={() => iniciar("reforco")}>Reforçar com cartas</Botao>
+                )}
+                {etapa.usaCartas && (
+                  <Botao onClick={() => iniciar("transporte")}>Transportar com cartas</Botao>
+                )}
                 <Botao onClick={() => iniciar("descarte")}>Descartar cartas</Botao>
               </Linha>
               <Linha>
@@ -399,7 +405,7 @@ function Receber({ ctx, etapa }: { ctx: Contexto; etapa: Extract<Etapa, { tipo: 
                   disabled={ctx.ocupado}
                   onClick={() => ctx.mandar({ tipo: "encerrarRecebimento" })}
                 >
-                  {primeiraEtapa ? "Não usar e passar a vez" : "Não usar e encerrar recebimento"}
+                  {encerrar}
                 </Botao>
               </Linha>
             </>
@@ -937,13 +943,22 @@ export function ConflitoTerrestre({
   const conquistado = ctx.visao.territorios[alvo].dono === ctx.visao.voce;
   const encerrar = () => ctx.mandar({ tipo: "encerrarAtaqueTerrestre" });
   if (maximo === 0) {
+    const maoCheia = maoAcimaDoLimite(ctx.visao);
     return (
       <div>
         <p>
           {conquistado
             ? `${nomeT(alvo)} agora é seu.`
-            : `${nomeT(origem)} não tem exércitos para atacar de novo.`}
+            : maoCheia
+              ? "Você está com cartas demais na mão."
+              : `${nomeT(origem)} não tem exércitos para atacar de novo.`}
         </p>
+        {maoCheia && (
+          <Dica>
+            Feche o combate e use ou descarte cartas até ficar com no máximo{" "}
+            {ctx.visao.parametros.limiteMao} na mão.
+          </Dica>
+        )}
         <Linha>
           <Botao disabled={ctx.ocupado} onClick={encerrar}>
             Fechar o combate

@@ -3,6 +3,7 @@ import type {
   CriarUsuarioEntrada,
   EditarUsuarioEntrada,
   LinkSenhaDto,
+  LogUsuarioDto,
   PartidaAdminDto,
   UsuarioAdminDto,
 } from "@warii/shared";
@@ -21,6 +22,7 @@ export const apiAdmin = {
   gerarLinkSenha: (id: string) => requisitar<LinkSenhaDto>("POST", usuario(id, "/link-senha")),
   definirSenha: (id: string, senha: string) =>
     requisitar<UsuarioAdminDto>("PUT", usuario(id, "/senha"), { senha }),
+  logDoUsuario: (id: string) => requisitar<LogUsuarioDto[]>("GET", usuario(id, "/log")),
 
   listarPartidas: () => requisitar<PartidaAdminDto[]>("GET", "/admin/partidas"),
   encerrarPartida: (id: string) => requisitar<void>("POST", partida(id, "/encerrar")),

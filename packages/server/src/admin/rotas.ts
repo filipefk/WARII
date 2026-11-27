@@ -15,6 +15,7 @@ import { auditar } from "../auditoria.js";
 import { ErroDeConta, gerarLinkSenhaPorId } from "../auth/contas.js";
 import { exigirAdmin, exigirSessao, sessaoDa } from "../auth/plugin.js";
 import { responderEntradaInvalida, responderErro } from "../erros.js";
+import { listarLogDoUsuario } from "../logUsuarios.js";
 import { apagarPartida, encerrarPartida, listarTodasAsPartidas } from "./partidas.js";
 import {
   apagarUsuario,
@@ -115,6 +116,16 @@ export async function rotasDeAdmin(app: FastifyInstance): Promise<void> {
       await apagarUsuario(params.data.id, adminId);
       auditar(requisicao.log, "usuario_apagado", { adminId, usuarioId: params.data.id });
       app.tempoReal.sessoesDoUsuarioEncerradas(params.data.id);
+    });
+  });
+
+  // Log do jogador: entradas, partidas criadas e partidas jogadas.
+  app.get("/usuarios/:id/log", leitura, async (requisicao, resposta) => {
+    const params = ParametroUsuario.safeParse(requisicao.params);
+    if (!params.success) return inexistente(resposta, "USUARIO");
+    return responder(resposta, async () => {
+      await obterUsuario(params.data.id);
+      return listarLogDoUsuario(params.data.id);
     });
   });
 

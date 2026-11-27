@@ -4,6 +4,7 @@
 import { and, eq, gt, isNull, lt, ne, or } from "drizzle-orm";
 import { db, type Executor } from "../db/index.js";
 import { sessoes, tokensSenha, usuarios } from "../db/schema.js";
+import { registrarLogin } from "../logUsuarios.js";
 import { formatoDeTokenValido, gerarToken, hashDoToken } from "./tokens.js";
 
 export const DURACAO_SESSAO_MS = 30 * 24 * 60 * 60 * 1000;
@@ -46,6 +47,8 @@ export async function criarSessao(
     ip: origem.ip ?? null,
     userAgent: origem.userAgent?.slice(0, TAMANHO_MAXIMO_USER_AGENT) ?? null,
   });
+  // Toda sessão nova é uma entrada no jogo (login ou link de senha): vai para o log do jogador.
+  await registrarLogin(usuarioId, origem.ip, executor);
   return { token, expiraEm };
 }
 

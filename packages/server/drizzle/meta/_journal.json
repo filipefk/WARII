@@ -36,6 +36,13 @@
       "when": 1795644079579,
       "tag": "0004_robos",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795773421389,
+      "tag": "0005_log_usuarios",
+      "breakpoints": true
     }
   ]
 }

@@ -828,11 +828,59 @@ describe("Objetivos, eliminação e vitória (§10–11)", () => {
     );
   });
 
+  test("Herança por sorteio: só as que cabem no limite; o resto vai para o descarte", () => {
+    const base = {
+      donos: { japao: ["B", 1], vladivostok: ["A", 4], brasil: ["C", 1] },
+      resto: "A",
+      objetivos: { C: "obj01" },
+    } as const;
+    const atacar = { tipo: "atacar", origem: "vladivostok", alvo: "japao", dados: 3 } as const;
+    // A com 3 cartas: cabem 2 das 3 de B. Embaralhar 3 cartas sorteia 2 vezes (índices 0 e 0):
+    // [alasca, groenlandia, argelia] → [groenlandia, argelia, alasca].
+    const e = montar({
+      ...base,
+      cartas: {
+        A: ["venezuela", "islandia-suecia", "num2-01"],
+        B: ["alasca", "groenlandia", "argelia"],
+      },
+    });
+    const r = rodar(e, "A", atacar, [...d6(6, 6, 6, 1), 0, 0]);
+    igual(
+      jog(r.estado, "A").cartas,
+      ["venezuela", "islandia-suecia", "num2-01", "groenlandia", "argelia"],
+      "A ficou com 5",
+    );
+    igual(r.estado.descarte, ["alasca"], "a sobra foi para o descarte");
+    const evento = r.eventos.find((x) => x.tipo === "cartasHerdadas");
+    igual(
+      evento?.tipo === "cartasHerdadas" ? [evento.quantidade, evento.doAdversario] : null,
+      [2, 3],
+      "2 das 3",
+    );
+    // Sem a mão cheia, a vez segue sem bloqueio.
+    const f = rodar(r.estado, "A", { tipo: "moverAposConquista", quantidade: 1 }).estado;
+    rodar(f, "A", { tipo: "encerrarAtaques" });
+
+    // A já com 5 cartas: não recebe nenhuma, e nada é sorteado.
+    const cheia = montar({
+      ...base,
+      cartas: {
+        A: ["venezuela", "islandia-suecia", "num2-01", "num2-02", "num2-03"],
+        B: ["alasca", "groenlandia"],
+      },
+    });
+    const r2 = rodar(cheia, "A", atacar, d6(6, 6, 6, 1));
+    igual(jog(r2.estado, "A").cartas.length, 5, "A continua com 5");
+    igual(r2.estado.descarte, ["alasca", "groenlandia"], "todas para o descarte");
+  });
+
   test("Eliminação por outro: destruir cor vira 24 territórios; cartas herdadas acima de 5", () => {
     const e = montar({
       donos: { japao: ["B", 1], vladivostok: ["A", 4], brasil: ["C", 1] },
       resto: "A",
       objetivos: { C: "obj01" },
+      // Regra do manual: herda todas e descarta o excesso.
+      parametros: { herancaLimitadaPorSorteio: false },
       cartas: {
         A: ["venezuela", "islandia-suecia", "num2-01"],
         B: ["alasca", "groenlandia", "argelia"],
@@ -864,6 +912,14 @@ describe("Objetivos, eliminação e vitória (§10–11)", () => {
     );
     f = rodar(f, "A", { tipo: "moverAposConquista", quantidade: 1 }).estado;
     recusa(f, "A", { tipo: "encerrarAtaques" }, "ACAO_BLOQUEADA");
+    recusa(
+      f,
+      "A",
+      { tipo: "atacar", origem: "vladivostok", alvo: "japao", dados: 1 },
+      "ACAO_BLOQUEADA",
+    );
+    f = rodar(f, "A", { tipo: "encerrarAtaqueTerrestre" }).estado;
+    igual(f.turno.conflitoTerrestre, null, "combate fechado com a mão cheia");
     f = rodar(f, "A", { tipo: "descartar", cartas: ["num2-01"] }).estado;
     f = rodar(f, "A", { tipo: "encerrarAtaques" }).estado;
     igual(f.fase, "DESLOCAR", "fase");

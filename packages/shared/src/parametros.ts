@@ -28,6 +28,7 @@ export const esquemaParametros = z.strictObject({
   bombardeirosPorJogador: inteiro(0),
   cartasPorConquista: inteiro(0),
   limiteMao: inteiro(1),
+  herancaLimitadaPorSorteio: z.boolean(),
   tamanhoDescarteReembaralhar: inteiro(1),
   cincoJogadoresRestricaoManual: z.boolean(),
   sobreviventesAereoVoltamParaBase: z.boolean(),
