@@ -23,13 +23,14 @@ export const roteador = createBrowserRouter([
       { index: true, element: <Navigate to="/partidas" replace /> },
       { path: "entrar", element: <Entrar /> },
       { path: "definir-senha", element: <DefinirSenha /> },
+      // Público: o tabuleiro de ambientação não depende de conta (é o link do site para os amigos).
+      { path: "tabuleiro", element: <TabuleiroLivre /> },
       {
         element: <ExigirLogin />,
         children: [
           { path: "convite", element: <Convite /> },
           { path: "partidas", element: <Partidas /> },
           { path: "partidas/:id", element: <Partida /> },
-          { path: "tabuleiro", element: <TabuleiroLivre /> },
           { path: "conta", element: <Conta /> },
           {
             element: <ExigirAdmin />,

@@ -91,6 +91,25 @@ Monorepo **TypeScript** com **pnpm workspaces** (Node 24, pnpm 11). Um único re
 - Antes de testar no navegador, verificar se já há uma instância ativa nas portas **5173** (front) e **3000** (servidor); se houver, usar essas.
 - Se o Claude Code subir uma instância para testar no navegador, deve derrubá-la ao final dos testes.
 
+## Simular partidas no ambiente de desenvolvimento
+
+Para levar uma partida real (servidor + banco) a um ponto do jogo — testar uma tela no meio da partida, reproduzir um bug, tirar prints — sem jogar à mão:
+
+- **Montar a mesa pela API** (sem navegador): `POST /api/auth/login` com o admin do seed (ver `USUARIOS-TESTE.md`), `POST /api/partidas {nome}`, `POST /api/partidas/:id/robos` uma vez por robô, cor de cada um (`PUT /:id/cor` para si, `PUT /:id/participantes/:usuarioId/cor` para os robôs) e `POST /:id/iniciar`. O cookie vem no `set-cookie` do login; chamadas de fora do navegador (sem `Origin` nem `Sec-Fetch-Site`) passam pela regra de origem.
+- **Jogar a vez do humano com a IA dos robôs**: um script `tsx` com `socket.io-client` (cookie em `extraHeaders`, `transports: ["websocket"]`) que entra na partida e, a cada `estado`/`eventos`, se `jogadorQueAge(visao) === meuId`, emite `acao` com `decidirAcao(visao, rng)` do `@warii/engine`. Rodar de dentro de `packages/server` (`pnpm --filter @warii/server exec tsx …`), que já tem `@warii/engine` e `socket.io-client`; o script precisa ser ESM (`.mts` fora de um pacote `"type": "module"`), senão o `await` no topo falha.
+- **Parar num ponto**: pela visão — `visao.rodada`, `visao.fase` (`FIM`), `visao.turno.conflitoTerrestre` com o humano na vez (deixa a janela de combate aberta esperando por ele). Para tirar print, o navegador headless (Chrome com `--remote-debugging-port`, cookie `warii_sessao` posto por `Network.setCookie` em `localhost`) abre `http://localhost:5173/partidas/:id`.
+
+Lições aprendidas:
+
+- **Corrida evento × confirmação**: o `eventos` da própria ação chega **antes** do ack do `acao`. Quem decide só ao receber eventos e ignora enquanto espera o ack deixa a partida parada na vez do humano. Guardar a última visão e tentar agir de novo também no callback do ack.
+- **Limite do socket**: ações em sequência sem pausa estouram o balde de fichas (`LIMITE_EXCEDIDO`). Esperar ~120 ms entre ações e ~2 s depois de um `LIMITE_EXCEDIDO`, sem contar como erro.
+- **Robôs lentos**: `ROBO_ATRASO_MS` (padrão 900) faz uma partida de 4 jogadores levar vários minutos por rodada. Para simular, subir com `ROBO_ATRASO_MS=30` (no Git Bash: `ROBO_ATRASO_MS=30 pnpm dev`); a 4ª rodada sai em ~400 ações e poucos minutos.
+- **Corpo vazio**: POST/PUT com `content-type: application/json` e sem corpo dão 400 `FST_ERR_CTP_EMPTY_JSON_BODY` (ex.: adicionar robô, iniciar). Mandar `{}`.
+- **Cores**: os robôs entram sem cor; iniciar sem todas definidas dá 409 `COR_PENDENTE`.
+- **`TaskStop` não derruba os filhos** do `pnpm dev` no Windows: conferir as portas 3000/5173 depois e encerrar os processos `node` que ficaram (`Get-NetTCPConnection -LocalPort 3000,5173` → `Stop-Process`).
+- **Aviso "Sua vez"**: num perfil novo do navegador a `Orientacao` aparece por cima do mapa; fechar pelo botão "OK" antes do print.
+- **Limpeza**: tentativas que falham deixam partidas `aguardando`/`em_andamento` no banco de desenvolvimento; apagar as que sobrarem com `DELETE /api/admin/partidas/:id`.
+
 ## Propriedade intelectual
 
 "War" e "War II" são marcas da Grow; mapa, arte e textos das cartas são protegidos. O uso é privado entre amigos; se um dia for publicado, trocar nome, arte e textos por versões próprias mantendo as mecânicas.

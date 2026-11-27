@@ -13,6 +13,7 @@ import { DefsDoJogo } from "../componentes/tabuleiro/DefsDoJogo";
 import { Tabuleiro } from "../componentes/tabuleiro/Tabuleiro";
 import { visaoDeExemplo } from "../jogo/visaoDeExemplo";
 import { useGeografia } from "../mapa/useGeografia";
+import { useSessao } from "../stores/sessao";
 
 const SEM_BASES: readonly null[] = [null, null, null, null, null, null];
 const VAGO = { dono: null, exercitos: 0 } as const;
@@ -20,6 +21,8 @@ const VAGO = { dono: null, exercitos: 0 } as const;
 export function TabuleiroLivre() {
   const { geografia, erro } = useGeografia();
   const visao = visaoDeExemplo();
+  // A rota é pública: sem sessão, o link do pé leva ao login em vez das partidas.
+  const usuario = useSessao((s) => s.usuario);
   const [selecionado, setSelecionado] = useState<TerritorioId | null>(null);
   const [janela, setJanela] = useState<"galeria" | "guia" | null>(null);
   // As fronteiras do território escolhido ficam realçadas no mapa.
@@ -69,9 +72,15 @@ export function TabuleiroLivre() {
           Regras com os valores padrão: cada partida pode mudar alguns deles na sala de espera.
         </p>
         <p className="mt-espaco-5">
-          <Link to="/partidas" className="link">
-            Voltar às partidas
-          </Link>
+          {usuario ? (
+            <Link to="/partidas" className="link">
+              Voltar às partidas
+            </Link>
+          ) : (
+            <Link to="/entrar" className="link">
+              Entrar para jogar
+            </Link>
+          )}
         </p>
       </aside>
       {janela === "galeria" && (
