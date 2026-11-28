@@ -78,7 +78,7 @@ const atqMexNy = (dados: number): Acao => ({
   dados,
 });
 
-const AA = PARAMETROS_PADRAO.facesAntiaereo; // [0,0,0,1,1,2]
+const AA = PARAMETROS_PADRAO.facesAntiaereo; // [0,0,0,1,2,3]
 
 const AT = PARAMETROS_PADRAO.facesAtaqueAereo; // [0,0,0,1,2,3]
 

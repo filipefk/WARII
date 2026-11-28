@@ -43,7 +43,7 @@ export const CAMPOS_PARAMETROS = {
     tipo: "faces",
     rotulo: "Dado antiaéreo",
     descricao:
-      "Bombardeiros abatidos por face. 📘 Vídeo: [0,0,0,1,1,2]; manual: [0,0,0,1,1,1] (§7.3).",
+      "Bombardeiros abatidos por face. Padrão: [0,0,0,1,2,3]; 📘 manual: [0,0,0,1,1,1] (§7.3).",
   },
   facesAtaqueAereo: {
     tipo: "faces",

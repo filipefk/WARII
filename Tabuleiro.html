@@ -779,7 +779,7 @@ const OBJECTIVES = () => [
 
 // Dados (WARII.md §2 e §7.3). As faces dos dados aéreos são parâmetros configuráveis (§13.4)
 const AIR_ATTACK_FACES = [0, 0, 0, 1, 2, 3]; // fichas de exército: exércitos abatidos
-const AA_FACES = [0, 0, 0, 1, 1, 2];         // peças de avião: bombardeiros abatidos (versão do vídeo; manual: [0,0,0,1,1,1])
+const AA_FACES = [0, 0, 0, 1, 2, 3];         // peças de avião: bombardeiros abatidos (escolha de projeto na linha do vídeo; manual: [0,0,0,1,1,1])
 const DICE = [
   { title: "Ataque terrestre", qty: 3, color: "#c62a22", ink: "#fff", kind: "pips", faces: [1, 2, 3, 4, 5, 6],
     hint: "3 dados vermelhos, d6 comum. O atacante rola um por exército participante (máx. 3)." },
@@ -788,7 +788,7 @@ const DICE = [
   { title: "Ataque aéreo", qty: 1, color: "#2f86d8", ink: "#fff", kind: "army", faces: AIR_ATTACK_FACES,
     hint: "Rolado pelo atacante a cada ciclo, depois da antiaérea. Cada ficha de exército na face é 1 exército do defensor abatido (sempre fica ao menos 1 no território)." },
   { title: "Defesa antiaérea", qty: 1, color: "#2f86d8", ink: "#fff", kind: "plane", faces: AA_FACES,
-    hint: "Rolado pelo defensor no início de cada ciclo. Cada peça de avião na face é 1 bombardeiro abatido. Faces da versão do vídeo (o manual traz só faces de 1 avião); são configuráveis." },
+    hint: "Rolado pelo defensor no início de cada ciclo. Cada peça de avião na face é 1 bombardeiro abatido. Faces de 1, 2 e 3 aviões, na linha do vídeo (o manual traz só faces de 1 avião); são configuráveis." },
 ];
 const PIPS = { 1: [[50, 50]], 2: [[28, 28], [72, 72]], 3: [[28, 28], [50, 50], [72, 72]], 4: [[28, 28], [72, 28], [28, 72], [72, 72]],
   5: [[28, 28], [72, 28], [50, 50], [28, 72], [72, 72]], 6: [[28, 26], [72, 26], [28, 50], [72, 50], [28, 74], [72, 74]] };

@@ -341,8 +341,8 @@ function conferirDadosDoJogo(erros: string[]): void {
   if (!mesmaSequencia(FACES_ATAQUE_AEREO_PADRAO, [0, 0, 0, 1, 2, 3])) {
     erros.push("Faces padrão do ataque aéreo diferentes de [0,0,0,1,2,3] (§13.4).");
   }
-  if (!mesmaSequencia(FACES_ANTIAEREO_PADRAO, [0, 0, 0, 1, 1, 2])) {
-    erros.push("Faces padrão da antiaérea diferentes de [0,0,0,1,1,2] (§13.4).");
+  if (!mesmaSequencia(FACES_ANTIAEREO_PADRAO, [0, 0, 0, 1, 2, 3])) {
+    erros.push("Faces padrão da antiaérea diferentes de [0,0,0,1,2,3] (§13.4).");
   }
   const total = Object.values(dados).reduce((soma, d) => soma + d.quantidade, 0);
   if (total !== 8) erros.push(`Total de dados: ${total}, esperado 8 (§2).`);

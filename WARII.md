@@ -37,7 +37,7 @@ Cada jogador recebe um **objetivo secreto**. Vence o primeiro a cumprir o seu.
 | Dados vermelhos (3) | Ataque terrestre, d6 comum |
 | Dados amarelos (3) | Defesa terrestre, d6 comum |
 | Dado de ataque aéreo (1) | Azul. 3 faces com **fichas de exército** (a peça redonda do jogo) em quantidade **1, 2, 3** = exércitos abatidos, e 3 faces lisas |
-| Dado de defesa antiaérea (1) | Azul. 3 faces com **peças de avião** (a peça triangular do jogo) = bombardeiros abatidos (**1, 1, 2**, versão do vídeo), e 3 faces lisas |
+| Dado de defesa antiaérea (1) | Azul. 3 faces com **peças de avião** (a peça triangular do jogo) = bombardeiros abatidos (**1, 2, 3**, escolha de projeto na linha do vídeo), e 3 faces lisas |
 
 Total: 8 dados.
 
@@ -316,10 +316,10 @@ O ataque aéreo serve para **enfraquecer** as forças inimigas e facilitar um at
 **Dados**
 | Dado | Quem rola | Faces (padrão: versão do vídeo) |
 |---|---|---|
-| Defesa antiaérea | Defensor | `[0, 0, 0, 1, 1, 2]`: 3 lisas, 2 com 1 avião e 1 com 2 aviões (bombardeiros abatidos) |
+| Defesa antiaérea | Defensor | `[0, 0, 0, 1, 2, 3]`: 3 lisas e 3 com peças de avião (1, 2, 3 bombardeiros abatidos) |
 | Ataque aéreo | Atacante | `[0, 0, 0, 1, 2, 3]`: 3 lisas e 3 com fichas de exército (1, 2, 3 exércitos abatidos) |
 
-> 📘 MANUAL × VÍDEO: o vídeo fala em faces de 1 **ou 2** bombardeiros abatidos; uma foto do dado mostra uma face com 2 aviões. O manual fala em "três faces indicando quantos bombardeiros foram atingidos (1 bombardeiro atingido)", ou seja, `[0,0,0,1,1,1]`. Adotada a versão do vídeo. A distribuição 1, 1, 2 entre as 3 faces com aviões foi uma escolha de projeto, já que o vídeo não a detalha. A versão do manual fica como opção. O dado de ataque aéreo não diverge: `[0,0,0,1,2,3]` nas duas fontes.
+> 📘 MANUAL × VÍDEO: o vídeo fala em faces de 1 **ou 2** bombardeiros abatidos; uma foto do dado mostra uma face com 2 aviões. O manual fala em "três faces indicando quantos bombardeiros foram atingidos (1 bombardeiro atingido)", ou seja, `[0,0,0,1,1,1]`. Adotada a linha do vídeo (faces com mais de 1 avião). A distribuição 1, 2, 3 entre as 3 faces com aviões é uma escolha de projeto, igual à do dado de ataque aéreo, já que o vídeo não a detalha (antes era 1, 1, 2). A versão do manual fica como opção. O dado de ataque aéreo não diverge: `[0,0,0,1,2,3]` nas duas fontes.
 
 **Resolução (repete em ciclos)**
 1. O atacante designa quantos bombardeiros atacam e qual território.
@@ -578,7 +578,7 @@ SETUP_COLORS → SETUP_DEALER → SETUP_STRATEGIC_CENTERS → [SETUP_5P_CHOICE]
 ### 13.4 Parâmetros configuráveis
 | Parâmetro | Padrão |
 |---|---|
-| Faces do dado antiaéreo | `[0,0,0,1,1,2]` (manual: `[0,0,0,1,1,1]`) |
+| Faces do dado antiaéreo | `[0,0,0,1,2,3]` (manual: `[0,0,0,1,1,1]`) |
 | Faces do dado de ataque aéreo | `[0,0,0,1,2,3]` |
 | Tabela de bônus por continente | seção 6.2 |
 | Mínimo de recebimento | 3 |

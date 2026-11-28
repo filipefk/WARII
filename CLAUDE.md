@@ -55,7 +55,7 @@ Monorepo **TypeScript** com **pnpm workspaces** (Node 24, pnpm 11). Um único re
 
 ## Decisões de regras
 
-- Onde manual e vídeo divergem, vale o **vídeo** para: escolha com 5 jogadores (§4.3), ataque aéreo — soma base + caixa, pode interromper entre ciclos, sobreviventes voltam à base, dado antiaéreo com faces `[0,0,0,1,1,2]` (§7.3) — e mudança automática de objetivo para "24 territórios" (§10.2). Nos demais pontos vale o **manual**.
+- Onde manual e vídeo divergem, vale o **vídeo** para: escolha com 5 jogadores (§4.3), ataque aéreo — soma base + caixa, pode interromper entre ciclos, sobreviventes voltam à base, dado antiaéreo com faces de mais de 1 avião — padrão `[0,0,0,1,2,3]`, distribuição escolhida pelo projeto (§7.3) — e mudança automática de objetivo para "24 territórios" (§10.2). Nos demais pontos vale o **manual**.
 - Regras divergentes ou incertas (itens **⚠ A CONFIRMAR** em `WARII.md`) devem virar **parâmetros configuráveis** da partida, nunca valores fixos no código. Ver tabela em `WARII.md` §13.4.
 - Variante **Centro de Informações** é módulo opcional, desligado por padrão.
 
