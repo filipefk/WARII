@@ -1,4 +1,4 @@
-// Partidas de que o usuário participa e criação de uma nova.
+// Partidas de que o usuário participa e criação de uma nova; à direita, quem está online.
 import { CriarPartidaEntrada, type PartidaResumoDto, type StatusPartida } from "@warii/shared";
 import { type FormEvent, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
@@ -6,6 +6,7 @@ import { mensagemDoErro } from "../api/cliente";
 import { apiPartidas } from "../api/partidas";
 import { NomeComAvatar } from "../componentes/Avatar";
 import { Aviso, Botao, Campo, Carregando, Cartao } from "../componentes/basicos";
+import { JogadoresOnline } from "../componentes/JogadoresOnline";
 import { usePartidas } from "../stores/partidas";
 
 export interface EstadoAviso {
@@ -124,41 +125,46 @@ export function Partidas() {
   }, []);
 
   return (
-    <div className="space-y-espaco-8">
-      {aviso && <Aviso tipo="info">{aviso}</Aviso>}
-      <NovaPartida />
-      <Cartao titulo="Tabuleiro">
-        <div className="flex flex-col gap-espaco-5 sm:flex-row sm:items-center">
-          <p className="flex-1">
-            Conheça o mapa, confira as fronteiras de cada território e leia as regras, as cartas e
-            os dados antes de jogar.
+    <div className="grid items-start gap-espaco-8 lg:grid-cols-[minmax(0,1fr)_240px]">
+      <aside className="order-2">
+        <JogadoresOnline />
+      </aside>
+      <div className="order-1 space-y-espaco-8">
+        {aviso && <Aviso tipo="info">{aviso}</Aviso>}
+        <NovaPartida />
+        <Cartao titulo="Tabuleiro">
+          <div className="flex flex-col gap-espaco-5 sm:flex-row sm:items-center">
+            <p className="flex-1">
+              Conheça o mapa, confira as fronteiras de cada território e leia as regras, as cartas e
+              os dados antes de jogar.
+            </p>
+            <Link to="/tabuleiro" className="botao">
+              Ver o tabuleiro
+            </Link>
+          </div>
+        </Cartao>
+        {erro && <Aviso>{erro}</Aviso>}
+        {!lista && !erro && <Carregando />}
+        {lista && lista.length === 0 && (
+          <p className="text-muted">
+            Você ainda não está em nenhuma partida. Crie uma ou peça um convite a um amigo.
           </p>
-          <Link to="/tabuleiro" className="botao">
-            Ver o tabuleiro
-          </Link>
-        </div>
-      </Cartao>
-      {erro && <Aviso>{erro}</Aviso>}
-      {!lista && !erro && <Carregando />}
-      {lista && lista.length === 0 && (
-        <p className="text-muted">
-          Você ainda não está em nenhuma partida. Crie uma ou peça um convite a um amigo.
-        </p>
-      )}
-      {lista &&
-        GRUPOS.map(({ status, titulo }) => {
-          const doGrupo = lista.filter((p) => p.status === status);
-          if (doGrupo.length === 0) return null;
-          return (
-            <Cartao key={status} titulo={titulo}>
-              <ul className="space-y-espaco-2">
-                {doGrupo.map((p) => (
-                  <LinhaPartida key={p.id} partida={p} />
-                ))}
-              </ul>
-            </Cartao>
-          );
-        })}
+        )}
+        {lista &&
+          GRUPOS.map(({ status, titulo }) => {
+            const doGrupo = lista.filter((p) => p.status === status);
+            if (doGrupo.length === 0) return null;
+            return (
+              <Cartao key={status} titulo={titulo}>
+                <ul className="space-y-espaco-2">
+                  {doGrupo.map((p) => (
+                    <LinhaPartida key={p.id} partida={p} />
+                  ))}
+                </ul>
+              </Cartao>
+            );
+          })}
+      </div>
     </div>
   );
 }
