@@ -305,7 +305,7 @@ export function LogDaPartida({
       )}
       <p className="mt-espaco-3">
         <button type="button" className="link" onClick={() => setDetalhado(true)}>
-          Log detalhado (para baixar em .txt)
+          Log detalhado
         </button>
       </p>
       {detalhado && <LogDetalhado partidaId={partidaId} onFechar={() => setDetalhado(false)} />}
