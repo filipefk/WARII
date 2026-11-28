@@ -22,10 +22,10 @@ export function BaseAerea({ x, y, dono, bombardeiros }: Props) {
   return (
     <g className="mapa-base">
       <rect
-        x={x - 165}
-        y={y - 23}
-        width={330}
-        height={46}
+        x={x - 178}
+        y={y - 27}
+        width={356}
+        height={54}
         rx={6}
         fill="var(--color-base-fill)"
         stroke={cor ?? "var(--color-base-frame)"}
@@ -33,10 +33,10 @@ export function BaseAerea({ x, y, dono, bombardeiros }: Props) {
       />
       {/* Bandeja em baixo-relevo, com a pista pintada sob as vagas. */}
       <rect
-        x={x - 163}
-        y={y - 21}
-        width={326}
-        height={42}
+        x={x - 176}
+        y={y - 25}
+        width={352}
+        height={50}
         rx={5}
         fill={`url(#${ID_RELEVO_BASE})`}
       />
