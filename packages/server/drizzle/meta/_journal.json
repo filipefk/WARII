@@ -50,6 +50,13 @@
       "when": 1795818110415,
       "tag": "0006_avatares",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795859847597,
+      "tag": "0007_partidas_publicas",
+      "breakpoints": true
     }
   ]
 }

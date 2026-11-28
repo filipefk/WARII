@@ -106,6 +106,9 @@ describe("contrato dos parâmetros e do lobby", () => {
 
   test("entradas do lobby", () => {
     assert.equal(CriarPartidaEntrada.parse({ nome: "  Sexta  " }).nome, "Sexta");
+    assert.equal(CriarPartidaEntrada.parse({ nome: "Sexta" }).publica, false);
+    assert.equal(CriarPartidaEntrada.parse({ nome: "Sexta", publica: true }).publica, true);
+    assert.equal(aceita(CriarPartidaEntrada, { nome: "Sexta", publica: "sim" }), false);
     assert.equal(aceita(CriarPartidaEntrada, { nome: "x" }), false);
     assert.equal(aceita(EscolherCorEntrada, { cor: "azul" }), true);
     assert.equal(aceita(EscolherCorEntrada, { cor: "rosa" }), false);

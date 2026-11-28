@@ -369,7 +369,7 @@ export function SalaDeEspera(props: Props) {
     <div className="space-y-espaco-8">
       <TituloDaTela
         titulo={lobby.nome}
-        apoio={`Sala de espera · anfitrião: ${lobby.anfitriao.nome}`}
+        apoio={`Sala de espera · partida ${lobby.publica ? "pública" : "privada"} · anfitrião: ${lobby.anfitriao.nome}`}
       />
       <div className="grid gap-espaco-8 md:grid-cols-2">
         <Participantes {...props} />

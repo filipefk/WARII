@@ -138,6 +138,8 @@ export const partidas = pgTable(
     // Token do convite, guardado em claro para o anfitrião rever o link (só dá entrada numa sala
     // de espera). Nulo depois de iniciar ou cancelar.
     convite: text("convite").unique(),
+    // Pública: aparece na tela de partidas de todos enquanto aguarda e qualquer um entra sem convite.
+    publica: boolean("publica").notNull().default(false),
     // Número da última ação gravada no log (-1 antes de iniciar). Controle de concorrência.
     seq: integer("seq").notNull().default(-1),
     vencedorId: uuid("vencedor_id").references(() => usuarios.id),

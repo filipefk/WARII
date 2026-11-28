@@ -25,8 +25,11 @@ export const CriarPartidaEntrada = z.strictObject({
     .trim()
     .min(NOME_PARTIDA_MIN, `o nome deve ter pelo menos ${NOME_PARTIDA_MIN} caracteres`)
     .max(NOME_PARTIDA_MAX, `o nome deve ter no máximo ${NOME_PARTIDA_MAX} caracteres`),
+  // Pública: aparece na tela de partidas de todos enquanto aguarda e qualquer um entra sem convite.
+  // Privada (padrão): só se entra pelo convite do anfitrião.
+  publica: z.boolean({ error: "informe se a partida é pública" }).default(false),
 });
-export type CriarPartidaEntrada = z.infer<typeof CriarPartidaEntrada>;
+export type CriarPartidaEntrada = z.input<typeof CriarPartidaEntrada>;
 
 // O token vai no corpo, nunca na URL (o link do front leva o token no fragmento: /convite#token=…).
 export const EntrarPartidaEntrada = z.strictObject({ token: esquemaTokenConvite });
@@ -62,6 +65,7 @@ export interface PartidaResumoDto {
   id: string;
   nome: string;
   status: StatusPartida;
+  publica: boolean;
   anfitriao: UsuarioResumoDto;
   quantidadeParticipantes: number;
   criadaEm: string;

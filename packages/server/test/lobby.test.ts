@@ -308,6 +308,71 @@ describe("rotas /api/partidas", { skip: motivoSemBanco, concurrency: false }, ()
     assert.equal(await codigoDoErro(entrar(setimo, token), 409), "PARTIDA_CHEIA");
   });
 
+  test("partida pública: aparece para todos e qualquer um entra sem convite", async () => {
+    const [a, b, c] = await criarContasAtivas(app, 3);
+    assert.ok(a && b && c);
+    const publicas = async (conta: Conta) => {
+      const r = await pedir(conta, "GET", "/publicas");
+      assert.equal(r.statusCode, 200, r.body);
+      return r.json<PartidaResumoDto[]>().map((p) => p.id);
+    };
+
+    const privada = await criar(a, "Privada");
+    assert.equal(privada.publica, false);
+    const resposta = await pedir(a, "POST", "/", { nome: "Pública", publica: true });
+    assert.equal(resposta.statusCode, 201, resposta.body);
+    const publica = resposta.json<PartidaLobbyDto>();
+    assert.equal(publica.publica, true);
+
+    // Só a pública aparece, e não para quem já está nela.
+    assert.deepEqual(await publicas(b), [publica.id]);
+    assert.deepEqual(await publicas(a), []);
+
+    const entrou = await pedir(b, "POST", `/${publica.id}/entrar`);
+    assert.equal(entrou.statusCode, 200, entrou.body);
+    assert.deepEqual(
+      entrou.json<PartidaLobbyDto>().participantes.map((p) => p.usuarioId),
+      [a.id, b.id],
+    );
+    assert.deepEqual(await publicas(b), []);
+    assert.deepEqual(await publicas(c), [publica.id]);
+    // Entrar de novo não duplica.
+    assert.equal((await pedir(b, "POST", `/${publica.id}/entrar`)).statusCode, 200);
+
+    // A privada não deixa entrar sem convite e não revela que existe.
+    assert.equal(
+      await codigoDoErro(pedir(c, "POST", `/${privada.id}/entrar`), 404),
+      "PARTIDA_INEXISTENTE",
+    );
+
+    // Cancelada, some da lista e não aceita mais entradas.
+    assert.equal((await pedir(a, "POST", `/${publica.id}/cancelar`)).statusCode, 204);
+    assert.deepEqual(await publicas(c), []);
+    assert.equal(
+      await codigoDoErro(pedir(c, "POST", `/${publica.id}/entrar`), 409),
+      "PARTIDA_JA_INICIADA",
+    );
+  });
+
+  test("partida pública cheia some da lista e recusa a entrada", async () => {
+    const contas = await criarContasAtivas(app, 7);
+    const [anfitriao, ...outros] = contas;
+    assert.ok(anfitriao);
+    const resposta = await pedir(anfitriao, "POST", "/", { nome: "Cheia", publica: true });
+    const lobby = resposta.json<PartidaLobbyDto>();
+    for (const conta of outros.slice(0, 5)) {
+      assert.equal((await pedir(conta, "POST", `/${lobby.id}/entrar`)).statusCode, 200);
+    }
+    const setimo = outros[5];
+    assert.ok(setimo);
+    const lista = await pedir(setimo, "GET", "/publicas");
+    assert.deepEqual(lista.json<PartidaResumoDto[]>(), []);
+    assert.equal(
+      await codigoDoErro(pedir(setimo, "POST", `/${lobby.id}/entrar`), 409),
+      "PARTIDA_CHEIA",
+    );
+  });
+
   test("renovar o convite invalida o anterior; quem já entrou continua", async () => {
     const [a, b, c] = await criarContasAtivas(app, 3);
     assert.ok(a && b && c);

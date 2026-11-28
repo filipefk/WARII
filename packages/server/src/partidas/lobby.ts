@@ -21,7 +21,7 @@ import {
   type StatusPartida,
   type UsuarioResumoDto,
 } from "@warii/shared";
-import { and, asc, count, desc, eq, inArray, ne } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, ne, notInArray, type SQL } from "drizzle-orm";
 import { gerarToken } from "../auth/tokens.js";
 import { config } from "../config.js";
 import { db, type Executor, type Transacao } from "../db/index.js";
@@ -130,6 +130,7 @@ function resumo(
     id: partida.id,
     nome: partida.nome,
     status: partida.status,
+    publica: partida.publica,
     anfitriao,
     quantidadeParticipantes,
     criadaEm: partida.criadaEm.toISOString(),
@@ -193,12 +194,8 @@ export function obterLobby(partidaId: string, usuarioId: string): Promise<Partid
   return montarLobby(db, partidaId, usuarioId);
 }
 
-// Partidas de que o usuário participa (sem as canceladas), das mais recentes para as mais antigas.
-export async function listarPartidas(usuarioId: string): Promise<PartidaResumoDto[]> {
-  const minhas = db
-    .select({ id: participantes.partidaId })
-    .from(participantes)
-    .where(eq(participantes.usuarioId, usuarioId));
+// Resumos das partidas que atendem ao filtro, das mais recentes para as mais antigas.
+async function resumirPartidas(filtro: SQL | undefined): Promise<PartidaResumoDto[]> {
   const linhas = await db
     .select({
       partida: partidas,
@@ -207,7 +204,7 @@ export async function listarPartidas(usuarioId: string): Promise<PartidaResumoDt
     })
     .from(partidas)
     .innerJoin(usuarios, eq(usuarios.id, partidas.anfitriaoId))
-    .where(and(inArray(partidas.id, minhas), ne(partidas.status, "cancelada")))
+    .where(filtro)
     .orderBy(desc(partidas.criadaEm));
   if (linhas.length === 0) return [];
 
@@ -231,11 +228,37 @@ export async function listarPartidas(usuarioId: string): Promise<PartidaResumoDt
   );
 }
 
+const partidasDo = (usuarioId: string) =>
+  db
+    .select({ id: participantes.partidaId })
+    .from(participantes)
+    .where(eq(participantes.usuarioId, usuarioId));
+
+// Partidas de que o usuário participa (sem as canceladas).
+export function listarPartidas(usuarioId: string): Promise<PartidaResumoDto[]> {
+  return resumirPartidas(
+    and(inArray(partidas.id, partidasDo(usuarioId)), ne(partidas.status, "cancelada")),
+  );
+}
+
+// Partidas públicas aguardando jogadores em que o usuário ainda não está e que têm vaga.
+export async function listarPublicas(usuarioId: string): Promise<PartidaResumoDto[]> {
+  const lista = await resumirPartidas(
+    and(
+      eq(partidas.publica, true),
+      eq(partidas.status, "aguardando"),
+      notInArray(partidas.id, partidasDo(usuarioId)),
+    ),
+  );
+  return lista.filter((p) => p.quantidadeParticipantes < MAXIMO_JOGADORES);
+}
+
 // ---- Alterações ----
 
 export async function criarPartidaNoLobby(
   anfitriaoId: string,
   nome: string,
+  publica = false,
 ): Promise<PartidaLobbyDto> {
   return db.transaction(async (tx) => {
     // Trava o usuário para a contagem abaixo valer com pedidos simultâneos.
@@ -257,7 +280,7 @@ export async function criarPartidaNoLobby(
     }
     const [criada] = await tx
       .insert(partidas)
-      .values({ nome, anfitriaoId, parametros: PARAMETROS_PADRAO, convite: gerarToken() })
+      .values({ nome, anfitriaoId, publica, parametros: PARAMETROS_PADRAO, convite: gerarToken() })
       .returning({ id: partidas.id });
     if (!criada) throw new Error("INSERT da partida não devolveu linha");
     await tx.insert(participantes).values({ partidaId: criada.id, usuarioId: anfitriaoId });
@@ -283,19 +306,39 @@ export async function entrarComConvite(usuarioId: string, token: string): Promis
     if (travada.partida.convite !== token || travada.partida.status !== "aguardando") {
       throw conviteInvalido;
     }
-    if (!travada.participantes.some((p) => p.usuarioId === usuarioId)) {
-      if (travada.participantes.length >= MAXIMO_JOGADORES) {
-        throw new ErroDeLobby(
-          409,
-          "PARTIDA_CHEIA",
-          `a partida já tem ${MAXIMO_JOGADORES} jogadores`,
-        );
-      }
-      await tx.insert(participantes).values({ partidaId: alvo.id, usuarioId });
-      await tocar(tx, alvo.id);
-    }
+    await incluirParticipante(tx, travada, usuarioId);
     return montarLobby(tx, alvo.id, usuarioId);
   });
+}
+
+// Entrada numa partida pública, sem convite. A privada responde como inexistente (não revela que
+// existe), igual a quem pede uma partida de que não participa.
+export async function entrarNaPublica(
+  partidaId: string,
+  usuarioId: string,
+): Promise<PartidaLobbyDto> {
+  return db.transaction(async (tx) => {
+    const travada = await travarPartida(tx, partidaId);
+    const participa = travada.participantes.some((p) => p.usuarioId === usuarioId);
+    if (!travada.partida.publica && !participa) throw partidaInexistente();
+    exigirAguardando(travada);
+    await incluirParticipante(tx, travada, usuarioId);
+    return montarLobby(tx, partidaId, usuarioId);
+  });
+}
+
+// Põe o usuário na partida travada (se ainda não estiver), conferindo a vaga.
+async function incluirParticipante(
+  tx: Transacao,
+  { partida, participantes: lista }: PartidaTravada,
+  usuarioId: string,
+): Promise<void> {
+  if (lista.some((p) => p.usuarioId === usuarioId)) return;
+  if (lista.length >= MAXIMO_JOGADORES) {
+    throw new ErroDeLobby(409, "PARTIDA_CHEIA", `a partida já tem ${MAXIMO_JOGADORES} jogadores`);
+  }
+  await tx.insert(participantes).values({ partidaId: partida.id, usuarioId });
+  await tocar(tx, partida.id);
 }
 
 // A cor é escolhida pelo próprio jogador; a de um robô, pelo anfitrião (`alvoId`).

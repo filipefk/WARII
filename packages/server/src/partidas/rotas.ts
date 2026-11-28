@@ -20,10 +20,12 @@ import {
   convidaveis,
   criarPartidaNoLobby,
   entrarComConvite,
+  entrarNaPublica,
   ErroDeLobby,
   escolherCor,
   iniciarPartida,
   listarPartidas,
+  listarPublicas,
   montarConvite,
   obterLobby,
   removerDaPartida,
@@ -85,8 +87,12 @@ export async function rotasDePartidas(app: FastifyInstance): Promise<void> {
     return responder(
       resposta,
       async () => {
-        const lobby = await criarPartidaNoLobby(usuarioId, entrada.data.nome);
-        auditar(requisicao.log, "partida_criada", { partidaId: lobby.id, usuarioId });
+        const lobby = await criarPartidaNoLobby(usuarioId, entrada.data.nome, entrada.data.publica);
+        auditar(requisicao.log, "partida_criada", {
+          partidaId: lobby.id,
+          usuarioId,
+          publica: lobby.publica,
+        });
         return lobby;
       },
       201,
@@ -102,6 +108,28 @@ export async function rotasDePartidas(app: FastifyInstance): Promise<void> {
       const usuarioId = sessaoDa(requisicao).usuario.id;
       return responder(resposta, async () => {
         const lobby = await entrarComConvite(usuarioId, entrada.data.token);
+        auditar(requisicao.log, "partida_entrou", { partidaId: lobby.id, usuarioId });
+        app.tempoReal.lobbyAlterado(lobby.id);
+        return lobby;
+      });
+    },
+  );
+
+  // Partidas públicas aguardando jogadores, para qualquer usuário entrar.
+  app.get("/publicas", leitura, async (requisicao, resposta) =>
+    responder(resposta, () => listarPublicas(sessaoDa(requisicao).usuario.id)),
+  );
+
+  // Entrada numa partida pública, sem convite.
+  app.post(
+    "/:id/entrar",
+    { bodyLimit: LIMITE_CORPO, config: { rateLimit: LIMITE_ENTRAR } },
+    async (requisicao, resposta) => {
+      const params = ParametroPartida.safeParse(requisicao.params);
+      if (!params.success) return partidaInexistente(resposta);
+      const usuarioId = sessaoDa(requisicao).usuario.id;
+      return responder(resposta, async () => {
+        const lobby = await entrarNaPublica(params.data.id, usuarioId);
         auditar(requisicao.log, "partida_entrou", { partidaId: lobby.id, usuarioId });
         app.tempoReal.lobbyAlterado(lobby.id);
         return lobby;

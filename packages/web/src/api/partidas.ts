@@ -13,7 +13,11 @@ const caminho = (id: string, resto = "") => `/partidas/${encodeURIComponent(id)}
 
 export const apiPartidas = {
   listar: () => requisitar<PartidaResumoDto[]>("GET", "/partidas"),
-  criar: (nome: string) => requisitar<PartidaLobbyDto>("POST", "/partidas", { nome }),
+  criar: (nome: string, publica: boolean) =>
+    requisitar<PartidaLobbyDto>("POST", "/partidas", { nome, publica }),
+  // Partidas públicas aguardando jogadores, e a entrada numa delas sem convite.
+  publicas: () => requisitar<PartidaResumoDto[]>("GET", "/partidas/publicas"),
+  entrarNaPublica: (id: string) => requisitar<PartidaLobbyDto>("POST", caminho(id, "/entrar")),
   // O token do convite vai no corpo, nunca na URL.
   entrar: (token: string) => requisitar<PartidaLobbyDto>("POST", "/partidas/entrar", { token }),
   obter: (id: string) => requisitar<PartidaLobbyDto>("GET", caminho(id)),

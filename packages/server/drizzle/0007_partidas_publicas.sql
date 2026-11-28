@@ -1,0 +1,1 @@
+ALTER TABLE "partidas" ADD COLUMN "publica" boolean DEFAULT false NOT NULL;
