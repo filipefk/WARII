@@ -34,7 +34,6 @@ import {
   ehAerotransporte,
   eu,
   euSouDaVez,
-  inicioDoisVagos,
   maoAcimaDoLimite,
   maximoDados,
   maximoDeslocar,
@@ -43,7 +42,6 @@ import {
   origensDeAtaque,
   origensDeDeslocamento,
   paresDeTransporte,
-  parceirosDoisVagos,
   territoriosOcupaveis,
   territoriosParaReforco,
   territoriosPosicionaveis,
@@ -56,8 +54,6 @@ type Conjunto = ReadonlySet<T>;
 export type Etapa =
   // Não é a vez do jogador (ou a partida acabou).
   | { tipo: "espera" }
-  | { tipo: "escolha5j"; centros: readonly CartaId[]; doisVagosPossivel: boolean }
-  | { tipo: "doisVagos"; primeiro: T | null; segundo: T | null; opcoes: Conjunto }
   | { tipo: "ocupar"; opcoes: Conjunto }
   // Recebimento guiado: primeiro o bônus de cada continente (um continente por vez, só nos seus
   // territórios), depois os livres em qualquer lugar e, no fim, a oferta de usar cartas.
@@ -181,16 +177,6 @@ function cartasMarcadas(visao: VisaoPartida, marcadas: readonly CartaId[]) {
 }
 
 // ---- Etapas ----
-
-function doisVagos(visao: VisaoPartida, i: Interacao): Etapa {
-  const inicio = lembrar(visao, "doisVagos", () => conjunto(inicioDoisVagos(visao)));
-  const primeiro = valendo(i.origem, inicio);
-  if (primeiro === null) return { tipo: "doisVagos", primeiro, segundo: null, opcoes: inicio };
-  const parceiros = lembrar(visao, `parceiros:${primeiro}`, () =>
-    conjunto(parceirosDoisVagos(visao, primeiro)),
-  );
-  return { tipo: "doisVagos", primeiro, segundo: valendo(i.destino, parceiros), opcoes: parceiros };
-}
 
 function receber(visao: VisaoPartida, i: Interacao): Etapa {
   const posicionaveis = lembrar(visao, "posicionaveis", () =>
@@ -391,15 +377,6 @@ export function derivarEtapa(visao: VisaoPartida, i: Interacao): Etapa {
   }
   if (ataqueAereo?.etapa === "antiaereo") return { tipo: "antiaereo", ataque: ataqueAereo };
   if (!euSouDaVez(visao)) return { tipo: "espera" };
-  if (visao.fase === "PREP_ESCOLHA_5J") {
-    if (i.modo === "doisVagos") return doisVagos(visao, i);
-    return {
-      tipo: "escolha5j",
-      centros: visao.preparacao?.centrosExtras ?? [],
-      doisVagosPossivel:
-        lembrar(visao, "doisVagos", () => conjunto(inicioDoisVagos(visao))).size > 0,
-    };
-  }
   if (visao.fase === "PREP_OCUPACAO") {
     return {
       tipo: "ocupar",
@@ -499,8 +476,6 @@ const marcar = (...ts: (T | null)[]): Conjunto => conjunto(ts.filter((t): t is T
 
 export function destaquesDoMapa(etapa: Etapa): DestaquesDoMapa {
   switch (etapa.tipo) {
-    case "doisVagos":
-      return { opcoes: etapa.opcoes, marcados: marcar(etapa.primeiro, etapa.segundo) };
     case "ocupar":
       return { opcoes: etapa.opcoes, marcados: VAZIO };
     case "receber":
@@ -525,7 +500,6 @@ export function destaquesDoMapa(etapa: Etapa): DestaquesDoMapa {
     case "defesa":
       return { opcoes: VAZIO, marcados: marcar(etapa.ataque.origem, etapa.ataque.alvo) };
     case "espera":
-    case "escolha5j":
     case "maoCheia":
     case "descarte":
       return { opcoes: null, marcados: VAZIO };
@@ -570,11 +544,6 @@ function umClique(t: T, atual: T | null, opcoes: Conjunto): Efeito | null {
 
 export function cliqueNoMapa(etapa: Etapa, t: T): Efeito | null {
   switch (etapa.tipo) {
-    case "doisVagos":
-      if (etapa.primeiro === null) {
-        return etapa.opcoes.has(t) ? { tipo: "origem", territorio: t } : null;
-      }
-      return doisCliques(t, etapa.primeiro, etapa.segundo, VAZIO, etapa.opcoes);
     case "ocupar":
       return etapa.opcoes.has(t)
         ? { tipo: "enviar", acao: { tipo: "ocupar", territorio: t } }

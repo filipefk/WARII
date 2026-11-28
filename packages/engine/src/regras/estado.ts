@@ -10,11 +10,10 @@ import type { Parametros } from "./parametros.js";
 
 export type JogadorId = string;
 
-// PREP_ESCOLHA_5J: escolha (a)/(b) do caso de 5 jogadores (§4.3).
 // PREP_OCUPACAO: ocupação dos territórios vagos, 1 exército por vez (§4.4).
 // RECEBER → ATACAR → DESLOCAR: fases da vez (§5). FIM: partida encerrada.
 // Sorteio do distribuidor, distribuição dos CEs, objetivos e compra de cartas são automáticos.
-export type Fase = "PREP_ESCOLHA_5J" | "PREP_OCUPACAO" | "RECEBER" | "ATACAR" | "DESLOCAR" | "FIM";
+export type Fase = "PREP_OCUPACAO" | "RECEBER" | "ATACAR" | "DESLOCAR" | "FIM";
 
 export interface EstadoTerritorio {
   // null só durante a preparação (território vago).
@@ -97,13 +96,6 @@ export interface EstadoTurno {
   conquistaPendente: ConquistaPendente | null;
 }
 
-export interface EstadoPreparacao {
-  // Caso de 5 jogadores: as 2 cartas de CE que sobraram da distribuição (§4.3).
-  centrosExtras: CartaId[];
-  escolhasB: number;
-  escolhasFeitas: number;
-}
-
 export interface EstadoPartida {
   readonly versao: 1;
   fase: Fase;
@@ -113,7 +105,7 @@ export interface EstadoPartida {
   etapaPrimeiraRodada: 1 | 2 | null;
   // Ordem da mesa: o próximo índice é o jogador "à esquerda".
   jogadores: EstadoJogador[];
-  // Índice, em `jogadores`, de quem tem a vez (ou de quem escolhe/ocupa na preparação).
+  // Índice, em `jogadores`, de quem tem a vez (ou de quem ocupa na preparação).
   vez: number;
   distribuidor: number;
   // Quem abre cada rodada (§4.6). -1 durante a preparação.
@@ -123,7 +115,6 @@ export interface EstadoPartida {
   monte: CartaId[];
   descarte: CartaId[];
   turno: EstadoTurno;
-  preparacao: EstadoPreparacao | null;
   vencedor: JogadorId | null;
   readonly parametros: Parametros;
 }

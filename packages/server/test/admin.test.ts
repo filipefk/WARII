@@ -256,7 +256,7 @@ describe("rotas /api/admin", { skip: motivoSemBanco, concurrency: false }, () =>
     assert.ok(cookieDeSessao(login));
     assert.equal(
       await codigoDoErro(
-        pedir(admin.sessao, "PUT", `/api/admin/usuarios/${jogador.id}/senha`, { senha: "curta" }),
+        pedir(admin.sessao, "PUT", `/api/admin/usuarios/${jogador.id}/senha`, { senha: "" }),
         400,
       ),
       "ENTRADA_INVALIDA",

@@ -94,7 +94,6 @@ function estadoInicial(
     monte: [],
     descarte: [],
     turno: turnoVazio(),
-    preparacao: null,
     vencedor: null,
     // Cópia, para o estado não compartilhar arrays com quem chamou.
     parametros: copiaJson(parametros),
@@ -124,7 +123,8 @@ function sortearDistribuidor(ctx: Contexto): void {
 }
 
 // As cartas de CE são distribuídas uma a uma a partir do distribuidor, 2 exércitos em cada CE
-// (§4.2). Com 5 jogadores só 10 são distribuídas e as 2 restantes vão para a escolha (§4.3).
+// (§4.2). Com 5 jogadores só 10 são distribuídas; os 2 CEs restantes ficam vagos e são ocupados
+// na ocupação, como os demais territórios (§4.3).
 function distribuirCentros(ctx: Contexto): void {
   const estado = ctx.estado;
   const n = estado.jogadores.length;
@@ -153,16 +153,5 @@ function distribuirCentros(ctx: Contexto): void {
       emitir(ctx, { tipo: "centrosDistribuidos", jogador: j.id, ...r });
     }
   }
-  if (n === 5) {
-    estado.fase = "PREP_ESCOLHA_5J";
-    estado.vez = estado.distribuidor;
-    estado.preparacao = {
-      centrosExtras: cartasCe.slice(aDistribuir).map((c) => c.id),
-      escolhasB: 0,
-      escolhasFeitas: 0,
-    };
-  } else {
-    estado.preparacao = { centrosExtras: [], escolhasB: 0, escolhasFeitas: 0 };
-    iniciarOcupacao(ctx);
-  }
+  iniciarOcupacao(ctx);
 }

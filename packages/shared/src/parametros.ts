@@ -30,7 +30,6 @@ export const esquemaParametros = z.strictObject({
   limiteMao: inteiro(1),
   herancaLimitadaPorSorteio: z.boolean(),
   tamanhoDescarteReembaralhar: inteiro(1),
-  cincoJogadoresRestricaoManual: z.boolean(),
   sobreviventesAereoVoltamParaBase: z.boolean(),
   somarBaseECaixa: z.boolean(),
   interromperAtaqueAereo: z.boolean(),

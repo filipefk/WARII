@@ -55,12 +55,6 @@ export const CAMPOS_PARAMETROS = {
     rotulo: "Bônus dos continentes",
     descricao: "Exércitos recebidos por maioria e por totalidade de cada continente (§6.2).",
   },
-  cincoJogadoresRestricaoManual: {
-    tipo: "booleano",
-    rotulo: "Restrição do manual com 5 jogadores",
-    descricao:
-      "📘 Manual: depois de 3 escolhas (b), só resta a (a). Desligado segue o vídeo (§4.3).",
-  },
   sobreviventesAereoVoltamParaBase: {
     tipo: "booleano",
     rotulo: "Sobreviventes do ataque aéreo voltam à base",

@@ -1,5 +1,5 @@
 // Conta do usuário: trocar a senha e encerrar as sessões em todos os dispositivos.
-import { SENHA_MIN, TrocarSenhaEntrada } from "@warii/shared";
+import { TrocarSenhaEntrada } from "@warii/shared";
 import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router";
 import { apiAuth } from "../api/auth";
@@ -60,7 +60,6 @@ function TrocarSenha() {
           autoComplete="new-password"
           value={novaSenha}
           onChange={(e) => setNovaSenha(e.target.value)}
-          dica={`Pelo menos ${SENHA_MIN} caracteres.`}
         />
         <Campo
           rotulo="Repita a nova senha"

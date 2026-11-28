@@ -2,7 +2,6 @@
 import { z } from "zod";
 import type { VersaoAvatar } from "./avatar.js";
 
-export const SENHA_MIN = 10;
 export const SENHA_MAX = 128;
 export const NOME_MIN = 2;
 export const NOME_MAX = 24;
@@ -15,7 +14,7 @@ export const esquemaEmail = z
 
 export const esquemaSenha = z
   .string()
-  .min(SENHA_MIN, `a senha deve ter pelo menos ${SENHA_MIN} caracteres`)
+  .min(1, "a senha não pode ser vazia")
   .max(SENHA_MAX, `a senha deve ter no máximo ${SENHA_MAX} caracteres`);
 
 export const esquemaNome = z

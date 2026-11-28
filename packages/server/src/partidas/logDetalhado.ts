@@ -148,7 +148,7 @@ export function escreverLogDetalhado({
     "- A cada início de vez há o bloco 'INÍCIO DA VEZ' com a mesa (territórios, exércitos, CEs,",
     "  bombardeiros, cartas) e o cálculo do recebimento do jogador da vez (WARII.md §6), com a posse",
     "  de cada continente e o mínimo para a maioria.",
-    "- Fases: PREP_ESCOLHA_5J, PREP_OCUPACAO (preparação), RECEBER → ATACAR → DESLOCAR (a vez), FIM.",
+    "- Fases: PREP_OCUPACAO (preparação), RECEBER → ATACAR → DESLOCAR (a vez), FIM.",
     "",
   );
 
@@ -365,7 +365,7 @@ function mesa(
       r.push(
         `        objetivo: ${j.objetivoId} — ${objetivo(j.objetivoId)?.texto ?? "?"}${troca ? ` (sorteado: ${j.objetivoOriginalId})` : ""}`,
       );
-    } else if (quem === null && v.fase !== "PREP_ESCOLHA_5J" && v.fase !== "PREP_OCUPACAO") {
+    } else if (quem === null && v.fase !== "PREP_OCUPACAO") {
       r.push("        objetivo: (ainda não sorteado)");
     }
   });

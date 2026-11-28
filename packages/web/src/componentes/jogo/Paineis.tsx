@@ -101,7 +101,7 @@ export function PainelVez({
     );
   }
   const daVez = mesa.jogadorDaVez;
-  const preparacao = visao.fase === "PREP_ESCOLHA_5J" || visao.fase === "PREP_OCUPACAO";
+  const preparacao = visao.fase === "PREP_OCUPACAO";
   return (
     <Bloco titulo="Vez">
       <p className="flex flex-wrap items-center gap-espaco-2">

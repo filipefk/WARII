@@ -21,11 +21,6 @@ const inteiro = (minimo: number, maximo: number) => z.int().min(minimo).max(maxi
 const listaDeCartas = z.array(esquemaCarta).max(MAXIMO_CARTAS);
 
 export const esquemaAcao = z.discriminatedUnion("tipo", [
-  z.strictObject({ tipo: z.literal("pegarCentroExtra"), carta: esquemaCarta }),
-  z.strictObject({
-    tipo: z.literal("ocuparDoisVagos"),
-    territorios: z.tuple([esquemaTerritorio, esquemaTerritorio]),
-  }),
   z.strictObject({ tipo: z.literal("ocupar"), territorio: esquemaTerritorio }),
   z.strictObject({
     tipo: z.literal("posicionar"),

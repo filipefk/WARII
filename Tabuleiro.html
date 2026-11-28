@@ -693,8 +693,10 @@ function simulate() {
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const colors = shuffle([...PLAYER_COLORS.keys()]).slice(0, n);
   state.owners = {}; state.armies = {}; state.planes = {};
-  shuffle(TERRITORIES.filter(t => t.sc)).forEach((t, i) => { state.owners[t.id] = colors[i % n]; state.armies[t.id] = 2; });
-  shuffle(TERRITORIES.filter(t => !t.sc)).forEach((t, i) => { state.owners[t.id] = colors[i % n]; state.armies[t.id] = 1; });
+  // Com 5 jogadores só 10 CEs são distribuídos; os 2 restantes entram na ocupação como vagos (§4.3).
+  const centros = shuffle(TERRITORIES.filter(t => t.sc)), distribuidos = n === 5 ? 10 : centros.length;
+  centros.slice(0, distribuidos).forEach((t, i) => { state.owners[t.id] = colors[i % n]; state.armies[t.id] = 2; });
+  shuffle([...centros.slice(distribuidos), ...TERRITORIES.filter(t => !t.sc)]).forEach((t, i) => { state.owners[t.id] = colors[i % n]; state.armies[t.id] = 1; });
   state.baseColors = Array.from({ length: 6 }, (_, i) => colors[i] ?? null);
   const lines = colors.map(ci => {
     const own = TERRITORIES.filter(t => state.owners[t.id] === ci);
@@ -708,7 +710,7 @@ function simulate() {
     const rec = Math.floor(own.length / 2) + sc + bonus;
     return `<div><span class="sw" style="background:${PLAYER_COLORS[ci].hex};outline:1px solid #888"></span>${PLAYER_COLORS[ci].name}: ${own.length} terr., ${sc} CE${bonus ? `, bônus ${bonus}` : ""} → recebe ${rec} exércitos + ${sc} ✈</div>`;
   }).join("");
-  document.getElementById("simInfo").innerHTML = `<div class="hint">Distribuição aleatória (centros com 2 exércitos, demais com 1):</div>${lines}`;
+  document.getElementById("simInfo").innerHTML = `<div class="hint">Distribuição aleatória (centros distribuídos com 2 exércitos, demais com 1):</div>${lines}`;
   renderState();
 }
 document.getElementById("btnSim").addEventListener("click", simulate);
@@ -1031,9 +1033,8 @@ const RULES = () => {
       <li><b>Objetivos:</b> tire as cartas de destruir cores que não estão em jogo e dê 1 objetivo secreto a cada jogador.</li>
       <li><b>Quem começa:</b> o jogador à esquerda de quem ocupou o último território.</li>
     </ol>
-    <div class="box ex"><b>Com 5 jogadores</b>Distribuem-se só 10 cartas de CE (2 para cada). Depois, na ordem, cada um escolhe:
-      <b>(a)</b> pegar uma das 2 cartas de CE restantes e pôr 2 exércitos nele; ou <b>(b)</b> ocupar 2 territórios vagos comuns, de continentes diferentes, com 1 exército cada.
-      CEs que sobrarem são ocupados depois, como territórios comuns.</div>
+    <div class="box ex"><b>Com 5 jogadores</b>Distribuem-se só 10 cartas de CE (2 para cada). Os 2 CEs que sobram ficam vagos
+      e são ocupados depois, na ocupação dos demais territórios, como qualquer território (1 exército).</div>
     <div class="box warn"><b>Regra de ouro</b>Nenhum território pode ficar vazio, nunca. Todo território tem sempre pelo menos 1 exército.</div>`],
   ["turno", "5. O turno", `
     <p>Na sua vez, siga esta ordem:</p>

@@ -257,10 +257,8 @@ function Preparo({ ctx }: { ctx: Contexto }) {
         </li>
       </ol>
       <Caixa tipo="ex" titulo="Com 5 jogadores">
-        Distribuem-se só 10 cartas de CE (2 para cada). Depois, na ordem, cada um escolhe:{" "}
-        <b>(a)</b> pegar uma das 2 cartas de CE restantes e pôr 2 exércitos nele; ou <b>(b)</b>{" "}
-        ocupar 2 territórios vagos comuns, de continentes diferentes, com 1 exército cada. CEs que
-        sobrarem são ocupados depois, como territórios comuns.
+        Distribuem-se só 10 cartas de CE (2 para cada). Os 2 CEs que sobram ficam vagos e são
+        ocupados depois, na ocupação dos demais territórios, como qualquer território (1 exército).
       </Caixa>
       <Caixa tipo="warn" titulo="Regra de ouro">
         Nenhum território pode ficar vazio, nunca. Todo território tem sempre pelo menos 1 exército.

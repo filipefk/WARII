@@ -223,21 +223,7 @@ function notaDeOcupacao(c: Contexto, t: TerritorioId): number {
 
 function acoesDePreparacao(c: Contexto): Acao[] {
   const vagos = melhor(territoriosVagos(c.estado), (t) => notaDeOcupacao(c, t));
-  if (c.estado.fase === "PREP_OCUPACAO") {
-    return vagos.map((t) => ({ tipo: "ocupar", territorio: t }));
-  }
-  // 5 jogadores: um CE extra vale mais que dois territórios comuns.
-  const r: Acao[] = (c.estado.preparacao?.centrosExtras ?? []).map((carta) => ({
-    tipo: "pegarCentroExtra",
-    carta,
-  }));
-  const comuns = vagos.filter((t) => !territorio(t).centroEstrategico).slice(0, 12);
-  for (const a of comuns) {
-    for (const b of comuns) {
-      if (a !== b) r.push({ tipo: "ocuparDoisVagos", territorios: [a, b] });
-    }
-  }
-  return r;
+  return vagos.map((t) => ({ tipo: "ocupar", territorio: t }));
 }
 
 // ───────────────────────── recebimento ─────────────────────────
@@ -439,7 +425,7 @@ const SAIDAS: readonly Acao[] = [
 
 function candidatas(c: Contexto): Acao[] {
   const e = c.estado;
-  if (e.fase === "PREP_ESCOLHA_5J" || e.fase === "PREP_OCUPACAO") return acoesDePreparacao(c);
+  if (e.fase === "PREP_OCUPACAO") return acoesDePreparacao(c);
   const pendente =
     e.turno.conquistaPendente !== null ||
     e.turno.ataqueTerrestre !== null ||

@@ -18,8 +18,6 @@ function aceita(esquema: { safeParse: (valor: unknown) => { success: boolean } }
 
 // Uma ação válida (no formato) de cada tipo.
 const ACOES_VALIDAS = [
-  { tipo: "pegarCentroExtra", carta: "brasil" },
-  { tipo: "ocuparDoisVagos", territorios: ["alasca", "groenlandia"] },
   { tipo: "ocupar", territorio: "alasca" },
   { tipo: "posicionar", territorio: "brasil", quantidade: 3 },
   { tipo: "encerrarRecebimento" },
@@ -59,7 +57,7 @@ describe("contrato das ações do jogo", () => {
   test("recusa tipo desconhecido, território e carta inexistentes", () => {
     assert.equal(aceita(esquemaAcao, { tipo: "trapacear" }), false);
     assert.equal(aceita(esquemaAcao, { tipo: "ocupar", territorio: "atlantida" }), false);
-    assert.equal(aceita(esquemaAcao, { tipo: "pegarCentroExtra", carta: "coringa" }), false);
+    assert.equal(aceita(esquemaAcao, { tipo: "descartar", cartas: ["coringa"] }), false);
     assert.equal(aceita(esquemaAcao, { tipo: "descartar", cartas: [] }), false);
   });
 
@@ -76,7 +74,16 @@ describe("contrato das ações do jogo", () => {
 
   test("recusa campos extras e listas com tamanho errado", () => {
     assert.equal(aceita(esquemaAcao, { tipo: "encerrarJogada", vencer: true }), false);
-    assert.equal(aceita(esquemaAcao, { tipo: "ocuparDoisVagos", territorios: ["alasca"] }), false);
+    assert.equal(
+      aceita(esquemaAcao, {
+        tipo: "transportarComCartas",
+        cartas: ["brasil"],
+        origem: "brasil",
+        destino: "argentina",
+        quantidade: 1,
+      }),
+      false,
+    );
     assert.equal(aceita(esquemaAcao, null), false);
   });
 });

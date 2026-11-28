@@ -14,7 +14,6 @@ import {
 } from "@warii/engine";
 
 export const NOMES_FASES: Readonly<Record<Fase, string>> = {
-  PREP_ESCOLHA_5J: "Preparação: escolha com 5 jogadores",
   PREP_OCUPACAO: "Preparação: ocupação",
   RECEBER: "Recebimento",
   ATACAR: "Ataque",
@@ -48,10 +47,6 @@ export function textoDoEvento(e: Evento, nome: (jogadorId: string) => string): s
       return `${nome(e.distribuidor)} foi sorteado para distribuir as cartas.`;
     case "centrosDistribuidos":
       return `${nome(e.jogador)} recebeu os centros estratégicos ${listaT(e.territorios)}.`;
-    case "centroExtraEscolhido":
-      return `${nome(e.jogador)} pegou o centro estratégico ${nomeT(e.territorio)}.`;
-    case "doisVagosOcupados":
-      return `${nome(e.jogador)} ocupou ${listaT(e.territorios)}.`;
     case "territorioOcupado":
       return `${nome(e.jogador)} ocupou ${nomeT(e.territorio)}.`;
     case "objetivoSorteado":

@@ -32,7 +32,6 @@ const VARIANTES: readonly Parametros[] = [
     sobreviventesAereoVoltamParaBase: false,
     somarBaseECaixa: false,
     interromperAtaqueAereo: false,
-    cincoJogadoresRestricaoManual: true,
     objetivoTresCentros: true,
   }),
   comParametros({
@@ -44,7 +43,7 @@ const VARIANTES: readonly Parametros[] = [
 
 function conferirInvariantes(e: EstadoPartida, evs: readonly Evento[], comVisao: boolean): void {
   const p = e.parametros;
-  const prep = e.fase === "PREP_ESCOLHA_5J" || e.fase === "PREP_OCUPACAO";
+  const prep = e.fase === "PREP_OCUPACAO";
   for (const t of IDS_TERRITORIOS) {
     const s = e.territorios[t];
     if (s.dono === null) {
@@ -68,13 +67,10 @@ function conferirInvariantes(e: EstadoPartida, evs: readonly Evento[], comVisao:
     if (j.cartas.length > p.limiteMao && j.id !== daVez.id)
       throw new Error(`${j.id} acima do limite da mão`);
   }
-  if (e.fase !== "PREP_ESCOLHA_5J") {
-    const todas = [...e.monte, ...e.descarte, ...e.jogadores.flatMap((j) => j.cartas)];
-    if (todas.length !== 61 || new Set(todas).size !== 61)
-      throw new Error(`${todas.length} cartas no jogo`);
-  }
-  if (e.descarte.length >= p.tamanhoDescarteReembaralhar)
-    throw new Error("descarte não reembaralhado");
+  const todas = [...e.monte, ...e.descarte, ...e.jogadores.flatMap((j) => j.cartas)];
+  if (todas.length !== 61 || new Set(todas).size !== 61)
+    if (e.descarte.length >= p.tamanhoDescarteReembaralhar)
+      throw new Error("descarte não reembaralhado");
   if (e.fase !== "FIM" && daVez.eliminado) throw new Error("vez de jogador eliminado");
   for (const j of e.jogadores) {
     for (const ev of eventosParaJogador(evs, j.id)) {

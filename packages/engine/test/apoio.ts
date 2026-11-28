@@ -189,7 +189,6 @@ export function montar(m: Montagem): EstadoPartida {
     monte: CARTAS_DE_TROCA.map((c) => c.id).filter((id) => !fora.has(id)),
     descarte: [...descarte],
     turno: turnoVazio(),
-    preparacao: null,
     vencedor: null,
     parametros,
   };
@@ -279,27 +278,9 @@ export function acaoAerea(e: EstadoPartida, r: Rng): Acao | null {
   };
 }
 
-export function escolhaCincoJogadores(e: EstadoPartida, r: Rng, preferirB = 0.5): Acao {
-  const prep = e.preparacao;
-  const extras = prep?.centrosExtras ?? [];
-  const bBloqueada =
-    e.parametros.cincoJogadoresRestricaoManual && (prep?.escolhasB ?? 0) >= 3 && extras.length > 0;
-  if (extras.length > 0 && (bBloqueada || !chance(r, preferirB))) {
-    return { tipo: "pegarCentroExtra", carta: sortear(r, extras) };
-  }
-  const vagos = territoriosVagos(e).filter((t) => !territorio(t).centroEstrategico);
-  const a = sortear(r, vagos);
-  const b = sortear(
-    r,
-    vagos.filter((t) => territorio(t).continente !== territorio(a).continente),
-  );
-  return { tipo: "ocuparDoisVagos", territorios: [a, b] };
-}
-
 export function escolherAcao(e: EstadoPartida, r: Rng): Acao {
   const j = jogadorDaVez(e);
   const p = e.parametros;
-  if (e.fase === "PREP_ESCOLHA_5J") return escolhaCincoJogadores(e, r);
   if (e.fase === "PREP_OCUPACAO")
     return { tipo: "ocupar", territorio: sortear(r, territoriosVagos(e)) };
   const t = e.turno;
@@ -400,12 +381,11 @@ export function prepararAutomatico(
   estado: EstadoPartida,
   rngJogo: Rng,
   rngRobo: Rng,
-  escolha5 = (e: EstadoPartida) => escolhaCincoJogadores(e, rngRobo),
 ): { estado: EstadoPartida; ultimoAOcupar: string } {
   let e = estado;
   let ultimo = "";
-  while (e.fase === "PREP_ESCOLHA_5J" || e.fase === "PREP_OCUPACAO") {
-    const acao = e.fase === "PREP_ESCOLHA_5J" ? escolha5(e) : escolherAcao(e, rngRobo);
+  while (e.fase === "PREP_OCUPACAO") {
+    const acao = escolherAcao(e, rngRobo);
     const id = jogadorDaVez(e).id;
     const r = aplicarAcao(e, id, acao, rngJogo);
     if (!r.ok) throw new Error(`preparação: ${acao.tipo} recusada: ${r.erro.mensagem}`);

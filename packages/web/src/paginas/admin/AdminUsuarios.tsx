@@ -5,7 +5,6 @@ import {
   DefinirSenhaDoUsuarioEntrada,
   EditarUsuarioEntrada,
   type LinkSenhaDto,
-  SENHA_MIN,
   type UsuarioAdminDto,
 } from "@warii/shared";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
@@ -271,7 +270,6 @@ function DefinirSenha({
           autoComplete="new-password"
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
-          dica={`Pelo menos ${SENHA_MIN} caracteres.`}
         />
         <Campo
           rotulo="Confirme a nova senha"

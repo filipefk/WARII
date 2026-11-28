@@ -142,11 +142,11 @@ describe("rotas /api/auth", { skip: motivoSemBanco, concurrency: false }, () => 
       assert.ok(Math.abs(redefinicao.expiraEm.getTime() - agora - DIA / 24) < 60_000);
     });
 
-    test("token com formato inválido ou senha curta: 400 de entrada inválida", async () => {
+    test("token com formato inválido ou senha vazia: 400 de entrada inválida", async () => {
       const resposta = await requisitar(app, {
         metodo: "POST",
         url: "/api/auth/senha/definir",
-        corpo: { token: "abc", senha: "curta" },
+        corpo: { token: "abc", senha: "" },
         ip: ipNovo(),
       });
       assert.equal(resposta.statusCode, 400);

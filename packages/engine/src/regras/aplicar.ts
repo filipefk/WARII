@@ -23,7 +23,7 @@ import type { Contexto } from "./contexto.js";
 import { deslocar, encerrarAtaques, encerrarJogada } from "./deslocamento.js";
 import type { EstadoPartida, EtapaAerea, Fase, JogadorId } from "./estado.js";
 import { verificarFimDeJogo } from "./objetivos.js";
-import { ocupar, ocuparDoisVagos, pegarCentroExtra } from "./preparacao.js";
+import { ocupar } from "./preparacao.js";
 import { encerrarRecebimento, posicionar } from "./recebimento.js";
 import { exigir, RecusaRegra, type Resultado } from "./resultado.js";
 import type { Rng } from "./rng.js";
@@ -33,8 +33,6 @@ const DA_VEZ: readonly Fase[] = ["RECEBER", "ATACAR", "DESLOCAR"];
 
 // Fases em que cada ação é aceita.
 const FASES: Readonly<Record<TipoAcao, readonly Fase[]>> = {
-  pegarCentroExtra: ["PREP_ESCOLHA_5J"],
-  ocuparDoisVagos: ["PREP_ESCOLHA_5J"],
   ocupar: ["PREP_OCUPACAO"],
   posicionar: ["RECEBER"],
   encerrarRecebimento: ["RECEBER"],
@@ -114,10 +112,6 @@ function exigirSemPendencias(estado: EstadoPartida, tipo: TipoAcao): void {
 
 function executar(ctx: Contexto, acao: Acao): void {
   switch (acao.tipo) {
-    case "pegarCentroExtra":
-      return pegarCentroExtra(ctx, acao.carta);
-    case "ocuparDoisVagos":
-      return ocuparDoisVagos(ctx, acao.territorios);
     case "ocupar":
       return ocupar(ctx, acao.territorio);
     case "posicionar":

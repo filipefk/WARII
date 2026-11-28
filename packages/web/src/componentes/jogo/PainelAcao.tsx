@@ -220,94 +220,6 @@ function AbasDeAtaque({ ctx, aereo }: { ctx: Contexto; aereo: boolean }) {
 
 // ---- Etapas ----
 
-function EscolhaCincoJogadores({
-  ctx,
-  etapa,
-}: {
-  ctx: Contexto;
-  etapa: Extract<Etapa, { tipo: "escolha5j" }>;
-}) {
-  const iniciar = useJogo((s) => s.iniciar);
-  return (
-    <>
-      <p>Escolha uma opção:</p>
-      <p className="mt-espaco-2">
-        <b>(a)</b> Pegue uma das cartas de CE que sobraram e ponha 2 exércitos no CE:
-      </p>
-      <div className="mt-espaco-2 flex flex-wrap gap-espaco-3">
-        {etapa.centros.map((id) => {
-          const carta = cartaDeTroca(id);
-          if (carta?.tipo !== "territorio" || !carta.centro) return null;
-          const ce = carta.centro;
-          return (
-            <div key={id} className="flex flex-col items-center gap-espaco-1">
-              <CartaTroca
-                carta={carta}
-                geografia={ctx.geografia}
-                largura={70}
-                onClick={() => ctx.mandar({ tipo: "pegarCentroExtra", carta: id })}
-              />
-              <Botao
-                disabled={ctx.ocupado}
-                onClick={() => ctx.mandar({ tipo: "pegarCentroExtra", carta: id })}
-              >
-                Pegar {nomeT(ce)}
-              </Botao>
-            </div>
-          );
-        })}
-      </div>
-      <p className="mt-espaco-5">
-        <b>(b)</b> Ocupe 2 territórios vagos, sem CE e de continentes diferentes, com 1 exército em
-        cada.
-      </p>
-      <Linha>
-        <Botao disabled={!etapa.doisVagosPossivel} onClick={() => iniciar("doisVagos")}>
-          Ocupar dois vagos
-        </Botao>
-      </Linha>
-      {!etapa.doisVagosPossivel && <Dica>A opção (b) não está disponível agora.</Dica>}
-    </>
-  );
-}
-
-function DoisVagos({
-  ctx,
-  etapa,
-}: {
-  ctx: Contexto;
-  etapa: Extract<Etapa, { tipo: "doisVagos" }>;
-}) {
-  const cancelar = useJogo((s) => s.cancelar);
-  const { primeiro, segundo } = etapa;
-  return (
-    <>
-      {primeiro === null ? (
-        <Dica>Clique no primeiro território vago (sem CE).</Dica>
-      ) : segundo === null ? (
-        <Dica>{nomeT(primeiro)} escolhido. Agora clique no segundo, de outro continente.</Dica>
-      ) : (
-        <p className="mt-espaco-2">
-          {nomeT(primeiro)} e {nomeT(segundo)}.
-        </p>
-      )}
-      <Linha>
-        {primeiro !== null && segundo !== null && (
-          <Botao
-            disabled={ctx.ocupado}
-            onClick={() =>
-              ctx.mandar({ tipo: "ocuparDoisVagos", territorios: [primeiro, segundo] })
-            }
-          >
-            Ocupar os dois
-          </Botao>
-        )}
-        <Botao onClick={cancelar}>Voltar</Botao>
-      </Linha>
-    </>
-  );
-}
-
 function Posicionar({
   ctx,
   territorio: t,
@@ -1032,10 +944,6 @@ function Corpo({ ctx, etapa }: { ctx: Contexto; etapa: Etapa }) {
   switch (etapa.tipo) {
     case "espera":
       return null;
-    case "escolha5j":
-      return <EscolhaCincoJogadores ctx={ctx} etapa={etapa} />;
-    case "doisVagos":
-      return <DoisVagos ctx={ctx} etapa={etapa} />;
     case "ocupar":
       return (
         <Dica>

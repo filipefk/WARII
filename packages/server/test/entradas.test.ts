@@ -30,9 +30,9 @@ describe("entradas das rotas de auth", () => {
     assert.equal(aceita(esquemaNome, "x".repeat(25)), false);
   });
 
-  test("definir senha: política de 10 a 128 caracteres e token no formato", () => {
-    assert.equal(aceita(DefinirSenhaEntrada, { token: TOKEN, senha: "1234567890" }), true);
-    assert.equal(aceita(DefinirSenhaEntrada, { token: TOKEN, senha: "123456789" }), false);
+  test("definir senha: não vazia, até 128 caracteres, e token no formato", () => {
+    assert.equal(aceita(DefinirSenhaEntrada, { token: TOKEN, senha: "1" }), true);
+    assert.equal(aceita(DefinirSenhaEntrada, { token: TOKEN, senha: "" }), false);
     assert.equal(aceita(DefinirSenhaEntrada, { token: TOKEN, senha: "x".repeat(129) }), false);
     assert.equal(aceita(DefinirSenhaEntrada, { token: "curto", senha: "1234567890" }), false);
   });
@@ -45,7 +45,7 @@ describe("entradas das rotas de auth", () => {
   });
 
   test("troca de senha aplica a política só à senha nova", () => {
-    assert.equal(aceita(TrocarSenhaEntrada, { senhaAtual: "x", novaSenha: "1234567890" }), true);
-    assert.equal(aceita(TrocarSenhaEntrada, { senhaAtual: "x", novaSenha: "curta" }), false);
+    assert.equal(aceita(TrocarSenhaEntrada, { senhaAtual: "x", novaSenha: "curta" }), true);
+    assert.equal(aceita(TrocarSenhaEntrada, { senhaAtual: "x", novaSenha: "" }), false);
   });
 });

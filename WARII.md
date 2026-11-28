@@ -4,7 +4,7 @@ Documento de referência das regras do jogo de tabuleiro **War II** (Grow), escr
 
 > **Fonte principal:** manual oficial de regras do War II (PDF digitalizado pela Table Games) — https://tablegames.com.br/wp-content/uploads/2019/03/war_II_manual_table_games.pdf> **Fontes complementares:** vídeo "Aprenda a Jogar WAR II – Regras Completas e Explicadas Passo a Passo!", canal VemKaJogar — https://www.youtube.com/watch?v=hHbcT_GkAV4 ; ficha do produto em lojas — https://www.baraodistribuidor.com.br/jogo-war-ii-grow/p ; resumo de regras no Scribd — https://pt.scribd.com/document/98259059/Regras-WAR-2-Manual-WAR-II
 >
-> Quando o vídeo e o manual divergem, a divergência fica registrada com **📘 MANUAL × VÍDEO**. Por decisão de projeto, valem as regras **do vídeo** para: escolha na preparação com 5 jogadores (4.3), ataque aéreo (7.3: origem dos bombardeiros, interrupção, retorno à base e faces dos dados aéreos) e mudanças automáticas de objetivo (10.2). Nos demais pontos, **vale o manual**.
+> Quando o vídeo e o manual divergem, a divergência fica registrada com **📘 MANUAL × VÍDEO**. Por decisão de projeto, valem as regras **do vídeo** para: ataque aéreo (7.3: origem dos bombardeiros, interrupção, retorno à base e faces dos dados aéreos) e mudanças automáticas de objetivo (10.2). Com 5 jogadores (4.3) vale uma regra da casa. Nos demais pontos, **vale o manual**.
 > Os itens marcados com **⚠ A CONFIRMAR** continuam sem resposta nas fontes. Trate-os como **parâmetros configuráveis** no código.
 
 ---
@@ -150,15 +150,9 @@ A ordem abaixo é a do manual. 📘 MANUAL × VÍDEO: no vídeo os objetivos sã
 
 ### 4.3 Caso especial: 5 jogadores
 1. Distribuem-se só **10 cartas de CE** (2 para cada um). Os jogadores colocam os 2 exércitos em cada CE recebido, como acima.
-2. Depois, cada jogador, **na sua vez**, escolhe uma opção:
-   - **(a)** pegar uma das **2 cartas de CE restantes** e colocar **2 exércitos** nesse território; ou
-   - **(b)** escolher **2 territórios vagos** que **não sejam CE** e **não estejam no mesmo continente**, colocando **1 exército em cada**.
-3. Quando as 2 cartas de CE extras acabam, os jogadores seguintes ficam obrigatoriamente com a opção (b).
-4. Resultado típico: 2 jogadores ficam com 3 centros e 3 jogadores ficam com 2 centros + 2 territórios comuns ocupados.
+2. Os **2 CE restantes ficam sem dono** e são ocupados na fase seguinte (4.4), como qualquer outro território vago (1 exército).
 
-> 📘 MANUAL × VÍDEO: o manual acrescenta que, depois que **3 jogadores** escolheram (b), só resta a opção (a), o que garante que as 2 cartas extras sempre sejam distribuídas. O vídeo não tem essa restrição: se 4 ou 5 jogadores escolherem (b), sobram cartas de CE sem dono, e esses CE são ocupados na fase seguinte (4.4) como territórios vagos. Adotada a versão do vídeo; a restrição do manual fica como opção.
-
-> ⚠ A CONFIRMAR: o manual diz "cada jogador, na sua vez", sem dizer quem começa. Use a mesma ordem da distribuição (a partir do distribuidor).
+> 📘 MANUAL × VÍDEO (regra da casa): manual e vídeo dão, depois da distribuição, uma escolha na vez de cada jogador: **(a)** pegar uma das 2 cartas de CE restantes e pôr 2 exércitos no território, ou **(b)** ocupar 2 territórios vagos que não sejam CE, de continentes diferentes, com 1 exército em cada. O manual acrescenta que, depois de 3 escolhas (b), só resta a (a); no vídeo, se 4 ou 5 escolhem (b), os CE que sobram são ocupados na fase 4.4. **Por decisão de projeto não há escolha:** os 2 CE extras vão sempre para a ocupação, sem parâmetro.
 
 ### 4.4 Ocupação dos demais territórios
 1. As cartas de CE voltam e são **embaralhadas com as outras 49 cartas** do maço (numéricas e territórios), formando o **monte de compra**, com a face para baixo.
@@ -587,7 +581,6 @@ SETUP_COLORS → SETUP_DEALER → SETUP_STRATEGIC_CENTERS → [SETUP_5P_CHOICE]
 | Limite de cartas na mão | 5 |
 | Herança de cartas por sorteio ao eliminar (§11, regra da casa) | sim (manual: herda todas e descarta o excesso) |
 | Tamanho do descarte para reembaralhar | 10 |
-| 5 jogadores: após 3 escolhas (b), só resta (a) (manual) | desligado |
 | Sobreviventes do ataque aéreo voltam para | base aérea (manual: caixa) |
 | Somar base + caixa no mesmo ataque aéreo | sim (manual: não) |
 | Interromper ataque aéreo entre ciclos | sim (manual: não) |
@@ -598,7 +591,7 @@ SETUP_COLORS → SETUP_DEALER → SETUP_STRATEGIC_CENTERS → [SETUP_5P_CHOICE]
 | Vitória a qualquer momento, inclusive na vez de outro (§10.3 ⚠) | sim (empate: prioridade ao jogador da vez, depois a ordem da mesa) |
 | Variante Centro de Informações | desligada |
 
-Leituras adotadas sem parâmetro: caixa com menos bombardeiros que o devido entrega só os que existem (§6.5 ⚠); carta de continente vale qualquer território do continente (§9.1 ⚠); objetivo 20 exige 20 exércitos em cada território (§10.1 ⚠); empate no dado do distribuidor, só os empatados rolam de novo (§4.1); com 5 jogadores, as escolhas seguem a ordem a partir do distribuidor (§4.3 ⚠).
+Leituras adotadas sem parâmetro: caixa com menos bombardeiros que o devido entrega só os que existem (§6.5 ⚠); carta de continente vale qualquer território do continente (§9.1 ⚠); objetivo 20 exige 20 exércitos em cada território (§10.1 ⚠); empate no dado do distribuidor, só os empatados rolam de novo (§4.1); com 5 jogadores, os 2 CE extras vão para a ocupação (§4.3, regra da casa).
 
 ### 13.5 Propriedade intelectual
 "War" e "War II" são marcas da Grow, e o mapa, a arte e os textos das cartas são protegidos. Regras e mecânicas em si não costumam ser protegidas. Para publicar a versão online, use **nome, mapa, arte e textos próprios** e mantenha as mecânicas descritas aqui.

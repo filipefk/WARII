@@ -31,8 +31,6 @@ export interface Parametros {
   readonly herancaLimitadaPorSorteio: boolean;
   // Tamanho do descarte que o faz voltar, embaralhado, ao monte de compra (§9.4).
   readonly tamanhoDescarteReembaralhar: number;
-  // 5 jogadores: depois de 3 escolhas (b), só resta a (a) (regra do manual, §4.3).
-  readonly cincoJogadoresRestricaoManual: boolean;
   // Sobreviventes do ataque aéreo voltam para a base aérea (vídeo) ou para a caixa (manual) (§7.3).
   readonly sobreviventesAereoVoltamParaBase: boolean;
   // Somar bombardeiros da base e da caixa (cartas) no mesmo ataque aéreo (vídeo) (§7.3).
@@ -74,7 +72,6 @@ export const PARAMETROS_PADRAO: Parametros = {
   limiteMao: 5,
   herancaLimitadaPorSorteio: true,
   tamanhoDescarteReembaralhar: 10,
-  cincoJogadoresRestricaoManual: false,
   sobreviventesAereoVoltamParaBase: true,
   somarBaseECaixa: true,
   interromperAtaqueAereo: true,
@@ -125,7 +122,6 @@ export function validarParametros(p: Parametros): string[] {
   }
   const booleanos: (keyof Parametros)[] = [
     "herancaLimitadaPorSorteio",
-    "cincoJogadoresRestricaoManual",
     "sobreviventesAereoVoltamParaBase",
     "somarBaseECaixa",
     "interromperAtaqueAereo",

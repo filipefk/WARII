@@ -95,20 +95,6 @@ export function territoriosOcupaveis(visao: VisaoPartida): TerritorioId[] {
   return filtrarValidos(visao, IDS_TERRITORIOS, (t) => ({ tipo: "ocupar", territorio: t }));
 }
 
-// Segundo território da escolha "ocupar dois vagos" (5 jogadores), dado o primeiro.
-export function parceirosDoisVagos(visao: VisaoPartida, primeiro: TerritorioId): TerritorioId[] {
-  return filtrarValidos(
-    visao,
-    IDS_TERRITORIOS.filter((t) => t !== primeiro),
-    (t) => ({ tipo: "ocuparDoisVagos", territorios: [primeiro, t] }),
-  );
-}
-
-// Primeiros candidatos da escolha "ocupar dois vagos": os que têm ao menos um parceiro válido.
-export function inicioDoisVagos(visao: VisaoPartida): TerritorioId[] {
-  return IDS_TERRITORIOS.filter((t) => parceirosDoisVagos(visao, t).length > 0);
-}
-
 export function territoriosPosicionaveis(visao: VisaoPartida): TerritorioId[] {
   return filtrarValidos(visao, IDS_TERRITORIOS, (t) => ({
     tipo: "posicionar",

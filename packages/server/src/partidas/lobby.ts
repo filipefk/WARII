@@ -49,8 +49,14 @@ export class ErroDeLobby extends Error {
 }
 
 // Parâmetros gravados no lobby completados com os padrões dos que foram criados depois.
+// Parâmetros que saíram do engine mas ainda estão gravados em partidas antigas: somem ao juntar,
+// senão o esquema estrito recusa a configuração de uma partida aguardando.
+const PARAMETROS_REMOVIDOS = ["cincoJogadoresRestricaoManual"];
+
 function parametrosAtuais(gravados: Parametros): Parametros {
-  return { ...PARAMETROS_PADRAO, ...gravados };
+  const juntos: Parametros = { ...PARAMETROS_PADRAO, ...gravados };
+  for (const chave of PARAMETROS_REMOVIDOS) Reflect.deleteProperty(juntos, chave);
+  return juntos;
 }
 
 const partidaInexistente = () => new ErroDeLobby(404, "PARTIDA_INEXISTENTE", "partida inexistente");

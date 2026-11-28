@@ -8,10 +8,8 @@ import {
   aplicarAcao,
   calcularRecebimento,
   CARTAS_DE_TROCA,
-  cartaDeTroca,
   type CartaId,
   centrosDe,
-  comParametros,
   criarPartida,
   eventosParaJogador,
   FACES_ANTIAEREO_MANUAL,
@@ -30,7 +28,6 @@ import {
 import {
   d6,
   deA,
-  escolhaCincoJogadores,
   eventos,
   igual,
   jog,
@@ -148,14 +145,9 @@ describe("Preparação (§4)", () => {
         for (const c of centrosDe(e0, j.id))
           igual(e0.territorios[c].exercitos, 2, `exércitos em ${c}`);
       }
-      if (n === 5) {
-        igual(e0.fase, "PREP_ESCOLHA_5J", "fase");
-        igual(e0.preparacao?.centrosExtras.length, 2, "cartas de CE extras");
-        igual(e0.jogadores[e0.vez]?.id, e0.jogadores[e0.distribuidor]?.id, "escolhe primeiro");
-      } else {
-        igual(e0.fase, "PREP_OCUPACAO", "fase");
-        igual(e0.monte.length, 61, "monte com as 61 cartas");
-      }
+      igual(e0.fase, "PREP_OCUPACAO", "fase");
+      igual(e0.monte.length, 61, "monte com as 61 cartas");
+      igual(e0.jogadores[e0.vez]?.id, e0.jogadores[e0.distribuidor]?.id, "ocupa primeiro");
       const { estado: e, ultimoAOcupar } = prepararAutomatico(
         e0,
         rngComSemente(n + 10),
@@ -194,58 +186,19 @@ describe("Preparação (§4)", () => {
     );
   });
 
-  test("5 jogadores: opção (b) válida e restrição do manual após 3 escolhas (b) (§4.3)", () => {
-    const p = comParametros({ cincoJogadoresRestricaoManual: true });
-    const criada = criarPartida(jogadoresDe(5), p, rngComSemente(7));
-    if (!criada.ok) throw new Error(criada.erro.mensagem);
-    let e = criada.estado;
-    const vagos = territoriosVagos(e).filter((t) => !territorio(t).centroEstrategico);
-    const mesmo = vagos.filter((t) => territorio(t).continente === "ASI");
-    const id = () => jogadorDaVez(e).id;
-    recusa(
-      e,
-      id(),
-      { tipo: "ocuparDoisVagos", territorios: [mesmo[0] ?? "aral", mesmo[1] ?? "omsk"] },
-      "ALVO_INVALIDO",
-    );
-    const robo = rngComSemente(3);
-    for (let k = 0; k < 3; k++) {
-      const vagosB = territoriosVagos(e).filter((t) => !territorio(t).centroEstrategico);
-      const a = vagosB[0] ?? "alasca";
-      const b = vagosB.find((t) => territorio(t).continente !== territorio(a).continente) ?? "aral";
-      e = rodar(e, id(), { tipo: "ocuparDoisVagos", territorios: [a, b] }).estado;
-    }
-    const vagosB = territoriosVagos(e).filter((t) => !territorio(t).centroEstrategico);
-    const a = vagosB[0] ?? "alasca";
-    const b = vagosB.find((t) => territorio(t).continente !== territorio(a).continente) ?? "aral";
-    recusa(e, id(), { tipo: "ocuparDoisVagos", territorios: [a, b] }, "ACAO_BLOQUEADA");
-    const r = rodar(e, id(), {
-      tipo: "pegarCentroExtra",
-      carta: e.preparacao?.centrosExtras[0] ?? "brasil",
-    });
-    e = r.estado;
-    igual(eventos(r, "centroExtraEscolhido").length, 1, "CE extra escolhido");
-    // A 5ª escolha encerra a fase e embaralha o monte: precisa de RNG de verdade.
-    const ultima = aplicarAcao(e, id(), escolhaCincoJogadores(e, robo), rngComSemente(1));
-    if (!ultima.ok) throw new Error(`última escolha recusada: ${ultima.erro.mensagem}`);
-    e = ultima.estado;
-    igual(e.fase, "PREP_OCUPACAO", "fase depois das 5 escolhas");
-  });
-
-  test("5 jogadores (vídeo): todos na (b) e os CEs extras ocupados como vagos (§4.3)", () => {
+  test("5 jogadores: 2 CEs sem dono, ocupados como vagos na ocupação (§4.3)", () => {
     const criada = criarPartida(jogadoresDe(5), PARAMETROS_PADRAO, rngComSemente(8));
     if (!criada.ok) throw new Error(criada.erro.mensagem);
-    const robo = rngComSemente(4);
-    const extras = criada.estado.preparacao?.centrosExtras ?? [];
-    const { estado: e } = prepararAutomatico(criada.estado, rngComSemente(9), robo, (x) =>
-      escolhaCincoJogadores(x, robo, 1),
+    const e0 = criada.estado;
+    const vagos = IDS_TERRITORIOS.filter(
+      (t) => territorio(t).centroEstrategico && e0.territorios[t].dono === null,
     );
+    igual(vagos.length, 2, "CEs vagos depois da distribuição");
+    const r = rodar(e0, jogadorDaVez(e0).id, { tipo: "ocupar", territorio: vagos[0] ?? "brasil" });
+    igual(r.estado.territorios[vagos[0] ?? "brasil"].exercitos, 1, "CE ocupado com 1 exército");
+    const { estado: e } = prepararAutomatico(e0, rngComSemente(9), rngComSemente(4));
     igual(territoriosVagos(e).length, 0, "territórios vagos");
-    for (const c of extras) {
-      const carta = cartaDeTroca(c);
-      const ce = carta?.tipo === "territorio" ? carta.centro : undefined;
-      verdade(ce !== undefined && e.territorios[ce].dono !== null, `CE extra ${c} sem dono`);
-    }
+    for (const c of vagos) verdade(e.territorios[c].dono !== null, `CE ${c} sem dono`);
   });
 
   test("Objetivo de destruir a própria cor vira 24 territórios desde o início (§10.2)", () => {

@@ -7,7 +7,6 @@ import { esquemaTerritorio } from "./acoes.js";
 
 export const MODOS_INTERACAO = [
   "nenhum",
-  "doisVagos",
   "ataqueTerrestre",
   "ataqueAereo",
   "deslocar",

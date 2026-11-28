@@ -21,17 +21,6 @@ export type Evento =
       readonly territorios: readonly TerritorioId[];
     }
   | {
-      readonly tipo: "centroExtraEscolhido";
-      readonly jogador: JogadorId;
-      readonly carta: CartaId;
-      readonly territorio: TerritorioId;
-    }
-  | {
-      readonly tipo: "doisVagosOcupados";
-      readonly jogador: JogadorId;
-      readonly territorios: readonly TerritorioId[];
-    }
-  | {
       readonly tipo: "territorioOcupado";
       readonly jogador: JogadorId;
       readonly territorio: TerritorioId;

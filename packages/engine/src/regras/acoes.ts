@@ -5,12 +5,6 @@ import type { CartaId } from "../data/cartas.js";
 import type { TerritorioId } from "../data/territorios.js";
 
 export type Acao =
-  // Preparação, 5 jogadores (§4.3): opção (a) ou (b).
-  | { readonly tipo: "pegarCentroExtra"; readonly carta: CartaId }
-  | {
-      readonly tipo: "ocuparDoisVagos";
-      readonly territorios: readonly [TerritorioId, TerritorioId];
-    }
   // Preparação: ocupação dos vagos (§4.4).
   | { readonly tipo: "ocupar"; readonly territorio: TerritorioId }
   // Recebimento (§6).

@@ -1,6 +1,6 @@
 // Ativação da conta ou redefinição de senha pelo link de uso único gerado na CLI
 // (`/definir-senha#token=…`). Ao concluir, o servidor já abre a sessão.
-import { DefinirSenhaEntrada, esquemaTokenSenha, SENHA_MIN } from "@warii/shared";
+import { DefinirSenhaEntrada, esquemaTokenSenha } from "@warii/shared";
 import { type FormEvent, useState } from "react";
 import { Navigate } from "react-router";
 import { mensagemDoErro } from "../api/cliente";
@@ -56,7 +56,6 @@ export function DefinirSenha() {
             autoComplete="new-password"
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
-            dica={`Pelo menos ${SENHA_MIN} caracteres.`}
             required
           />
           <Campo
