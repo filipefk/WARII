@@ -52,6 +52,32 @@ function IconeForaDaSala() {
   );
 }
 
+// Jogador robô na tabela Mesa: cabeça de robô com antena, no lugar da etiqueta "robô".
+function IconeRobo() {
+  return (
+    <svg
+      viewBox="0 0 14 14"
+      className="h-3.5 w-3.5 shrink-0 text-muted"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      role="img"
+      aria-label="Robô"
+    >
+      <title>Robô</title>
+      <path d="M7 1.6v2" />
+      <circle cx="7" cy="1.4" r="0.6" fill="currentColor" stroke="none" />
+      <rect x="2.5" y="3.6" width="9" height="7.4" rx="1.6" />
+      <path d="M1.2 6.4v2.4M12.8 6.4v2.4" />
+      <circle cx="5.2" cy="6.8" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="8.8" cy="6.8" r="0.9" fill="currentColor" stroke="none" />
+      <path d="M5.3 9.2h3.4" />
+    </svg>
+  );
+}
+
 export function PainelVez({
   visao,
   mesa,
@@ -197,7 +223,7 @@ export function PainelMesa({
                     >
                       {mesa.nome(j.id)}
                     </span>
-                    {mesa.robo(j.id) && <span className="tag">robô</span>}
+                    {mesa.robo(j.id) && <IconeRobo />}
                     {j.id === daVez && visao.fase !== "FIM" && <span className="tag">na vez</span>}
                     {j.id === visao.vencedor && <span className="tag">vencedor</span>}
                     {j.eliminado && <span className="dica">eliminado</span>}
