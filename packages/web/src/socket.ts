@@ -3,6 +3,7 @@
 import type { ClientToServerEvents, ErroApi, ServerToClientEvents } from "@warii/shared";
 import { io, type Socket } from "socket.io-client";
 import { useConexao } from "./stores/conexao";
+import { useAvisosDoAdmin } from "./stores/avisosDoAdmin";
 import { useConvites } from "./stores/convites";
 import { usePartidas } from "./stores/partidas";
 import { useSessao } from "./stores/sessao";
@@ -74,7 +75,13 @@ function ligarOuvintes(): void {
 
   socket.on("lobby", (_partidaId, lobby) => partidas.gravarLobby(lobby));
   socket.on("removido", (partidaId) => partidas.marcarRemovido(partidaId));
-  socket.on("apagada", (partidaId) => partidas.marcarApagada(partidaId));
+  socket.on("apagada", (partidaId) => {
+    partidas.marcarApagada(partidaId);
+    useAvisosDoAdmin.getState().receber({ partidaId, tipo: "apagada" });
+  });
+  socket.on("encerrada", (partidaId) =>
+    useAvisosDoAdmin.getState().receber({ partidaId, tipo: "encerrada" }),
+  );
   socket.on("presenca", (partidaId, conectados) => partidas.gravarPresenca(partidaId, conectados));
   socket.on("escolha", (partidaId, escolha) => partidas.gravarEscolha(partidaId, escolha));
   socket.on("estado", (partidaId, visao, seq) => partidas.gravarEstado(partidaId, visao, seq));
@@ -100,6 +107,7 @@ function aplicarSessao(estaLogado: boolean): void {
   useConexao.getState().definir("desligada");
   usePartidas.getState().limpar();
   useConvites.getState().limpar();
+  useAvisosDoAdmin.getState().limpar();
 }
 
 // Liga e desliga o socket conforme a sessão. Chamado uma vez, no main.tsx.

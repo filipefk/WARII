@@ -284,6 +284,7 @@ export function registrarTempoReal(app: FastifyInstance): void {
         naFila(partidaId, async () => {
           esquecerRobo(partidaId);
           descartarPartida(partidaId);
+          io.to(salaDaPartida(partidaId)).emit("encerrada", partidaId);
           // Quem está na partida recebe o lobby com o novo status (o front deixa de aceitar ações).
           await emitirLobby(io, partidaId);
         }),

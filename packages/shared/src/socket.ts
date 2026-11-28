@@ -25,6 +25,9 @@ export interface ServerToClientEvents {
   removido: (partidaId: string) => void;
   // A partida foi apagada pelo administrador: deixa de existir para todos.
   apagada: (partidaId: string) => void;
+  // A partida foi encerrada pelo administrador (cancelada se aguardava, encerrada sem vencedor se
+  // estava em andamento); o `lobby` com o novo status vem logo depois.
+  encerrada: (partidaId: string) => void;
   // Ids dos usuários com ao menos uma conexão acompanhando a partida.
   presenca: (partidaId: string, conectados: string[]) => void;
   // Escolhas em andamento do jogador que deve agir (efêmeras; valem só no seq indicado).

@@ -37,13 +37,12 @@ function TelaDaPartida({ partidaId }: { partidaId: string }) {
   const cancelada = lobby?.status === "cancelada";
   useEffect(() => {
     if (!removido && !cancelada && !apagada) return;
-    const estado: EstadoAviso = {
-      aviso: apagada
-        ? "A partida foi apagada pelo administrador."
-        : removido
-          ? "Você saiu ou foi removido da partida."
-          : "A partida foi cancelada.",
-    };
+    // Apagada: o popup do `AvisoDoAdmin` já explica, sem aviso repetido na lista.
+    const estado: EstadoAviso = apagada
+      ? {}
+      : {
+          aviso: removido ? "Você saiu ou foi removido da partida." : "A partida foi cancelada.",
+        };
     void navegar("/partidas", { replace: true, state: estado });
   }, [removido, cancelada, apagada, navegar]);
 

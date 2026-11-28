@@ -4,6 +4,7 @@ import { useConexao, type SituacaoConexao } from "../stores/conexao";
 import { usePartidas } from "../stores/partidas";
 import { useSessao } from "../stores/sessao";
 import { NomeComAvatar } from "./Avatar";
+import { AvisoDoAdmin } from "./AvisoDoAdmin";
 import { ConviteRecebido } from "./ConviteRecebido";
 import { FundoDeGuerra } from "./FundoDeGuerra";
 
@@ -117,6 +118,7 @@ export function Layout() {
         <Outlet />
       </main>
       {usuario && <ConviteRecebido />}
+      {usuario && <AvisoDoAdmin />}
     </div>
   );
 }

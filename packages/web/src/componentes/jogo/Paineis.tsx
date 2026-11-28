@@ -31,6 +31,27 @@ export function Bloco({ titulo, children }: { titulo: string; children: ReactNod
   );
 }
 
+// Humano fora da sala da partida: porta com a seta saindo, do tamanho do círculo da cor (12px).
+function IconeForaDaSala() {
+  return (
+    <svg
+      viewBox="0 0 12 12"
+      className="h-3 w-3 shrink-0 text-bad"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      role="img"
+      aria-label="Saiu da sala"
+    >
+      <title>Saiu da sala</title>
+      <path d="M5 1.5H2.2a.7.7 0 0 0-.7.7v7.6a.7.7 0 0 0 .7.7H5" />
+      <path d="M8 3.5 10.5 6 8 8.5M10.5 6H4.5" />
+    </svg>
+  );
+}
+
 export function PainelVez({
   visao,
   mesa,
@@ -164,20 +185,18 @@ export function PainelMesa({
               <tr key={j.id} className={j.eliminado ? "opacity-[var(--opacidade-esmaecido)]" : ""}>
                 <td className="border-b border-border px-1.5 py-1">
                   <span className="flex flex-wrap items-center gap-espaco-2">
-                    <CorJogador cor={j.cor} tamanho="w-3 h-3" />
+                    <span className="flex items-center gap-espaco-1">
+                      {desconectado && <IconeForaDaSala />}
+                      <CorJogador cor={j.cor} tamanho="w-3 h-3" />
+                    </span>
                     <span
                       title={
-                        mesa.robo(j.id) ? "robô" : desconectado ? "desconectado" : "acompanhando"
+                        mesa.robo(j.id) ? "robô" : desconectado ? "Saiu da sala" : "acompanhando"
                       }
                       className={desconectado ? "text-muted" : ""}
                     >
                       {mesa.nome(j.id)}
                     </span>
-                    {desconectado && (
-                      <span className="tag text-bad" title="Sem conexão com a partida">
-                        desconectado
-                      </span>
-                    )}
                     {mesa.robo(j.id) && <span className="tag">robô</span>}
                     {j.id === daVez && visao.fase !== "FIM" && <span className="tag">na vez</span>}
                     {j.id === visao.vencedor && <span className="tag">vencedor</span>}

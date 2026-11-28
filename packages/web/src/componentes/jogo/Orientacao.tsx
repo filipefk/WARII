@@ -1,6 +1,7 @@
 // Mensagens de orientação: um popup no meio da tela, com "OK", no começo da ocupação do mapa e no
 // começo de cada passo do recebimento (bônus de cada continente, livres, cartas), do ataque e do
-// deslocamento de cada vez do jogador. Cada mensagem aparece até o OK, uma vez só por partida, vez e passo
+// deslocamento de cada vez do jogador (na 2ª volta da rodada 1, que começa no ataque, o popup do
+// ataque avisa que não há recebimento). Cada mensagem aparece até o OK, uma vez só por partida, vez e passo
 // (lembrada também no sessionStorage, para não voltar ao recarregar a página).
 // Enquanto aberta, o texto acompanha a etapa (no recebimento, o passo e a quantidade atuais).
 import { CONTINENTES, type VisaoPartida } from "@warii/engine";
@@ -87,10 +88,17 @@ function mensagemPara(visao: VisaoPartida, etapa: Etapa): Mensagem | null {
       chave: `atacar:${vez}`,
       titulo: "Sua vez: Ataque",
       corpo: (
-        <p>
-          Escolha ataque terrestre ou aéreo, defina a origem em caso de terrestre e defina o destino
-          do ataque.
-        </p>
+        <>
+          {visao.rodada === 1 && visao.etapaPrimeiraRodada === 2 && (
+            <p className="mb-espaco-3">
+              Estamos na primeira rodada, então você não recebe mais exércitos.
+            </p>
+          )}
+          <p>
+            Escolha ataque terrestre ou aéreo, defina a origem em caso de terrestre e defina o
+            destino do ataque.
+          </p>
+        </>
       ),
     };
   }
