@@ -22,7 +22,7 @@ export function BaseAerea({ x, y, dono, bombardeiros }: Props) {
   return (
     <g className="mapa-base">
       <rect
-        x={x - 178}
+        x={x - 190}
         y={y - 27}
         width={356}
         height={54}
@@ -33,7 +33,7 @@ export function BaseAerea({ x, y, dono, bombardeiros }: Props) {
       />
       {/* Bandeja em baixo-relevo, com a pista pintada sob as vagas. */}
       <rect
-        x={x - 176}
+        x={x - 188}
         y={y - 25}
         width={352}
         height={50}
@@ -42,11 +42,11 @@ export function BaseAerea({ x, y, dono, bombardeiros }: Props) {
       />
       <rect className="mapa-base-pista" x={x - 92} y={y - 15} width={244} height={30} rx={3} />
       <line className="mapa-base-faixa" x1={x - 88} y1={y} x2={x + 148} y2={y} />
-      <text className="mapa-base-rotulo" x={x - 124} y={y - 6}>
+      <text className="mapa-base-rotulo" x={x - 136} y={y - 6}>
         BASE AÉREA
       </text>
       {dono && cor && (
-        <text className="mapa-base-dono" x={x - 124} y={y + 9} style={{ fill: cor }}>
+        <text className="mapa-base-dono" x={x - 136} y={y + 9} style={{ fill: cor }}>
           {`${CORES[dono].nome.toUpperCase()} · ${bombardeiros}/${VAGAS_DA_BASE}`}
         </text>
       )}
