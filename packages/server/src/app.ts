@@ -11,6 +11,7 @@ import { registrarMetricas } from "./metricas.js";
 import { rotasDePartidas } from "./partidas/rotas.js";
 import { LIMITE_CORPO_GLOBAL, registrarSeguranca } from "./seguranca.js";
 import { registrarTempoReal } from "./tempoReal/servidor.js";
+import { rotasDeUsuarios } from "./usuarios/rotas.js";
 
 // Prazo para o cliente terminar de enviar a requisição (cabeçalhos e corpo): corta conexões
 // que mandam devagar de propósito. Não limita a resposta (o polling do Socket.IO segue igual).
@@ -42,6 +43,7 @@ export async function criarApp(
   await app.register(rotasDeAutenticacao, { prefix: "/api/auth" });
   await app.register(rotasDePartidas, { prefix: "/api/partidas" });
   await app.register(rotasDeAdmin, { prefix: "/api/admin" });
+  await app.register(rotasDeUsuarios, { prefix: "/api/usuarios" });
 
   app.get("/api/health", async (_requisicao, resposta) => {
     resposta.header("cache-control", "no-store");

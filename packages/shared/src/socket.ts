@@ -4,7 +4,7 @@
 import type { Acao, Evento, VisaoPartida } from "@warii/engine";
 import type { ErroApi } from "./auth.js";
 import type { Escolha } from "./escolha.js";
-import type { PartidaLobbyDto } from "./partidas.js";
+import type { ConviteDto, PartidaLobbyDto } from "./partidas.js";
 
 // Maior mensagem aceita pelo servidor (bytes); acima disso a conexão é derrubada.
 export const TAMANHO_MAXIMO_MENSAGEM = 16 * 1024;
@@ -29,6 +29,8 @@ export interface ServerToClientEvents {
   presenca: (partidaId: string, conectados: string[]) => void;
   // Escolhas em andamento do jogador que deve agir (efêmeras; valem só no seq indicado).
   escolha: (partidaId: string, escolha: Escolha) => void;
+  // O anfitrião de uma sala de espera chamou este usuário (vai a todas as conexões dele).
+  convite: (convite: ConviteDto) => void;
   erro: (erro: ErroApi) => void;
 }
 

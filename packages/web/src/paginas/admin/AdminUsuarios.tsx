@@ -12,7 +12,9 @@ import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { apiAdmin } from "../../api/admin";
 import { mensagemDoErro } from "../../api/cliente";
+import { Avatar } from "../../componentes/Avatar";
 import { Aviso, Botao, Campo, Carregando, Cartao } from "../../componentes/basicos";
+import { EscolherAvatar } from "../../componentes/EscolherAvatar";
 import { Modal } from "../../componentes/Modal";
 import { useSessao } from "../../stores/sessao";
 import { Confirmar } from "../../componentes/JanelaPopup";
@@ -21,6 +23,7 @@ import { formatoData } from "./Admin";
 type Janela =
   | { tipo: "editar"; usuario: UsuarioAdminDto }
   | { tipo: "senha"; usuario: UsuarioAdminDto }
+  | { tipo: "avatar"; usuario: UsuarioAdminDto }
   | { tipo: "apagar"; usuario: UsuarioAdminDto }
   | { tipo: "link"; usuario: UsuarioAdminDto; link: LinkSenhaDto };
 
@@ -187,6 +190,35 @@ function EditarUsuario({
   );
 }
 
+function FotoDoUsuario({
+  usuario,
+  aoSalvar,
+  onFechar,
+}: {
+  usuario: UsuarioAdminDto;
+  aoSalvar: (usuario: UsuarioAdminDto) => void;
+  onFechar: () => void;
+}) {
+  const [atual, setAtual] = useState(usuario);
+  const salvar = (salvo: UsuarioAdminDto) => {
+    setAtual(salvo);
+    aoSalvar(salvo);
+  };
+  return (
+    <Modal titulo={`Avatar de ${usuario.nome}`} estreito onFechar={onFechar}>
+      <div className="space-y-espaco-7 pt-espaco-5">
+        <EscolherAvatar
+          usuarioId={atual.id}
+          avatar={atual.avatar}
+          enviar={async (imagem) => salvar(await apiAdmin.definirAvatar(atual.id, imagem))}
+          remover={async () => salvar(await apiAdmin.removerAvatar(atual.id))}
+        />
+        <Botao onClick={onFechar}>Voltar</Botao>
+      </div>
+    </Modal>
+  );
+}
+
 function DefinirSenha({
   usuario,
   aoSalvar,
@@ -330,7 +362,8 @@ function LinhaUsuario({
   return (
     <li className="rounded-raio-md border border-border bg-panel-2 px-espaco-4 py-espaco-3">
       <div className="flex flex-wrap items-center gap-x-espaco-7 gap-y-espaco-1">
-        <span className="text-destaque">
+        <span className="text-destaque inline-flex items-center gap-espaco-2">
+          <Avatar usuarioId={usuario.id} avatar={usuario.avatar} tamanho={28} />
           {usuario.nome}
           {usuario.admin && <span className="tag">admin</span>}
           {proprio && <span className="tag">você</span>}
@@ -352,6 +385,7 @@ function LinhaUsuario({
           {usuario.ativa ? "Gerar link de nova senha" : "Gerar link de ativação"}
         </Botao>
         <Botao onClick={() => abrir({ tipo: "senha", usuario })}>Definir senha</Botao>
+        <Botao onClick={() => abrir({ tipo: "avatar", usuario })}>Avatar</Botao>
         <Link to={`/admin/log?usuario=${encodeURIComponent(usuario.id)}`} className="botao">
           Ver log
         </Link>
@@ -390,7 +424,7 @@ export function AdminUsuarios() {
 
   const trocar = (usuario: UsuarioAdminDto) => {
     setLista((atual) => ordenar((atual ?? []).map((u) => (u.id === usuario.id ? usuario : u))));
-    // O próprio nome ou e-mail aparece no cabeçalho.
+    // O próprio nome, e-mail ou avatar aparece no cabeçalho.
     if (usuario.id === eu?.id) void carregarSessao();
   };
 
@@ -421,6 +455,9 @@ export function AdminUsuarios() {
           aoSalvar={trocar}
           onFechar={fechar}
         />
+      )}
+      {janela?.tipo === "avatar" && (
+        <FotoDoUsuario usuario={janela.usuario} aoSalvar={trocar} onFechar={fechar} />
       )}
       {janela?.tipo === "senha" && (
         <DefinirSenha usuario={janela.usuario} aoSalvar={trocar} onFechar={fechar} />

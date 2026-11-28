@@ -1,5 +1,6 @@
 // Contrato das rotas /api/auth: schemas zod (validados no servidor) e tipos (usados no front).
 import { z } from "zod";
+import type { VersaoAvatar } from "./avatar.js";
 
 export const SENHA_MIN = 10;
 export const SENHA_MAX = 128;
@@ -53,6 +54,7 @@ export interface UsuarioDto {
   nome: string;
   // Vê as telas de administração (usuários e partidas).
   admin: boolean;
+  avatar: VersaoAvatar;
 }
 
 // Corpo de toda resposta de erro da API.

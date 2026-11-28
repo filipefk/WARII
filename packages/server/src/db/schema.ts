@@ -46,7 +46,21 @@ export const usuarios = pgTable("usuarios", {
   // Jogador controlado pelo servidor (tempoReal/robos.ts). Nunca tem senha nem sessão; o grupo
   // fixo de robôs é criado sob demanda (partidas/robos.ts).
   robo: boolean("robo").notNull().default(false),
+  // Versão do avatar enviado (tabela avatares); nulo = sem avatar (o front desenha um padrão).
+  // Entra na URL da imagem (?v=), que pode então ficar em cache para sempre.
+  avatarVersao: integer("avatar_versao"),
   criadoEm: instante("criado_em").notNull().defaultNow(),
+  atualizadoEm: instante("atualizado_em").notNull().defaultNow(),
+});
+
+// Foto do avatar (já reduzida pelo front: quadrada, pequena). Fica fora de `usuarios` para as
+// consultas comuns não carregarem a imagem.
+export const avatares = pgTable("avatares", {
+  usuarioId: uuid("usuario_id")
+    .primaryKey()
+    .references(() => usuarios.id, { onDelete: "cascade" }),
+  tipo: text("tipo").notNull(),
+  imagem: bytea("imagem").notNull(),
   atualizadoEm: instante("atualizado_em").notNull().defaultNow(),
 });
 

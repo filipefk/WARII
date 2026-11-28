@@ -4,6 +4,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { mensagemDoErro } from "../api/cliente";
 import { apiPartidas } from "../api/partidas";
+import { NomeComAvatar } from "../componentes/Avatar";
 import { Aviso, Botao, Campo, Carregando, Cartao } from "../componentes/basicos";
 import { usePartidas } from "../stores/partidas";
 
@@ -87,7 +88,14 @@ function LinhaPartida({ partida }: { partida: PartidaResumoDto }) {
         className="flex flex-wrap items-center gap-x-espaco-7 gap-y-espaco-1 rounded-raio-md border border-border bg-panel-2 px-espaco-4 py-espaco-3 hover:border-accent"
       >
         <span className="text-destaque">{partida.nome}</span>
-        <span className="text-muted">anfitrião: {partida.anfitriao.nome}</span>
+        <span className="inline-flex items-center gap-espaco-2 text-muted">
+          anfitrião:
+          <NomeComAvatar
+            usuarioId={partida.anfitriao.id}
+            avatar={partida.anfitriao.avatar}
+            nome={partida.anfitriao.nome}
+          />
+        </span>
         <span className="text-muted">
           {partida.quantidadeParticipantes}{" "}
           {partida.quantidadeParticipantes === 1 ? "jogador" : "jogadores"}

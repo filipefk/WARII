@@ -1,6 +1,7 @@
 // Rotas /api/auth. Não há cadastro público: contas nascem pela CLI (ver contas.ts).
 import type { FastifyInstance } from "fastify";
 import {
+  DefinirAvatarEntrada,
   DefinirSenhaEntrada,
   LoginEntrada,
   TrocarSenhaEntrada,
@@ -8,6 +9,13 @@ import {
 } from "@warii/shared";
 import { auditar, mascararEmail } from "../auditoria.js";
 import { responderEntradaInvalida, responderErro } from "../erros.js";
+import {
+  decodificarAvatar,
+  ErroDeAvatar,
+  gravarAvatar,
+  LIMITE_CORPO_AVATAR,
+  removerAvatar,
+} from "../usuarios/avatar.js";
 import { autenticar, definirSenhaComToken, ErroDeConta, trocarSenha } from "./contas.js";
 import {
   apagarCookieSessao,
@@ -36,7 +44,13 @@ const LIMITE_GERAL = { max: 120, timeWindow: "1 minute" };
 const CREDENCIAIS_INVALIDAS = "e-mail ou senha incorretos";
 
 function paraDto(usuario: UsuarioDto): UsuarioDto {
-  return { id: usuario.id, email: usuario.email, nome: usuario.nome, admin: usuario.admin };
+  return {
+    id: usuario.id,
+    email: usuario.email,
+    nome: usuario.nome,
+    admin: usuario.admin,
+    avatar: usuario.avatar,
+  };
 }
 
 export async function rotasDeAutenticacao(app: FastifyInstance): Promise<void> {
@@ -160,6 +174,42 @@ export async function rotasDeAutenticacao(app: FastifyInstance): Promise<void> {
       auditar(requisicao.log, "senha_trocada", dados);
       app.tempoReal.sessoesDoUsuarioEncerradas(sessao.usuario.id, sessao.sessaoId);
       return resposta.code(204).send();
+    },
+  );
+
+  // Foto do próprio avatar. Responde a versão nova (nula ao remover).
+  app.put(
+    "/avatar",
+    {
+      bodyLimit: LIMITE_CORPO_AVATAR,
+      preHandler: exigirSessao,
+      config: { rateLimit: LIMITE_SENHA },
+    },
+    async (requisicao, resposta) => {
+      const entrada = DefinirAvatarEntrada.safeParse(requisicao.body);
+      if (!entrada.success) return responderEntradaInvalida(resposta, entrada.error);
+      const usuarioId = sessaoDa(requisicao).usuario.id;
+      try {
+        const { tipo, imagem } = decodificarAvatar(entrada.data.imagem);
+        const avatar = (await gravarAvatar(usuarioId, tipo, imagem)) ?? null;
+        auditar(requisicao.log, "avatar_definido", { usuarioId, ip: requisicao.ip });
+        return { avatar };
+      } catch (erro) {
+        if (erro instanceof ErroDeAvatar)
+          return responderErro(resposta, 400, erro.codigo, erro.message);
+        throw erro;
+      }
+    },
+  );
+
+  app.delete(
+    "/avatar",
+    { preHandler: exigirSessao, config: { rateLimit: LIMITE_SENHA } },
+    async (requisicao) => {
+      const usuarioId = sessaoDa(requisicao).usuario.id;
+      await removerAvatar(usuarioId);
+      auditar(requisicao.log, "avatar_removido", { usuarioId, ip: requisicao.ip });
+      return { avatar: null };
     },
   );
 

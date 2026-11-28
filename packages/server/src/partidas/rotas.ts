@@ -3,6 +3,7 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import {
   ConfigurarPartidaEntrada,
+  ConvidarEntrada,
   CriarPartidaEntrada,
   EntrarPartidaEntrada,
   EscolherCorEntrada,
@@ -16,12 +17,14 @@ import {
   adicionarRobo,
   cancelarPartida,
   configurarParametros,
+  convidaveis,
   criarPartidaNoLobby,
   entrarComConvite,
   ErroDeLobby,
   escolherCor,
   iniciarPartida,
   listarPartidas,
+  montarConvite,
   obterLobby,
   removerDaPartida,
   renovarConvite,
@@ -198,6 +201,38 @@ export async function rotasDePartidas(app: FastifyInstance): Promise<void> {
       auditar(requisicao.log, "convite_renovado", { partidaId: lobby.id, usuarioId });
       app.tempoReal.lobbyAlterado(lobby.id);
       return lobby;
+    });
+  });
+
+  // Usuários online que o anfitrião pode chamar para a sala de espera.
+  app.get("/:id/online", leitura, async (requisicao, resposta) => {
+    const params = ParametroPartida.safeParse(requisicao.params);
+    if (!params.success) return partidaInexistente(resposta);
+    const usuarioId = sessaoDa(requisicao).usuario.id;
+    return responder(resposta, () =>
+      convidaveis(params.data.id, usuarioId, app.tempoReal.usuariosOnline()),
+    );
+  });
+
+  // Convite direto: aparece na tela do convidado, que aceita e entra pelo token do convite.
+  app.post("/:id/convidar", escrita, async (requisicao, resposta) => {
+    const params = ParametroPartida.safeParse(requisicao.params);
+    if (!params.success) return partidaInexistente(resposta);
+    const entrada = ConvidarEntrada.safeParse(requisicao.body);
+    if (!entrada.success) return responderEntradaInvalida(resposta, entrada.error);
+    const usuarioId = sessaoDa(requisicao).usuario.id;
+    const convidadoId = entrada.data.usuarioId;
+    return responder(resposta, async () => {
+      const convite = await montarConvite(params.data.id, usuarioId, convidadoId);
+      if (!app.tempoReal.estaOnline(convidadoId)) {
+        throw new ErroDeLobby(409, "USUARIO_OFFLINE", "esse jogador não está mais online");
+      }
+      app.tempoReal.convidar(convidadoId, convite);
+      auditar(requisicao.log, "convite_enviado", {
+        partidaId: params.data.id,
+        usuarioId,
+        convidadoId,
+      });
     });
   });
 

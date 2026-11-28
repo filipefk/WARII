@@ -112,6 +112,7 @@ describe("rotas /api/admin", { skip: motivoSemBanco, concurrency: false }, () =>
         admin: false,
         ativa: false,
         partidas: 0,
+        avatar: null,
       },
     );
     assert.equal(

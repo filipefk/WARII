@@ -1,7 +1,8 @@
 // Contrato das rotas /api/admin (só para contas com `admin`): cadastro de usuários e partidas.
 import { z } from "zod";
+import type { VersaoAvatar } from "./avatar.js";
 import { esquemaEmail, esquemaNome, esquemaSenha } from "./auth.js";
-import type { StatusPartida } from "./partidas.js";
+import type { StatusPartida, UsuarioResumoDto } from "./partidas.js";
 
 export const esquemaIdUsuario = z.uuid({ error: "usuário inexistente" });
 
@@ -29,6 +30,7 @@ export interface UsuarioAdminDto {
   email: string;
   nome: string;
   admin: boolean;
+  avatar: VersaoAvatar;
   // Já tem senha (ativou a conta pelo link ou o administrador a definiu).
   ativa: boolean;
   // Partidas de que participa ou participou (um usuário com partidas não pode ser apagado).
@@ -48,9 +50,9 @@ export interface PartidaAdminDto {
   id: string;
   nome: string;
   status: StatusPartida;
-  anfitriao: { id: string; nome: string };
-  participantes: { usuarioId: string; nome: string; robo: boolean }[];
-  vencedor: { id: string; nome: string } | null;
+  anfitriao: UsuarioResumoDto;
+  participantes: { usuarioId: string; nome: string; robo: boolean; avatar: VersaoAvatar }[];
+  vencedor: UsuarioResumoDto | null;
   // Ações gravadas no log (-1 antes de iniciar).
   seq: number;
   criadaEm: string;

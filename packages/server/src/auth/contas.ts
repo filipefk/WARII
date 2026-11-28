@@ -34,6 +34,8 @@ export interface Conta {
   email: string;
   nome: string;
   admin: boolean;
+  // Versão da foto (avatares); nula sem foto.
+  avatar: number | null;
 }
 
 // Domínio dos e-mails das contas-robô (partidas/robos.ts).
@@ -44,6 +46,7 @@ export const COLUNAS_CONTA = {
   email: usuarios.email,
   nome: usuarios.nome,
   admin: usuarios.admin,
+  avatar: usuarios.avatarVersao,
 };
 
 export function emailReservado(email: string): boolean {
@@ -165,7 +168,13 @@ export async function autenticar(email: string, senha: string): Promise<Conta | 
   const hash = linha?.senhaHash ?? (await obterHashFicticio());
   const confere = await verificarSenha(senha, hash);
   if (!linha?.senhaHash || !confere) return undefined;
-  return { id: linha.id, email: linha.email, nome: linha.nome, admin: linha.admin };
+  return {
+    id: linha.id,
+    email: linha.email,
+    nome: linha.nome,
+    admin: linha.admin,
+    avatar: linha.avatar,
+  };
 }
 
 // Troca a senha de quem está logado e revoga as outras sessões (a atual continua).

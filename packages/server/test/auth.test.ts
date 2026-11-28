@@ -92,6 +92,7 @@ describe("rotas /api/auth", { skip: motivoSemBanco, concurrency: false }, () => 
         email: "ativa@teste.local",
         nome: "Ativa",
         admin: false,
+        avatar: null,
       });
       const cookie = resposta.cookies.find((c) => c.name === "warii_sessao");
       assert.ok(cookie);
@@ -198,6 +199,7 @@ describe("rotas /api/auth", { skip: motivoSemBanco, concurrency: false }, () => 
         email: "login@teste.local",
         nome: "Logado",
         admin: false,
+        avatar: null,
       });
 
       const token = cookieDeSessao(resposta);
@@ -213,6 +215,7 @@ describe("rotas /api/auth", { skip: motivoSemBanco, concurrency: false }, () => 
         email: "login@teste.local",
         nome: "Logado",
         admin: false,
+        avatar: null,
       });
     });
 

@@ -6,7 +6,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { mensagemDoErro } from "../api/cliente";
 import { apiPartidas } from "../api/partidas";
+import { NomeComAvatar } from "../componentes/Avatar";
 import { Aviso, Botao, Cartao, CorJogador, Presenca, TituloDaTela } from "../componentes/basicos";
+import { ConvidarOnline } from "../componentes/ConvidarOnline";
 import { Confirmar } from "../componentes/JanelaPopup";
 import { usePartidas } from "../stores/partidas";
 import { TONS } from "../ui/cores";
@@ -62,10 +64,12 @@ function Participantes({ lobby, presenca, usuarioId }: Props) {
           return (
             <li key={p.usuarioId} className="flex flex-wrap items-center gap-espaco-5">
               <CorJogador cor={p.cor} />
-              <span className={p.usuarioId === usuarioId ? "font-bold" : ""}>
-                {p.nome}
-                {p.usuarioId === usuarioId && " (você)"}
-              </span>
+              <NomeComAvatar
+                usuarioId={p.usuarioId}
+                avatar={p.avatar}
+                nome={p.usuarioId === usuarioId ? `${p.nome} (você)` : p.nome}
+                className={p.usuarioId === usuarioId ? "font-bold" : ""}
+              />
               {p.anfitriao && <span className="tag">anfitrião</span>}
               {p.robo && <span className="tag">robô</span>}
               {p.cor === null && !p.robo && <span className="dica">escolhendo cor…</span>}
@@ -204,7 +208,13 @@ function ConviteDaPartida({ lobby }: { lobby: PartidaLobbyDto }) {
 
   return (
     <Cartao titulo="Convite">
-      <p className="mb-espaco-3">Envie este link aos amigos. Ele vale até a partida começar.</p>
+      {lobby.participantes.length < MAXIMO_JOGADORES && (
+        <div className="mb-espaco-7 flex flex-wrap items-center gap-espaco-5">
+          <ConvidarOnline lobby={lobby} />
+          <span className="dica">O convite aparece na tela de quem está com o jogo aberto.</span>
+        </div>
+      )}
+      <p className="mb-espaco-3">Ou envie este link aos amigos. Ele vale até a partida começar.</p>
       <div className="flex flex-col gap-espaco-2 sm:flex-row">
         <input
           readOnly
@@ -305,7 +315,15 @@ function Comandos({ lobby, usuarioId }: Omit<Props, "presenca">) {
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-espaco-5">
-          <p>Aguardando {lobby.anfitriao.nome} iniciar a partida.</p>
+          <p className="flex flex-wrap items-center gap-espaco-2">
+            Aguardando
+            <NomeComAvatar
+              usuarioId={lobby.anfitriao.id}
+              avatar={lobby.anfitriao.avatar}
+              nome={lobby.anfitriao.nome}
+            />
+            iniciar a partida.
+          </p>
           <Botao
             ocupado={ocupado === "sair"}
             onClick={() => setConfirmando("sair")}

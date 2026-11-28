@@ -3,6 +3,7 @@
 import type { ClientToServerEvents, ErroApi, ServerToClientEvents } from "@warii/shared";
 import { io, type Socket } from "socket.io-client";
 import { useConexao } from "./stores/conexao";
+import { useConvites } from "./stores/convites";
 import { usePartidas } from "./stores/partidas";
 import { useSessao } from "./stores/sessao";
 
@@ -82,6 +83,7 @@ function ligarOuvintes(): void {
       ressincronizar(partidaId);
     }
   });
+  socket.on("convite", (convite) => useConvites.getState().receber(convite));
   socket.on("erro", (erro) => conexao.avisar(erro));
 }
 
@@ -97,6 +99,7 @@ function aplicarSessao(estaLogado: boolean): void {
   socket.disconnect();
   useConexao.getState().definir("desligada");
   usePartidas.getState().limpar();
+  useConvites.getState().limpar();
 }
 
 // Liga e desliga o socket conforme a sessão. Chamado uma vez, no main.tsx.

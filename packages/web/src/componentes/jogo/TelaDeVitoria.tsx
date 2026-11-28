@@ -3,6 +3,7 @@
 import type { VisaoPartida } from "@warii/engine";
 import { useNavigate } from "react-router";
 import type { Mesa } from "../../jogo/mesa";
+import { Avatar } from "../Avatar";
 import { Botao, CorJogador } from "../basicos";
 import { CartaObjetivo } from "../tabuleiro/CartaObjetivo";
 
@@ -30,6 +31,9 @@ export function TelaDeVitoria({
         <p className="secao">Fim de jogo</p>
         <h1 className="flex items-center gap-espaco-3 text-titulo">
           <CorJogador cor={vencedor?.cor ?? null} />
+          {visao.vencedor !== null && (
+            <Avatar usuarioId={visao.vencedor} avatar={mesa.avatar(visao.vencedor)} tamanho={40} />
+          )}
           {voceVenceu ? "Você venceu!" : `${mesa.nome(visao.vencedor)} venceu`}
         </h1>
         {vencedor?.objetivoId && (

@@ -1,6 +1,7 @@
 // Contrato das rotas /api/partidas (lobby): entradas validadas no servidor e DTOs de resposta.
 import { type CorId, IDS_CORES, type Parametros } from "@warii/engine";
 import { z } from "zod";
+import type { VersaoAvatar } from "./avatar.js";
 import { esquemaParametrosParciais } from "./parametros.js";
 
 export const NOME_PARTIDA_MIN = 2;
@@ -38,9 +39,17 @@ export type EscolherCorEntrada = z.infer<typeof EscolherCorEntrada>;
 export const ConfigurarPartidaEntrada = z.strictObject({ parametros: esquemaParametrosParciais });
 export type ConfigurarPartidaEntrada = z.infer<typeof ConfigurarPartidaEntrada>;
 
+// Quem aparece com nome e avatar (anfitrião, vencedor, usuários online, convites).
+export interface UsuarioResumoDto {
+  id: string;
+  nome: string;
+  avatar: VersaoAvatar;
+}
+
 export interface ParticipanteDto {
   usuarioId: string;
   nome: string;
+  avatar: VersaoAvatar;
   cor: CorId | null;
   // Posição na mesa (0 = primeiro); sorteada ao iniciar, nula antes disso.
   assento: number | null;
@@ -53,7 +62,7 @@ export interface PartidaResumoDto {
   id: string;
   nome: string;
   status: StatusPartida;
-  anfitriao: { id: string; nome: string };
+  anfitriao: UsuarioResumoDto;
   quantidadeParticipantes: number;
   criadaEm: string;
   iniciadaEm: string | null;
@@ -64,6 +73,21 @@ export interface PartidaLobbyDto extends PartidaResumoDto {
   parametros: Parametros;
   // Link de convite: só para o anfitrião e só enquanto a partida aguarda jogadores.
   convite: string | null;
+}
+
+// POST /api/partidas/:id/convidar: o anfitrião chama um usuário online para a sala de espera.
+export const ConvidarEntrada = z.strictObject({
+  usuarioId: z.uuid({ error: "usuário inexistente" }),
+});
+export type ConvidarEntrada = z.infer<typeof ConvidarEntrada>;
+
+// Convite que chega na tela do usuário convidado (evento `convite` do socket). O token é o mesmo
+// do link de convite: aceitar é entrar com ele (POST /api/partidas/entrar).
+export interface ConviteDto {
+  partidaId: string;
+  partidaNome: string;
+  anfitriao: UsuarioResumoDto;
+  token: string;
 }
 
 // GET /api/partidas/:id/log-detalhado: o log da partida em texto, para baixar como .txt.

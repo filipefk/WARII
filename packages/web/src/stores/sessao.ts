@@ -1,6 +1,6 @@
 // Sessão do usuário logado. A fonte da verdade é o cookie httpOnly (o front não o enxerga):
 // ao abrir, pergunta ao servidor quem é (`/api/auth/eu`); qualquer 401 depois volta a "anonimo".
-import type { DefinirSenhaEntrada, LoginEntrada, UsuarioDto } from "@warii/shared";
+import type { DefinirSenhaEntrada, LoginEntrada, UsuarioDto, VersaoAvatar } from "@warii/shared";
 import { create } from "zustand";
 import { apiAuth } from "../api/auth";
 import { definirAoNaoAutenticado } from "../api/cliente";
@@ -16,6 +16,7 @@ interface EstadoSessao {
   sair: () => Promise<void>;
   sairDeTodas: () => Promise<void>;
   limpar: () => void;
+  gravarAvatar: (avatar: VersaoAvatar) => void;
 }
 
 export const useSessao = create<EstadoSessao>()((set) => ({
@@ -57,6 +58,10 @@ export const useSessao = create<EstadoSessao>()((set) => ({
 
   limpar() {
     set({ situacao: "anonimo", usuario: null });
+  },
+
+  gravarAvatar(avatar) {
+    set((s) => (s.usuario ? { usuario: { ...s.usuario, avatar } } : {}));
   },
 }));
 

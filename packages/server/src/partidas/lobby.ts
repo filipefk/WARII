@@ -16,8 +16,10 @@ import {
   esquemaParametros,
   type ParametrosParciaisEntrada,
   type PartidaLobbyDto,
+  type ConviteDto,
   type PartidaResumoDto,
   type StatusPartida,
+  type UsuarioResumoDto,
 } from "@warii/shared";
 import { and, asc, count, desc, eq, inArray, ne } from "drizzle-orm";
 import { gerarToken } from "../auth/tokens.js";
@@ -115,7 +117,7 @@ async function tocar(tx: Transacao, partidaId: string): Promise<void> {
 
 function resumo(
   partida: LinhaPartida,
-  anfitriao: { id: string; nome: string },
+  anfitriao: UsuarioResumoDto,
   quantidadeParticipantes: number,
 ): PartidaResumoDto {
   return {
@@ -140,6 +142,7 @@ async function montarLobby(
     .select({
       usuarioId: participantes.usuarioId,
       nome: usuarios.nome,
+      avatar: usuarios.avatarVersao,
       robo: usuarios.robo,
       cor: participantes.cor,
       assento: participantes.assento,
@@ -153,11 +156,16 @@ async function montarLobby(
   const anfitriao = lista.find((p) => p.usuarioId === partida.anfitriaoId);
   const ehAnfitriao = partida.anfitriaoId === usuarioId;
   return {
-    ...resumo(partida, { id: partida.anfitriaoId, nome: anfitriao?.nome ?? "" }, lista.length),
+    ...resumo(
+      partida,
+      { id: partida.anfitriaoId, nome: anfitriao?.nome ?? "", avatar: anfitriao?.avatar ?? null },
+      lista.length,
+    ),
     participantes: lista
       .map((p) => ({
         usuarioId: p.usuarioId,
         nome: p.nome,
+        avatar: p.avatar,
         cor: p.cor,
         assento: p.assento,
         anfitriao: p.usuarioId === partida.anfitriaoId,
@@ -186,7 +194,11 @@ export async function listarPartidas(usuarioId: string): Promise<PartidaResumoDt
     .from(participantes)
     .where(eq(participantes.usuarioId, usuarioId));
   const linhas = await db
-    .select({ partida: partidas, anfitriaoNome: usuarios.nome })
+    .select({
+      partida: partidas,
+      anfitriaoNome: usuarios.nome,
+      anfitriaoAvatar: usuarios.avatarVersao,
+    })
     .from(partidas)
     .innerJoin(usuarios, eq(usuarios.id, partidas.anfitriaoId))
     .where(and(inArray(partidas.id, minhas), ne(partidas.status, "cancelada")))
@@ -204,10 +216,10 @@ export async function listarPartidas(usuarioId: string): Promise<PartidaResumoDt
     )
     .groupBy(participantes.partidaId);
   const totalPor = new Map(contagens.map((c) => [c.partidaId, c.total]));
-  return linhas.map(({ partida, anfitriaoNome }) =>
+  return linhas.map(({ partida, anfitriaoNome, anfitriaoAvatar }) =>
     resumo(
       partida,
-      { id: partida.anfitriaoId, nome: anfitriaoNome },
+      { id: partida.anfitriaoId, nome: anfitriaoNome, avatar: anfitriaoAvatar },
       totalPor.get(partida.id) ?? 0,
     ),
   );
@@ -386,6 +398,62 @@ export async function renovarConvite(
       .set({ convite: gerarToken(), atualizadaEm: new Date() })
       .where(eq(partidas.id, partidaId));
     return montarLobby(tx, partidaId, usuarioId);
+  });
+}
+
+// Usuários que o anfitrião pode chamar para a sala de espera, entre os `online` (ids com alguma
+// conexão aberta, vindos do socket): humanos ainda fora da partida, por nome.
+export async function convidaveis(
+  partidaId: string,
+  anfitriaoId: string,
+  online: string[],
+): Promise<UsuarioResumoDto[]> {
+  return db.transaction(async (tx) => {
+    const travada = await travarComoParticipante(tx, partidaId, anfitriaoId);
+    exigirAnfitriao(travada, anfitriaoId);
+    exigirAguardando(travada);
+    const dentro = new Set(travada.participantes.map((p) => p.usuarioId));
+    const candidatos = online.filter((id) => !dentro.has(id));
+    if (candidatos.length === 0) return [];
+    return tx
+      .select({ id: usuarios.id, nome: usuarios.nome, avatar: usuarios.avatarVersao })
+      .from(usuarios)
+      .where(and(inArray(usuarios.id, candidatos), eq(usuarios.robo, false)))
+      .orderBy(asc(usuarios.nome));
+  });
+}
+
+// Convite direto do anfitrião a um usuário: leva o token do link de convite, com que o convidado
+// entra (entrarComConvite). Não grava nada: é o mesmo que mandar o link.
+export async function montarConvite(
+  partidaId: string,
+  anfitriaoId: string,
+  convidadoId: string,
+): Promise<ConviteDto> {
+  return db.transaction(async (tx) => {
+    const travada = await travarComoParticipante(tx, partidaId, anfitriaoId);
+    exigirAnfitriao(travada, anfitriaoId);
+    exigirAguardando(travada);
+    const { partida } = travada;
+    if (travada.participantes.some((p) => p.usuarioId === convidadoId)) {
+      throw new ErroDeLobby(409, "JA_NA_PARTIDA", "esse jogador já está na partida");
+    }
+    if (travada.participantes.length >= MAXIMO_JOGADORES) {
+      throw new ErroDeLobby(409, "PARTIDA_CHEIA", `a partida já tem ${MAXIMO_JOGADORES} jogadores`);
+    }
+    const [convidado] = await tx
+      .select({ robo: usuarios.robo })
+      .from(usuarios)
+      .where(eq(usuarios.id, convidadoId));
+    if (!convidado || convidado.robo) {
+      throw new ErroDeLobby(404, "USUARIO_INEXISTENTE", "usuário inexistente");
+    }
+    const [anfitriao] = await tx
+      .select({ id: usuarios.id, nome: usuarios.nome, avatar: usuarios.avatarVersao })
+      .from(usuarios)
+      .where(eq(usuarios.id, anfitriaoId));
+    if (!anfitriao || !partida.convite) throw partidaInexistente();
+    return { partidaId, partidaNome: partida.nome, anfitriao, token: partida.convite };
   });
 }
 

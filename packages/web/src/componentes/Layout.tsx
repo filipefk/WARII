@@ -3,6 +3,8 @@ import { Link, NavLink, Outlet, useMatch, useNavigate } from "react-router";
 import { useConexao, type SituacaoConexao } from "../stores/conexao";
 import { usePartidas } from "../stores/partidas";
 import { useSessao } from "../stores/sessao";
+import { NomeComAvatar } from "./Avatar";
+import { ConviteRecebido } from "./ConviteRecebido";
 import { FundoDeGuerra } from "./FundoDeGuerra";
 
 const INDICADOR: Record<SituacaoConexao, { texto: string; cor: string } | null> = {
@@ -85,7 +87,13 @@ export function Layout() {
             <IndicadorConexao />
             {usuario && (
               <>
-                <span className="hidden text-muted sm:inline">{usuario.nome}</span>
+                <Link to="/conta" className="hidden text-muted no-underline sm:inline-flex">
+                  <NomeComAvatar
+                    usuarioId={usuario.id}
+                    avatar={usuario.avatar}
+                    nome={usuario.nome}
+                  />
+                </Link>
                 <button type="button" onClick={aoSair} className="botao">
                   Sair
                 </button>
@@ -108,6 +116,7 @@ export function Layout() {
       <main className={`mx-auto ${largura} px-espaco-7 ${larga ? "py-espaco-5" : "py-espaco-8"}`}>
         <Outlet />
       </main>
+      {usuario && <ConviteRecebido />}
     </div>
   );
 }

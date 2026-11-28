@@ -18,7 +18,9 @@ export async function listarTodasAsPartidas(): Promise<PartidaAdminDto[]> {
     .select({
       partida: partidas,
       anfitriaoNome: anfitriao.nome,
+      anfitriaoAvatar: anfitriao.avatarVersao,
       vencedorNome: vencedor.nome,
+      vencedorAvatar: vencedor.avatarVersao,
     })
     .from(partidas)
     .innerJoin(anfitriao, eq(anfitriao.id, partidas.anfitriaoId))
@@ -32,6 +34,7 @@ export async function listarTodasAsPartidas(): Promise<PartidaAdminDto[]> {
       usuarioId: participantes.usuarioId,
       nome: usuarios.nome,
       robo: usuarios.robo,
+      avatar: usuarios.avatarVersao,
     })
     .from(participantes)
     .innerJoin(usuarios, eq(usuarios.id, participantes.usuarioId))
@@ -49,19 +52,23 @@ export async function listarTodasAsPartidas(): Promise<PartidaAdminDto[]> {
     porPartida.set(partidaId, lista);
   }
 
-  return linhas.map(({ partida, anfitriaoNome, vencedorNome }) => ({
-    id: partida.id,
-    nome: partida.nome,
-    status: partida.status,
-    anfitriao: { id: partida.anfitriaoId, nome: anfitriaoNome },
-    participantes: porPartida.get(partida.id) ?? [],
-    vencedor:
-      partida.vencedorId === null ? null : { id: partida.vencedorId, nome: vencedorNome ?? "" },
-    seq: partida.seq,
-    criadaEm: partida.criadaEm.toISOString(),
-    iniciadaEm: partida.iniciadaEm?.toISOString() ?? null,
-    encerradaEm: partida.encerradaEm?.toISOString() ?? null,
-  }));
+  return linhas.map(
+    ({ partida, anfitriaoNome, anfitriaoAvatar, vencedorNome, vencedorAvatar }) => ({
+      id: partida.id,
+      nome: partida.nome,
+      status: partida.status,
+      anfitriao: { id: partida.anfitriaoId, nome: anfitriaoNome, avatar: anfitriaoAvatar },
+      participantes: porPartida.get(partida.id) ?? [],
+      vencedor:
+        partida.vencedorId === null
+          ? null
+          : { id: partida.vencedorId, nome: vencedorNome ?? "", avatar: vencedorAvatar ?? null },
+      seq: partida.seq,
+      criadaEm: partida.criadaEm.toISOString(),
+      iniciadaEm: partida.iniciadaEm?.toISOString() ?? null,
+      encerradaEm: partida.encerradaEm?.toISOString() ?? null,
+    }),
+  );
 }
 
 async function travar(tx: Transacao, partidaId: string) {

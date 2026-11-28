@@ -14,6 +14,7 @@ import { eu } from "../../jogo/previa";
 import { type Mesa, totaisPorJogador } from "../../jogo/mesa";
 import type { Geografia } from "../../mapa/geografia";
 import { NOMES_FASES, textoDoEvento } from "../../ui/textosEventos";
+import { Avatar } from "../Avatar";
 import { CorJogador, Presenca } from "../basicos";
 import { CartaAmpliavel } from "../tabuleiro/CartaAmpliavel";
 import { CartaObjetivo } from "../tabuleiro/CartaObjetivo";
@@ -44,6 +45,9 @@ export function PainelVez({
       <Bloco titulo="Fim de jogo">
         <p className="flex items-center gap-espaco-2">
           <CorJogador cor={mesa.cor(visao.vencedor)} />
+          {visao.vencedor !== null && (
+            <Avatar usuarioId={visao.vencedor} avatar={mesa.avatar(visao.vencedor)} />
+          )}
           <b>{mesa.nome(visao.vencedor)}</b> venceu.
         </p>
       </Bloco>
@@ -55,6 +59,7 @@ export function PainelVez({
     <Bloco titulo="Vez">
       <p className="flex flex-wrap items-center gap-espaco-2">
         <CorJogador cor={daVez?.cor ?? null} />
+        {daVez && <Avatar usuarioId={daVez.id} avatar={mesa.avatar(daVez.id)} />}
         <b>{daVez ? mesa.nome(daVez.id) : "—"}</b>
         {daVez?.id === visao.voce && <span className="tag">você</span>}
         {daVez && mesa.robo(daVez.id) && (
@@ -152,6 +157,9 @@ export function PainelMesa({
         <tbody>
           {visao.jogadores.map((j) => {
             const t = totais.get(j.id);
+            // Humano sem nenhuma conexão acompanhando a partida (fechou a tela ou caiu).
+            const desconectado =
+              !mesa.robo(j.id) && !j.eliminado && visao.fase !== "FIM" && !presenca.includes(j.id);
             return (
               <tr key={j.id} className={j.eliminado ? "opacity-[var(--opacidade-esmaecido)]" : ""}>
                 <td className="border-b border-border px-1.5 py-1">
@@ -159,11 +167,17 @@ export function PainelMesa({
                     <CorJogador cor={j.cor} tamanho="w-3 h-3" />
                     <span
                       title={
-                        mesa.robo(j.id) ? "robô" : presenca.includes(j.id) ? "acompanhando" : "fora"
+                        mesa.robo(j.id) ? "robô" : desconectado ? "desconectado" : "acompanhando"
                       }
+                      className={desconectado ? "text-muted" : ""}
                     >
                       {mesa.nome(j.id)}
                     </span>
+                    {desconectado && (
+                      <span className="tag text-bad" title="Sem conexão com a partida">
+                        desconectado
+                      </span>
+                    )}
                     {mesa.robo(j.id) && <span className="tag">robô</span>}
                     {j.id === daVez && visao.fase !== "FIM" && <span className="tag">na vez</span>}
                     {j.id === visao.vencedor && <span className="tag">vencedor</span>}

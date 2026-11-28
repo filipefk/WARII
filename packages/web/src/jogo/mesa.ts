@@ -7,10 +7,11 @@ import {
   type VisaoJogador,
   type VisaoPartida,
 } from "@warii/engine";
-import type { PartidaLobbyDto } from "@warii/shared";
+import type { PartidaLobbyDto, VersaoAvatar } from "@warii/shared";
 
 export interface Mesa {
   nome: (id: JogadorId | null) => string;
+  avatar: (id: JogadorId) => VersaoAvatar;
   cor: (id: JogadorId | null) => CorId | null;
   // Jogador controlado pelo servidor.
   robo: (id: JogadorId | null) => boolean;
@@ -19,10 +20,12 @@ export interface Mesa {
 
 export function montarMesa(lobby: PartidaLobbyDto, visao: VisaoPartida): Mesa {
   const nomes = new Map(lobby.participantes.map((p) => [p.usuarioId, p.nome]));
+  const avatares = new Map(lobby.participantes.map((p) => [p.usuarioId, p.avatar]));
   const cores = new Map(visao.jogadores.map((j) => [j.id, j.cor]));
   const robos = new Set(lobby.participantes.filter((p) => p.robo).map((p) => p.usuarioId));
   return {
     nome: (id) => (id === null ? "—" : (nomes.get(id) ?? "?")),
+    avatar: (id) => avatares.get(id) ?? null,
     cor: (id) => (id === null ? null : (cores.get(id) ?? null)),
     robo: (id) => id !== null && robos.has(id),
     jogadorDaVez: visao.jogadores[visao.vez],

@@ -15,6 +15,7 @@ import type { Etapa } from "../../jogo/interacao";
 import type { Mesa } from "../../jogo/mesa";
 import type { Geografia } from "../../mapa/geografia";
 import type { JogoRecebido } from "../../stores/partidas";
+import { Avatar } from "../Avatar";
 import { Aviso, Botao, CorJogador } from "../basicos";
 import { JanelaPopup } from "../JanelaPopup";
 import { type ExplosoesNoMapa, Tabuleiro, type VooNoMapa } from "../tabuleiro/Tabuleiro";
@@ -171,6 +172,7 @@ function Lado({
       <p className="dica">{papel}</p>
       <p className="flex items-center gap-espaco-2">
         <CorJogador cor={mesa.cor(jogador)} tamanho="h-4 w-4 shrink-0" />
+        {jogador !== null && <Avatar usuarioId={jogador} avatar={mesa.avatar(jogador)} />}
         <b>{mesa.nome(jogador)}</b>
       </p>
       <p className="dica">{children}</p>

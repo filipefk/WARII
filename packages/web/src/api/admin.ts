@@ -22,6 +22,9 @@ export const apiAdmin = {
   gerarLinkSenha: (id: string) => requisitar<LinkSenhaDto>("POST", usuario(id, "/link-senha")),
   definirSenha: (id: string, senha: string) =>
     requisitar<UsuarioAdminDto>("PUT", usuario(id, "/senha"), { senha }),
+  definirAvatar: (id: string, imagem: string) =>
+    requisitar<UsuarioAdminDto>("PUT", usuario(id, "/avatar"), { imagem }),
+  removerAvatar: (id: string) => requisitar<UsuarioAdminDto>("DELETE", usuario(id, "/avatar")),
   logDoUsuario: (id: string) => requisitar<LogUsuarioDto[]>("GET", usuario(id, "/log")),
 
   listarPartidas: () => requisitar<PartidaAdminDto[]>("GET", "/admin/partidas"),

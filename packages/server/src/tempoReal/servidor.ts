@@ -4,6 +4,7 @@
 import { jogadorQueAge, visaoDoJogador } from "@warii/engine";
 import {
   type Confirmacao,
+  type ConviteDto,
   esquemaAcao,
   esquemaEscolha,
   esquemaIdPartida,
@@ -55,6 +56,11 @@ export interface TempoReal {
   partidaApagada(partidaId: string): void;
   sessaoEncerrada(sessaoId: string): void;
   sessoesDoUsuarioEncerradas(usuarioId: string, exceto?: string): void;
+  // Ids dos usuários com ao menos uma conexão aberta (em qualquer tela).
+  usuariosOnline(): string[];
+  estaOnline(usuarioId: string): boolean;
+  // Entrega o convite do anfitrião a todas as conexões do usuário.
+  convidar(usuarioId: string, convite: ConviteDto): void;
 }
 
 declare module "fastify" {
@@ -301,6 +307,15 @@ export function registrarTempoReal(app: FastifyInstance): void {
     },
     sessaoEncerrada(sessaoId) {
       io.in(salaDaSessao(sessaoId)).disconnectSockets(true);
+    },
+    usuariosOnline() {
+      return [...new Set([...io.sockets.sockets.values()].map((s) => s.data.usuarioId))];
+    },
+    estaOnline(usuarioId) {
+      return (io.sockets.adapter.rooms.get(salaDoUsuario(usuarioId))?.size ?? 0) > 0;
+    },
+    convidar(usuarioId, convite) {
+      io.to(salaDoUsuario(usuarioId)).emit("convite", convite);
     },
     sessoesDoUsuarioEncerradas(usuarioId, exceto) {
       emSegundoPlano("o encerramento das sessões", async () => {

@@ -5,6 +5,8 @@ import { useNavigate } from "react-router";
 import { apiAuth } from "../api/auth";
 import { mensagemDoErro } from "../api/cliente";
 import { Aviso, Botao, Campo, Cartao, TituloDaTela } from "../componentes/basicos";
+import { NomeComAvatar } from "../componentes/Avatar";
+import { EscolherAvatar } from "../componentes/EscolherAvatar";
 import { Confirmar } from "../componentes/JanelaPopup";
 import { useSessao } from "../stores/sessao";
 
@@ -79,6 +81,22 @@ function TrocarSenha() {
   );
 }
 
+function FotoDoAvatar() {
+  const usuario = useSessao((s) => s.usuario);
+  const gravarAvatar = useSessao((s) => s.gravarAvatar);
+  if (!usuario) return null;
+  return (
+    <Cartao titulo="Avatar">
+      <EscolherAvatar
+        usuarioId={usuario.id}
+        avatar={usuario.avatar}
+        enviar={async (imagem) => gravarAvatar((await apiAuth.definirAvatar(imagem)).avatar)}
+        remover={async () => gravarAvatar((await apiAuth.removerAvatar()).avatar)}
+      />
+    </Cartao>
+  );
+}
+
 function SairDeTodas() {
   const sairDeTodas = useSessao((s) => s.sairDeTodas);
   const navegar = useNavigate();
@@ -127,7 +145,20 @@ export function Conta() {
   const usuario = useSessao((s) => s.usuario);
   return (
     <div className="space-y-espaco-8">
-      <TituloDaTela titulo={usuario?.nome} apoio={usuario?.email} />
+      <TituloDaTela
+        titulo={
+          usuario ? (
+            <NomeComAvatar
+              usuarioId={usuario.id}
+              avatar={usuario.avatar}
+              nome={usuario.nome}
+              tamanho={32}
+            />
+          ) : undefined
+        }
+        apoio={usuario?.email}
+      />
+      <FotoDoAvatar />
       <TrocarSenha />
       <SairDeTodas />
     </div>

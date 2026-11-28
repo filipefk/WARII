@@ -3,6 +3,7 @@
 // mudou por app.tempoReal.
 import {
   CriarUsuarioEntrada,
+  DefinirAvatarEntrada,
   DefinirSenhaDoUsuarioEntrada,
   EditarUsuarioEntrada,
   esquemaIdPartida,
@@ -16,6 +17,13 @@ import { ErroDeConta, gerarLinkSenhaPorId } from "../auth/contas.js";
 import { exigirAdmin, exigirSessao, sessaoDa } from "../auth/plugin.js";
 import { responderEntradaInvalida, responderErro } from "../erros.js";
 import { listarLogDoUsuario } from "../logUsuarios.js";
+import {
+  decodificarAvatar,
+  ErroDeAvatar,
+  gravarAvatar,
+  LIMITE_CORPO_AVATAR,
+  removerAvatar,
+} from "../usuarios/avatar.js";
 import { apagarPartida, encerrarPartida, listarTodasAsPartidas } from "./partidas.js";
 import {
   apagarUsuario,
@@ -43,6 +51,8 @@ async function responder(
     const corpo = await operacao();
     return corpo === undefined ? resposta.code(204).send() : resposta.code(status).send(corpo);
   } catch (erro) {
+    if (erro instanceof ErroDeAvatar)
+      return responderErro(resposta, 400, erro.codigo, erro.message);
     if (erro instanceof ErroDeAdmin) {
       return responderErro(resposta, erro.status, erro.codigo, erro.message);
     }
@@ -120,6 +130,38 @@ export async function rotasDeAdmin(app: FastifyInstance): Promise<void> {
   });
 
   // Log do jogador: entradas, partidas criadas e partidas jogadas.
+  // Foto do avatar de qualquer usuário (não de robôs). Responde o usuário atualizado.
+  app.put(
+    "/usuarios/:id/avatar",
+    { bodyLimit: LIMITE_CORPO_AVATAR, config: { rateLimit: LIMITE_ESCRITA } },
+    async (requisicao, resposta) => {
+      const params = ParametroUsuario.safeParse(requisicao.params);
+      if (!params.success) return inexistente(resposta, "USUARIO");
+      const entrada = DefinirAvatarEntrada.safeParse(requisicao.body);
+      if (!entrada.success) return responderEntradaInvalida(resposta, entrada.error);
+      const adminId = sessaoDa(requisicao).usuario.id;
+      return responder(resposta, async () => {
+        await obterUsuario(params.data.id);
+        const { tipo, imagem } = decodificarAvatar(entrada.data.imagem);
+        await gravarAvatar(params.data.id, tipo, imagem);
+        auditar(requisicao.log, "avatar_definido", { adminId, usuarioId: params.data.id });
+        return obterUsuario(params.data.id);
+      });
+    },
+  );
+
+  app.delete("/usuarios/:id/avatar", escrita, async (requisicao, resposta) => {
+    const params = ParametroUsuario.safeParse(requisicao.params);
+    if (!params.success) return inexistente(resposta, "USUARIO");
+    const adminId = sessaoDa(requisicao).usuario.id;
+    return responder(resposta, async () => {
+      await obterUsuario(params.data.id);
+      await removerAvatar(params.data.id);
+      auditar(requisicao.log, "avatar_removido", { adminId, usuarioId: params.data.id });
+      return obterUsuario(params.data.id);
+    });
+  });
+
   app.get("/usuarios/:id/log", leitura, async (requisicao, resposta) => {
     const params = ParametroUsuario.safeParse(requisicao.params);
     if (!params.success) return inexistente(resposta, "USUARIO");

@@ -4,6 +4,7 @@ import type { PartidaAdminDto, StatusPartida } from "@warii/shared";
 import { useCallback, useEffect, useState } from "react";
 import { apiAdmin } from "../../api/admin";
 import { mensagemDoErro } from "../../api/cliente";
+import { NomeComAvatar } from "../../componentes/Avatar";
 import { Aviso, Botao, Carregando, Cartao } from "../../componentes/basicos";
 import { Abas } from "../../componentes/Modal";
 import { Confirmar } from "../../componentes/JanelaPopup";
@@ -43,10 +44,28 @@ function LinhaPartida({
       <div className="flex flex-wrap items-center gap-x-espaco-7 gap-y-espaco-1">
         <span className="text-destaque">{partida.nome}</span>
         <span className="tag">{SITUACAO[partida.status]}</span>
-        <span className="text-muted">anfitrião: {partida.anfitriao.nome}</span>
+        <span className="inline-flex items-center gap-espaco-2 text-muted">
+          anfitrião:
+          <NomeComAvatar
+            usuarioId={partida.anfitriao.id}
+            avatar={partida.anfitriao.avatar}
+            nome={partida.anfitriao.nome}
+          />
+        </span>
         {partida.status === "encerrada" && (
-          <span className="text-muted">
-            {partida.vencedor ? `vencedor: ${partida.vencedor.nome}` : "sem vencedor"}
+          <span className="inline-flex items-center gap-espaco-2 text-muted">
+            {partida.vencedor ? (
+              <>
+                vencedor:
+                <NomeComAvatar
+                  usuarioId={partida.vencedor.id}
+                  avatar={partida.vencedor.avatar}
+                  nome={partida.vencedor.nome}
+                />
+              </>
+            ) : (
+              "sem vencedor"
+            )}
           </span>
         )}
         <span className="dica ml-auto tabular-nums">
@@ -54,8 +73,16 @@ function LinhaPartida({
           {fim && ` · fim ${formatoData.format(new Date(fim))}`}
         </span>
       </div>
-      <p className="dica mt-espaco-1">
-        {partida.participantes.map((p) => (p.robo ? `${p.nome} (robô)` : p.nome)).join(", ")}
+      <p className="dica mt-espaco-1 flex flex-wrap items-center gap-x-espaco-5 gap-y-espaco-1">
+        {partida.participantes.map((p) => (
+          <NomeComAvatar
+            key={p.usuarioId}
+            usuarioId={p.usuarioId}
+            avatar={p.avatar}
+            nome={p.robo ? `${p.nome} (robô)` : p.nome}
+            tamanho={18}
+          />
+        ))}
         {partida.seq > 0 && ` · ${partida.seq} ${partida.seq === 1 ? "ação" : "ações"} no log`}
       </p>
       <div className="mt-espaco-3 flex flex-wrap gap-espaco-2">

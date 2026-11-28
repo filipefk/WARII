@@ -6,6 +6,7 @@ import "./zod.js";
 
 export * from "./acoes.js";
 export * from "./admin.js";
+export * from "./avatar.js";
 export * from "./auth.js";
 export * from "./escolha.js";
 export * from "./parametros.js";

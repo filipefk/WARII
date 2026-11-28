@@ -26,10 +26,20 @@ export async function encerrarAppDeTeste(app: FastifyInstance): Promise<void> {
   await pool.end();
 }
 
+// Um robô do teste anterior pode ainda estar gravando a vez dele: o TRUNCATE às vezes dá deadlock
+// com essa transação e é repetido.
 export async function limparBanco(): Promise<void> {
-  await pool.query(
-    "TRUNCATE usuarios, sessoes, tokens_senha, partidas, participantes, acoes_partida, snapshots, log_usuarios",
-  );
+  for (let tentativa = 1; ; tentativa++) {
+    try {
+      await pool.query(
+        "TRUNCATE usuarios, avatares, sessoes, tokens_senha, partidas, participantes, acoes_partida, snapshots, log_usuarios",
+      );
+      return;
+    } catch (erro) {
+      if (tentativa >= 5 || (erro as { code?: string }).code !== "40P01") throw erro;
+      await new Promise((r) => setTimeout(r, 50));
+    }
+  }
 }
 
 // IPs diferentes por teste, para o rate limit (por IP) de um teste não interferir nos outros.

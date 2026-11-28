@@ -7,7 +7,8 @@ import helmet from "@fastify/helmet";
 import type { FastifyInstance } from "fastify";
 import { config } from "./config.js";
 
-// Corpo máximo aceito em qualquer rota (as rotas ainda declaram limites menores).
+// Corpo máximo aceito nas rotas (a maioria declara limites menores; só as que recebem a foto do
+// avatar declaram um maior, LIMITE_CORPO_AVATAR).
 export const LIMITE_CORPO_GLOBAL = 16 * 1024;
 
 const UM_ANO_EM_SEGUNDOS = 365 * 24 * 60 * 60;

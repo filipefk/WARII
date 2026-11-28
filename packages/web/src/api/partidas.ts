@@ -5,6 +5,7 @@ import type {
   ParametrosParciaisEntrada,
   PartidaLobbyDto,
   PartidaResumoDto,
+  UsuarioResumoDto,
 } from "@warii/shared";
 import { requisitar } from "./cliente";
 
@@ -36,5 +37,9 @@ export const apiPartidas = {
     ),
   cancelar: (id: string) => requisitar<void>("POST", caminho(id, "/cancelar")),
   logDetalhado: (id: string) => requisitar<LogDetalhadoDto>("GET", caminho(id, "/log-detalhado")),
+  // Usuários online que o anfitrião pode chamar, e o convite direto a um deles.
+  online: (id: string) => requisitar<UsuarioResumoDto[]>("GET", caminho(id, "/online")),
+  convidar: (id: string, usuarioId: string) =>
+    requisitar<void>("POST", caminho(id, "/convidar"), { usuarioId }),
   iniciar: (id: string) => requisitar<PartidaLobbyDto>("POST", caminho(id, "/iniciar")),
 };
