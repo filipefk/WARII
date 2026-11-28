@@ -1,12 +1,12 @@
-// Moldura das telas: cabeçalho (logotipo, navegação, usuário, sair, situação da conexão).
-import { Link, NavLink, Outlet, useMatch, useNavigate } from "react-router";
+// Moldura das telas: cabeçalho (logotipo, navegação, situação da conexão e menu do usuário).
+import { Link, NavLink, Outlet, useMatch } from "react-router";
 import { useConexao, type SituacaoConexao } from "../stores/conexao";
 import { usePartidas } from "../stores/partidas";
 import { useSessao } from "../stores/sessao";
-import { NomeComAvatar } from "./Avatar";
 import { AvisoDoAdmin } from "./AvisoDoAdmin";
 import { ConviteRecebido } from "./ConviteRecebido";
 import { FundoDeGuerra } from "./FundoDeGuerra";
+import { MenuDoUsuario } from "./MenuDoUsuario";
 
 const INDICADOR: Record<SituacaoConexao, { texto: string; cor: string } | null> = {
   desligada: null,
@@ -44,16 +44,8 @@ export function Layout() {
   const larga = useTelaLarga();
   const largura = larga ? "max-w-none" : "max-w-5xl";
   const usuario = useSessao((s) => s.usuario);
-  const sair = useSessao((s) => s.sair);
   const ultimoErro = useConexao((s) => s.ultimoErro);
   const avisar = useConexao((s) => s.avisar);
-  const navegar = useNavigate();
-
-  const aoSair = () => {
-    void sair().finally(() => {
-      void navegar("/entrar", { replace: true });
-    });
-  };
 
   return (
     <div className="relative isolate min-h-screen">
@@ -86,20 +78,7 @@ export function Layout() {
           )}
           <div className="ml-auto flex items-center gap-espaco-5">
             <IndicadorConexao />
-            {usuario && (
-              <>
-                <Link to="/conta" className="hidden text-muted no-underline sm:inline-flex">
-                  <NomeComAvatar
-                    usuarioId={usuario.id}
-                    avatar={usuario.avatar}
-                    nome={usuario.nome}
-                  />
-                </Link>
-                <button type="button" onClick={aoSair} className="botao">
-                  Sair
-                </button>
-              </>
-            )}
+            <MenuDoUsuario />
           </div>
         </div>
         {ultimoErro && (

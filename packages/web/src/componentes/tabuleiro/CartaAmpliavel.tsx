@@ -1,6 +1,6 @@
 // Carta que se aproxima no hover e, no clique, aparece ampliada no meio da tela. Clicar em qualquer
 // lugar fora da carta ampliada (ou o Esc) desfaz o zoom. A carta é a mesma peça, só escalada.
-import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 // Parte da tela que a carta ampliada pode ocupar, e o limite de aumento.
@@ -12,7 +12,7 @@ export function CartaAmpliavel({ rotulo, children }: { rotulo: string; children:
   const peca = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (escala === null) return;
+    if (escala === null) return undefined;
     // Na captura: o Esc fecha só o zoom, não a janela onde a carta está.
     const aoTeclar = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
@@ -57,7 +57,8 @@ export function CartaAmpliavel({ rotulo, children }: { rotulo: string; children:
               aria-modal="true"
               aria-label={rotulo}
               className="carta-ampliada"
-              style={{ "--escala": escala } as CSSProperties}
+              // O `style` do React não tipa variáveis CSS: grava direto no elemento, antes da pintura.
+              ref={(el) => el?.style.setProperty("--escala", String(escala))}
               onClick={(e) => e.stopPropagation()}
             >
               {children}

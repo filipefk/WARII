@@ -36,7 +36,9 @@ export async function limparBanco(): Promise<void> {
       );
       return;
     } catch (erro) {
-      if (tentativa >= 5 || (erro as { code?: string }).code !== "40P01") throw erro;
+      const impasse =
+        typeof erro === "object" && erro !== null && "code" in erro && erro.code === "40P01";
+      if (tentativa >= 5 || !impasse) throw erro;
       await new Promise((r) => setTimeout(r, 50));
     }
   }
